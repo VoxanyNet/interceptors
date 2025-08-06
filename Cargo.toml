@@ -1,0 +1,28 @@
+[package]
+name = "interceptors"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bitcode = { version = "0.6.6", features = ["serde"] }
+ewebsock = "0.8.0"
+fxhash = "0.2.1"
+ldtk2 = "0.8.0"
+macroquad = { version = "0.4.14", features = ["glam-serde"] }
+nalgebra = "0.33.2"
+rapier2d = "0.26.1"
+serde = { version = "1.0.219", features = ["derive"] }
+tungstenite = "0.27.0"
+uuid = { version = "1.17.0", features = ["v4"] }
+
+[[bin]]
+name = "client"
+path = "src/client/main.rs"
+
+[[bin]]
+name = "server"
+path = "src/server/main.rs"
+
+[lib]
+name = "interceptors_lib"
+path = "src/lib.rs"
