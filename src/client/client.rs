@@ -3,7 +3,8 @@ use std::{collections::HashMap, pin::Pin, time::Instant};
 use ewebsock::{WsReceiver, WsSender};
 use interceptors_lib::{area::Area, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext};
 use ldtk2::{Ldtk, LdtkJson};
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::WHITE, input::{is_key_released, KeyCode}, math::Rect, texture::{draw_texture_ex, load_texture, DrawTextureParams, Texture2D}, time::draw_fps, window::next_frame};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::WHITE, file::{load_file, load_string}, input::{is_key_released, mouse_wheel, KeyCode}, math::{Rect, Vec2},  texture::{draw_texture_ex, load_texture, DrawTextureParams, Texture2D}, time::draw_fps, window::next_frame};
+use macroquad_tiled::{load_map, Map};
 
 
 pub struct Client {
@@ -12,8 +13,7 @@ pub struct Client {
     pings: HashMap<u64, Instant>,
     world: World,
     client_id: ClientId,
-    atlas: Texture2D,
-    tileset: LdtkJson,
+    map: Map,
     camera_rect: Rect
 }
 
@@ -70,20 +70,31 @@ impl Client {
             receive: server_receive,
         };
         
-        let atlas = load_texture("atlas.png").await.unwrap();
+    
+        let atlas = load_texture("maps/epic.png").await.unwrap();
         atlas.set_filter(macroquad::texture::FilterMode::Nearest);
-        let tile_set = Ldtk::from_path("level.ldtk").unwrap();
 
-        let camera_rect = Rect::new(0., 0., 296., 298. * 0.5625);
+        let map_data= load_string("maps/export.tmj").await.unwrap();
+
+
+        let map = load_map(
+            &map_data, 
+            &[
+                ("epic.png", atlas)
+            ], 
+            &[]
+        ).unwrap();
+
+
+        let camera_rect = Rect::new(0., 0., 480., 320.);
 
         Self {
             network_io: server,
             pings: HashMap::new(),
             world: World::empty(),
             client_id,
-            atlas,
-            tileset: tile_set,
-            camera_rect
+            camera_rect,
+            map
         }
         
 
@@ -164,6 +175,18 @@ impl Client {
     }
     pub fn tick(&mut self) {
 
+        if is_key_released(KeyCode::E) {
+            self.camera_rect.w *= 1.2;
+            self.camera_rect.h *= 1.2;
+        }
+
+        if is_key_released(KeyCode::Q) {
+            self.camera_rect.w *= 0.8;
+            self.camera_rect.h *= 0.8;
+        }
+
+        dbg!(self.camera_rect);
+
         self.ping();
 
         let mut ctx = ClientTickContext {
@@ -179,28 +202,8 @@ impl Client {
 
         set_camera(&camera);
 
-        for level in &self.tileset.levels {
-            if let Some(layer_instance) = &level.layer_instances {
-                for layer in layer_instance {
-                    for tile in &layer.auto_layer_tiles {
-                        draw_texture_ex(
-                            &self.atlas, 
-                            tile.px[0] as f32, 
-                            tile.px[1] as f32, 
-                            WHITE,
-                            DrawTextureParams {
-                                dest_size: None,
-                                source: Some(Rect::new(tile.src[0] as f32, tile.src[1] as f32, layer.grid_size as f32, layer.grid_size as f32)),
-                                rotation: 0.,
-                                flip_x: false,
-                                flip_y: false,
-                                pivot: None,
-                            } 
-                        );
-                    }
-                }
-            }
-        }
+
+        self.map.draw_tiles("layer1", self.camera_rect, None);
 
         set_default_camera();
         

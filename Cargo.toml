@@ -9,6 +9,7 @@ ewebsock = "0.8.0"
 fxhash = "0.2.1"
 ldtk2 = "0.8.0"
 macroquad = { version = "0.4.14", features = ["glam-serde"] }
+macroquad-tiled = "0.2.1"
 nalgebra = "0.33.2"
 rapier2d = "0.26.1"
 serde = { version = "1.0.219", features = ["derive"] }
