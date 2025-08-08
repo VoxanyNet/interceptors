@@ -1,7 +1,8 @@
 use std::{collections::HashMap, fmt::Display, net::{TcpListener, TcpStream}};
 
 use ewebsock::{WsReceiver, WsSender};
-use macroquad::{color::WHITE, math::{vec2, Vec2}, texture::{draw_texture_ex, DrawTextureParams}, window::screen_height};
+use macroquad::{camera::Camera2D, color::{Color, WHITE}, input::mouse_position, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}, window::screen_height};
+use nalgebra::geometry;
 use rapier2d::prelude::{ColliderHandle, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 use tungstenite::WebSocket;
@@ -16,8 +17,88 @@ pub mod prop;
 pub mod texture_loader;
 pub mod world;
 pub mod decoration;
+pub mod player;
+pub mod clip;
+pub mod background;
+pub mod generic_physics_prop;
 
 
+pub async fn draw_texture_onto_physics_body(
+    rigid_body_handle: RigidBodyHandle,
+    collider_handle: ColliderHandle,
+    space: &Space, 
+    texture_path: &String, 
+    textures: &mut TextureLoader, 
+    flip_x: bool, 
+    flip_y: bool, 
+    additional_rotation: f32
+) {
+    let rigid_body = space.rigid_body_set.get(rigid_body_handle).unwrap();
+    let collider = space.collider_set.get(collider_handle).unwrap();
+
+    // use the shape to define how large we should draw the texture
+    // maybe we should change this
+    let shape = collider.shape().as_cuboid().unwrap();
+
+    let position = rigid_body.position().translation;
+    let body_rotation = rigid_body.rotation().angle();
+
+    let draw_pos = rapier_to_macroquad(&vec2(position.x, position.y));
+
+    draw_texture_ex(
+        textures.get(texture_path).await, 
+        draw_pos.x - shape.half_extents.x, 
+        draw_pos.y - shape.half_extents.y, 
+        WHITE, 
+        DrawTextureParams {
+            dest_size: Some(vec2(shape.half_extents.x * 2., shape.half_extents.y * 2.)),
+            source: None,
+            rotation: (body_rotation * -1.) + additional_rotation,
+            flip_x,
+            flip_y,
+            pivot: None,
+        }
+    );
+
+    
+}
+
+pub fn draw_collider_hitbox(space: &Space, collider_handle: ColliderHandle, color: Color) {
+    let collider = space.collider_set.get(collider_handle).unwrap();
+
+    let shape = collider.shape().as_cuboid().unwrap();
+
+    let position = collider.position().translation;
+    let rotation = collider.rotation().angle();
+
+    let draw_pos = rapier_to_macroquad(&vec2(position.x, position.y));
+
+    macroquad::shapes::draw_rectangle_ex(
+        draw_pos.x,
+        draw_pos.y, 
+        shape.half_extents.x * 2., 
+        shape.half_extents.y * 2., 
+        DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rotation * -1., color }
+    );
+
+}
+
+
+pub fn mouse_world_pos(camera_rect: &Rect) -> Vec2 {
+    let mouse_pos = mouse_position();
+
+    let mut camera = Camera2D::from_display_rect(*camera_rect);
+    camera.zoom.y = -camera.zoom.y;
+
+    camera.screen_to_world(mouse_pos.into())
+
+}
+
+pub fn rapier_mouse_world_pos(camera_rect: &Rect) -> Vec2 {
+    macroquad_to_rapier(
+        &mouse_world_pos(camera_rect)
+    )
+}
 
 pub struct ClientIO {
     pub send: WsSender,
@@ -33,6 +114,46 @@ impl ClientIO {
             )
         );
     }
+
+    pub fn receive_packets(&mut self) -> Vec<NetworkPacket> {
+
+        let mut packets: Vec<NetworkPacket> = Vec::new();
+
+        loop {
+            let network_packet_bytes = match self.receive.try_recv() {
+                Some(event) => {
+                    match event {
+                        ewebsock::WsEvent::Opened => todo!("unhandled 'Opened' event"),
+                        ewebsock::WsEvent::Message(message) => {
+                            match message {
+                                ewebsock::WsMessage::Binary(bytes) => bytes,
+                                _ => todo!("unhandled message type when trying to receive packet from server")
+                            }
+                        },
+                        ewebsock::WsEvent::Error(error) => {
+
+                            // this is stupid
+                            if error.contains("A non-blocking socket operation could not be completed immediately)") {
+                                println!("io error: {}", error);
+                                return Vec::new();
+                            }
+                            todo!("unhandled 'Error' event when trying to receive update from server: {}", error)
+                        },
+                        ewebsock::WsEvent::Closed => todo!("server closed"),
+                    }
+                },
+                None => break, // this means there are no more updates
+            };
+
+            let network_packet: NetworkPacket = bitcode::deserialize(&network_packet_bytes).unwrap();
+
+            packets.push(network_packet);
+
+        }
+
+        packets
+    }
+
 }
 
 #[derive(Hash, PartialEq, Eq, Serialize, Deserialize, Debug, Clone, Copy)]
@@ -76,11 +197,15 @@ impl ServerIO {
         }
     }
 
-    pub fn send_client(&mut self, client_id: ClientId) {
-        
+    pub fn send_client(&mut self, client_id: ClientId, packet: NetworkPacket) {
+        self.clients.get_mut(&client_id).unwrap().send(
+            tungstenite::Message::Binary(
+                bitcode::serialize(&packet).unwrap().into()
+            )
+        ).unwrap();
     }
 
-    pub fn accept_new_client(&mut self) -> Option<()> {
+    pub fn accept_new_client(&mut self) -> Option<ClientId> {
         match self.listener.accept() {
             Ok((stream, address)) => {
                 println!("received new connection from address: {}", address);
@@ -139,7 +264,7 @@ impl ServerIO {
 
                 self.clients.insert(client_id, websocket_stream);
 
-                return Some(())
+                return Some(client_id)
 
             },
             Err(error) => {
@@ -175,44 +300,4 @@ pub fn rapier_to_macroquad(rapier_coords: &Vec2) -> Vec2 {
         x: rapier_coords.x,
         y: (rapier_coords.y * -1.) + screen_height()
     }
-}
-
-pub async fn draw_texture_onto_physics_body(
-    rigid_body_handle: RigidBodyHandle,
-    collider_handle: ColliderHandle,
-    space: &Space, 
-    texture_path: &String, 
-    textures: &mut TextureLoader, 
-    flip_x: bool, 
-    flip_y: bool, 
-    additional_rotation: f32
-) {
-    let rigid_body = space.rigid_body_set.get(rigid_body_handle).unwrap();
-    let collider = space.collider_set.get(collider_handle).unwrap();
-
-    // use the shape to define how large we should draw the texture
-    // maybe we should change this
-    let shape = collider.shape().as_cuboid().unwrap();
-
-    let position = rigid_body.position().translation;
-    let body_rotation = rigid_body.rotation().angle();
-
-    let draw_pos = rapier_to_macroquad(&vec2(position.x, position.y));
-
-    draw_texture_ex(
-        textures.get(texture_path).await, 
-        draw_pos.x - shape.half_extents.x, 
-        draw_pos.y - shape.half_extents.y, 
-        WHITE, 
-        DrawTextureParams {
-            dest_size: Some(vec2(shape.half_extents.x * 2., shape.half_extents.y * 2.)),
-            source: None,
-            rotation: (body_rotation * -1.) + additional_rotation,
-            flip_x,
-            flip_y,
-            pivot: None,
-        }
-    );
-
-    
 }

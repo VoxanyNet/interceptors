@@ -1,0 +1,18 @@
+{
+  "size": [
+    50.0,
+    50.0
+  ],
+  "pos": {
+    "rotation": [
+      0.0,
+      0.0
+    ],
+    "translation": [
+      0.0,
+      0.0
+    ]
+  },
+  "mass": 10.0,
+  "sprite_path": "assets/brick_block.png"
+}

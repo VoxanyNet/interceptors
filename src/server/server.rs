@@ -1,9 +1,11 @@
-use std::{net::{TcpListener, TcpStream}, time::{Duration, Instant}};
+use std::{fs::read_to_string, net::{TcpListener, TcpStream}, time::{Duration, Instant}};
 
-use interceptors_lib::{space::Space, updates::{NetworkPacket, Ping}, ClientId, ServerIO};
+use interceptors_lib::{area::{Area, AreaSave}, space::Space, updates::{LoadLobby, NetworkPacket, Ping}, world::World, ClientId, ServerIO};
+use macroquad::file::load_string;
 use tungstenite::{Message, WebSocket};
 
 pub struct Server {
+    world: World,
     space: Space,
     last_tick: Instant,
     last_tick_duration: Duration,
@@ -13,20 +15,42 @@ pub struct Server {
 impl Server {
     pub fn new() -> Self {
 
+        let mut world = World::empty();
+
+        let lobby_save: AreaSave = serde_json::from_str(&read_to_string("areas/lobby.json").unwrap()).unwrap();
+
+        world.lobby = Area::from_save(lobby_save);
+
         Self {
             space: Space::default(),
             last_tick: Instant::now(),
             last_tick_duration: Duration::from_micros(1),
-            network_io: ServerIO::new()
+            network_io: ServerIO::new(),
+            world
         }
 
+    }
+
+    pub fn handle_new_client(&mut self, new_client: ClientId) {
+
+
+        self.network_io.send_client(new_client, NetworkPacket::LoadLobby(
+
+            LoadLobby {
+                area: self.world.lobby.save(),
+            }
+        ));
     }
 
     pub fn run(&mut self) {
         loop {
             self.tick();
 
-            self.network_io.accept_new_client();
+            let new_client = self.network_io.accept_new_client();
+
+            if let Some(new_client) = new_client {
+                self.handle_new_client(new_client);
+            }
 
             let packets = self.receive_packets();
             self.handle_packets(packets);
@@ -40,19 +64,20 @@ impl Server {
 
         for (client_id, network_packet) in network_packets {
             match network_packet {
-            NetworkPacket::Ping(ping) => {
+                NetworkPacket::Ping(ping) => {
 
-                let client = self.network_io.clients.get_mut(&client_id).unwrap();
+                    let client = self.network_io.clients.get_mut(&client_id).unwrap();
 
-                // just reply to the ping
-                client.send(
-                    Message::Binary(
-                        bitcode::serialize(
-                            &NetworkPacket::Ping(Ping::new_with_id(ping.id))
-                        ).unwrap().into()
-                    )
-                ).unwrap();
-            },
+                    // just reply to the ping
+                    client.send(
+                        Message::Binary(
+                            bitcode::serialize(
+                                &NetworkPacket::Ping(Ping::new_with_id(ping.id))
+                            ).unwrap().into()
+                        )
+                    ).unwrap();
+                },
+                _ => {}
         }
         }
         

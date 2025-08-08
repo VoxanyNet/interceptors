@@ -1,0 +1,13 @@
+{
+  "repeat": true,
+  "pos": [
+    0.0,
+    0.0
+  ],
+  "sprite_path": "assets/forest/Layer_0003_6.png",
+  "size": [
+    1856.0,
+    1586.0
+  ],
+  "parallax": 0.25
+}

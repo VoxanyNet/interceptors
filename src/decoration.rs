@@ -7,13 +7,13 @@ use crate::{space::Space, texture_loader::TextureLoader};
 
 // literally just a sprite with position and size
 pub struct Decoration {
-    pub pos: Vec2, // rapier pos
+    pub pos: Vec2, // macroquad pos
     pub sprite_path: String,
     pub size: Vec2
 }
 
 impl Decoration {
-    pub fn from_save(&mut self, save: &mut DecorationSave) -> Self {
+    pub fn from_save(save: DecorationSave) -> Self {
         
         Self {
             pos: save.pos,
@@ -50,7 +50,7 @@ impl Decoration {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DecorationSave {
     pub pos: Vec2,
     pub size: Vec2,

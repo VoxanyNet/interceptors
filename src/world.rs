@@ -1,10 +1,11 @@
-use macroquad::ui::widgets::Texture;
+use macroquad::{math::Rect, ui::widgets::Texture};
 use serde::{Deserialize, Serialize};
 
 use crate::{area::{Area, AreaSave}, texture_loader::TextureLoader, ClientTickContext};
 
 pub struct World {
-    areas: Vec<Area>
+    areas: Vec<Area>,
+    pub lobby: Area
 }
 
 impl World {
@@ -14,20 +15,24 @@ impl World {
         }
     }
 
+    pub fn server_tick(&mut self) {
+           
+    }
+
     pub fn empty() -> Self {
         Self {
             areas: Vec::new(),
+            lobby: Area::empty()
         }
     }
 
-    pub async fn draw(&self, textures: &mut TextureLoader) {
+    pub async fn draw(&self, textures: &mut TextureLoader, camera_rect: &Rect) {
+    
+
+        self.lobby.draw(textures, camera_rect).await;
+
         for area in &self.areas {
-            area.draw(textures).await
+            area.draw(textures, camera_rect).await
         }
     } 
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct WorldSave {
-    pub areas: Vec<AreaSave>
 }

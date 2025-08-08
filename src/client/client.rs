@@ -3,7 +3,7 @@ use std::{collections::HashMap, pin::Pin, time::Instant};
 use ewebsock::{WsReceiver, WsSender};
 use interceptors_lib::{area::Area, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext};
 use ldtk2::{Ldtk, LdtkJson};
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::WHITE, file::{load_file, load_string}, input::{is_key_released, mouse_wheel, KeyCode}, math::{Rect, Vec2},  texture::{draw_texture_ex, load_texture, DrawTextureParams, Texture2D}, time::draw_fps, window::next_frame};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::WHITE, file::{load_file, load_string}, input::{is_key_released, mouse_wheel, KeyCode}, math::{Rect, Vec2}, texture::{draw_texture_ex, load_texture, DrawTextureParams, Texture2D}, time::draw_fps, ui::root_ui, window::next_frame};
 use macroquad_tiled::{load_map, Map};
 
 
@@ -73,7 +73,12 @@ impl Client {
         let textures = TextureLoader::new();
 
 
-        let camera_rect = Rect::new(0., 0., 480., 320.);
+        let camera_rect = Rect {
+            x: 0.,
+            y: 0.,
+            w: 1280.,
+            h: 720.,
+        };
 
         Self {
             network_io: server,
@@ -94,58 +99,35 @@ impl Client {
         loop {
             self.tick();
 
-            self.receive_packets();
+            let packets = self.network_io.receive_packets();
+
+            self.handle_packets(packets);
 
             self.draw().await
         }
     }
 
-    pub fn receive_packets(&mut self) {
-        loop {
-            let network_packet_bytes = match self.network_io.receive.try_recv() {
-                Some(event) => {
-                    match event {
-                        ewebsock::WsEvent::Opened => todo!("unhandled 'Opened' event"),
-                        ewebsock::WsEvent::Message(message) => {
-                            match message {
-                                ewebsock::WsMessage::Binary(bytes) => bytes,
-                                _ => todo!("unhandled message type when trying to receive packet from server")
-                            }
-                        },
-                        ewebsock::WsEvent::Error(error) => {
+    pub fn handle_packets(&mut self, packets: Vec<NetworkPacket>) {
 
-                            // this is stupid
-                            if error.contains("A non-blocking socket operation could not be completed immediately)") {
-                                println!("io error: {}", error);
-                                return;
-                            }
-                            todo!("unhandled 'Error' event when trying to receive update from server: {}", error)
-                        },
-                        ewebsock::WsEvent::Closed => todo!("server closed"),
-                    }
-                },
-                None => break, // this means there are no more updates
-            };
-
-            let network_packet: NetworkPacket = bitcode::deserialize(&network_packet_bytes).unwrap();
-
-            self.handle_packet(network_packet);
-
-        }
-    }
-
-    pub fn handle_packet(&mut self, packet: NetworkPacket) {
-        match packet {
+        for packet in packets {
+            match packet {
             NetworkPacket::Ping(ping) => {
                 let time = self.pings.get(&ping.id).unwrap().elapsed().as_micros();
 
                 dbg!(time);
 
             },
+            NetworkPacket::LoadLobby(load_lobby) => {
+
+                self.world.lobby = Area::from_save(load_lobby.area)
+            }
+
             _ => {
                 println!("unhandled network packet")
             }
         }
+        }
+        
     }
 
     pub fn ping(&mut self) {
@@ -172,8 +154,6 @@ impl Client {
             self.camera_rect.h *= 0.8;
         }
 
-        dbg!(self.camera_rect);
-
         self.ping();
 
         let mut ctx = ClientTickContext {
@@ -189,7 +169,7 @@ impl Client {
 
         set_camera(&camera);
 
-        self.world.draw(&mut self.textures).await;
+        self.world.draw(&mut self.textures, &self.camera_rect).await;
 
 
         set_default_camera();

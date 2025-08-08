@@ -1,9 +1,12 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::area::AreaSave;
+
 #[derive(Serialize, Deserialize)]
 pub enum NetworkPacket {
     Ping(Ping),
+    LoadLobby(LoadLobby)
     
 }
 
@@ -24,4 +27,9 @@ impl Ping {
             id,
         }
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct LoadLobby {
+    pub area: AreaSave
 }

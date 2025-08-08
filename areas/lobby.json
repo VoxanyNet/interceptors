@@ -1,0 +1,621 @@
+{
+  "spawn_point": [
+    0.0,
+    0.0
+  ],
+  "decorations": [
+    {
+      "pos": [
+        0.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        50.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        100.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        200.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        150.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        250.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        300.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        350.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        400.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        450.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        500.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        550.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        600.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        650.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        700.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        750.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        800.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        850.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        900.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        950.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        1000.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        1050.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        1100.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        1150.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        1200.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        1250.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        1250.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        1200.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        1150.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        1100.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        1050.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        1000.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        950.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        900.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        850.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        800.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        750.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        700.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        650.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        600.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        550.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        500.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        450.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        400.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        350.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        300.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        250.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        200.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        150.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        100.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        50.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    },
+    {
+      "pos": [
+        0.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/brick_block.png"
+    }
+  ],
+  "clips": [
+    {
+      "size": [
+        1300.0,
+        -100.0
+      ],
+      "pos": [
+        650.0,
+        20.0
+      ]
+    }
+  ],
+  "players": [],
+  "backgrounds": [
+    {
+      "repeat": true,
+      "pos": [
+        -50.0,
+        -700.0
+      ],
+      "sprite_path": "assets/forest/Layer_0003_6.png",
+      "size": [
+        1856.0,
+        1586.0
+      ],
+      "parallax": 0.25
+    },
+    {
+      "repeat": true,
+      "pos": [
+        0.0,
+        -700.0
+      ],
+      "sprite_path": "assets/forest/Layer_0002_7.png",
+      "size": [
+        1856.0,
+        1586.0
+      ],
+      "parallax": 0.25
+    }
+  ]
+}
