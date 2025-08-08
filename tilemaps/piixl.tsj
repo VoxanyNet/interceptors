@@ -1,0 +1,14 @@
+{ "columns":16,
+ "image":"piixl.png",
+ "imageheight":192,
+ "imagewidth":256,
+ "margin":0,
+ "name":"piixl",
+ "spacing":0,
+ "tilecount":192,
+ "tiledversion":"1.11.2",
+ "tileheight":16,
+ "tilewidth":16,
+ "type":"tileset",
+ "version":"1.10"
+}

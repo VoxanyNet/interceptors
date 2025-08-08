@@ -15,6 +15,7 @@ pub mod area;
 pub mod prop;
 pub mod texture_loader;
 pub mod world;
+pub mod decoration;
 
 
 

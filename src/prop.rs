@@ -8,8 +8,7 @@ use crate::{draw_texture_onto_physics_body, space::Space, texture_loader::Textur
 pub struct Prop {
     previous_position: Isometry2<f32>,
     rigid_body_handle: RigidBodyHandle,
-    collider_handle: ColliderHandle,
-    id: u32
+    collider_handle: ColliderHandle
 }
 
 #[derive(Serialize, Deserialize)]
@@ -61,7 +60,6 @@ impl Prop {
         Self {
             rigid_body_handle: body,
             collider_handle: collider,
-            id: save.id,
             previous_position: vector![save.position.x, save.position.y].into()
         }
     }

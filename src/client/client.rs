@@ -1,7 +1,7 @@
 use std::{collections::HashMap, pin::Pin, time::Instant};
 
 use ewebsock::{WsReceiver, WsSender};
-use interceptors_lib::{area::Area, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext};
+use interceptors_lib::{area::Area, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext};
 use ldtk2::{Ldtk, LdtkJson};
 use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::WHITE, file::{load_file, load_string}, input::{is_key_released, mouse_wheel, KeyCode}, math::{Rect, Vec2},  texture::{draw_texture_ex, load_texture, DrawTextureParams, Texture2D}, time::draw_fps, window::next_frame};
 use macroquad_tiled::{load_map, Map};
@@ -13,8 +13,8 @@ pub struct Client {
     pings: HashMap<u64, Instant>,
     world: World,
     client_id: ClientId,
-    map: Map,
-    camera_rect: Rect
+    camera_rect: Rect,
+    textures: TextureLoader
 }
 
 impl Client {
@@ -69,21 +69,8 @@ impl Client {
             send: server_send,
             receive: server_receive,
         };
-        
-    
-        let atlas = load_texture("maps/epic.png").await.unwrap();
-        atlas.set_filter(macroquad::texture::FilterMode::Nearest);
 
-        let map_data= load_string("maps/export.tmj").await.unwrap();
-
-
-        let map = load_map(
-            &map_data, 
-            &[
-                ("epic.png", atlas)
-            ], 
-            &[]
-        ).unwrap();
+        let textures = TextureLoader::new();
 
 
         let camera_rect = Rect::new(0., 0., 480., 320.);
@@ -94,7 +81,7 @@ impl Client {
             world: World::empty(),
             client_id,
             camera_rect,
-            map
+            textures
         }
         
 
@@ -195,15 +182,15 @@ impl Client {
 
         self.world.client_tick(&mut ctx);
     }
-    pub async fn draw(&self) {  
+    pub async fn draw(&mut self) {  
 
         let mut camera = Camera2D::from_display_rect(self.camera_rect);
         camera.zoom.y = -camera.zoom.y;
 
         set_camera(&camera);
 
+        self.world.draw(&mut self.textures).await;
 
-        self.map.draw_tiles("layer1", self.camera_rect, None);
 
         set_default_camera();
         

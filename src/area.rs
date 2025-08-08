@@ -1,14 +1,24 @@
-use macroquad::{math::Vec2, window::get_internal_gl};
+use macroquad::{color::WHITE, file::load_string, math::Vec2, texture::{draw_texture_ex, load_texture, DrawTextureParams}, window::get_internal_gl};
+use macroquad_tiled::{load_map, Map};
+use rapier2d::prelude::ColliderHandle;
 use serde::{Deserialize, Serialize};
 
-use crate::{prop::{Prop, PropSave}, space::Space, ClientTickContext};
+use crate::{prop::{Prop, PropSave}, space::Space, texture_loader::TextureLoader, ClientTickContext};
+
+pub struct Clip {
+    pub collider_handle: ColliderHandle
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ClipSave {
+    pub size: Vec2,
+    pub pos: Vec2,
+}
 
 // equivalent to chunk in minecraft
 pub struct Area {
-    id: u32,
     spawn_point: Vec2,
-    space: Space,
-    props: Vec<Prop>,
+    space: Space
 }
 
 impl Area {
@@ -18,9 +28,11 @@ impl Area {
         Self {
             spawn_point: Vec2::ZERO,
             space: Space::new(),
-            props: Vec::new(),
-            id: uuid::Uuid::new_v4().as_u64_pair().0 as u32,
         }
+    }
+
+    pub async fn draw(&self, textures: &mut TextureLoader) {
+        
     }
 
     pub fn server_tick(&mut self) {
@@ -28,36 +40,29 @@ impl Area {
     }
 
     pub fn client_tick(&mut self, ctx: &mut ClientTickContext) {
-        for prop in &mut self.props {
-            prop.client_tick(&mut self.space);
-        }
+        
     }
 
-    pub fn from_save(save: AreaSave) -> Self {
+    pub async fn from_save(save: AreaSave) -> Self {
 
         let mut space = Space::new();
 
-        let mut props: Vec<Prop> = Vec::new();
-
-        for prop_save in save.props {
-            let prop = Prop::from_save(prop_save, &mut space);
-
-            props.push(prop);
-        }
 
         Self {
             spawn_point: save.spawn_point,
-            space,
-            props,
-            id: save.id,
+            space
         }
     }
+
+
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AreaSave {
-    id: u32,
     spawn_point: Vec2,
     props: Vec<PropSave>,
-    offset: Vec2
+    offset: Vec2,
+    tile_map_path: String,
+    tileset_data_path: String,
+    tileset_texture_path: String
 }
