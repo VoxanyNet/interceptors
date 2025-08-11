@@ -1,9 +1,9 @@
-use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}, thread::spawn};
+use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}, thread::spawn, time::Duration};
 
-use interceptors_lib::{area::{Area, AreaSave}, background::{Background, BackgroundSave}, clip::Clip, decoration::{Decoration, DecorationSave}, draw_collider_hitbox, generic_physics_prop::{self, GenericPhysicsProp, GenericPhysicsPropSave}, macroquad_to_rapier, mouse_world_pos, rapier_mouse_world_pos, space::{self, Space}, texture_loader::TextureLoader};
+use interceptors_lib::{area::{Area, AreaSave}, background::{Background, BackgroundSave}, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, generic_physics_prop::{self, GenericPhysicsProp, GenericPhysicsPropSave}, is_key_down_exclusive, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, space::{self, Space}, texture_loader::TextureLoader};
 use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{GREEN, RED, WHITE}, file::load_string, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_position, mouse_wheel, KeyCode, MouseButton}, math::{Rect, Vec2}, prelude::camera::mouse, shapes::draw_rectangle, text::draw_text, ui::{self, root_ui}, window::{next_frame, screen_height, screen_width}};
 use nalgebra::{vector, Isometry2};
-use rapier2d::prelude::ColliderBuilder;
+use rapier2d::prelude::{ColliderBuilder, RigidBodyBuilder};
 use serde::{de, Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
@@ -103,6 +103,12 @@ impl Spawner {
 
                 self.change = true;
             }
+
+            if is_key_released(KeyCode::Left) {
+                self.selected_category -= 1;
+
+                self.change = true;
+            }
         }
 
 
@@ -144,7 +150,7 @@ impl Spawner {
         self.load_prefab();
 
 
-        if is_key_released(KeyCode::Space) {
+        if is_key_released_exclusive(&[KeyCode::Space]) {
             self.spawn(area, camera_rect, cursor, rapier_cursor);
         }
 
@@ -198,11 +204,15 @@ impl Spawner {
             SpawnerCategory::GenericPhysicsProp => {
                 let generic_physics_prop_save: GenericPhysicsPropSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
 
-                let mut generic_physics_prop = GenericPhysicsProp::from_save(generic_physics_prop_save, space);
+                let mut generic_physics_prop = GenericPhysicsProp::from_save(generic_physics_prop_save.clone(), space);
 
-                generic_physics_prop.set_pos(vector![rapier_cursor.x, rapier_cursor.y].into(), space);
+                generic_physics_prop.set_pos(vector![rapier_cursor.x + generic_physics_prop_save.size.x / 2., rapier_cursor.y - generic_physics_prop_save.size.y / 2.].into(), space);
 
                 generic_physics_prop.draw(space, textures).await;
+
+                // need to immedietly remove the rigid bodies from space because this is a temporary object
+                space.rigid_body_set.remove(generic_physics_prop.rigid_body_handle, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
+                
             }
         }
     }
@@ -231,15 +241,17 @@ impl Spawner {
 
                 background.pos = cursor;
 
-                area.backgrounds.push(background);
+                area.backgrounds.insert(0, background);
             },
 
             SpawnerCategory::GenericPhysicsProp => {
                 let generic_physics_prop_save: GenericPhysicsPropSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
 
-                let mut generic_physics_prop = GenericPhysicsProp::from_save(generic_physics_prop_save, &mut area.space);
+                let mut generic_physics_prop = GenericPhysicsProp::from_save(generic_physics_prop_save.clone(), &mut area.space);
 
-                generic_physics_prop.set_pos(vector![rapier_cursor.x, rapier_cursor.y].into(), &mut area.space);
+                generic_physics_prop.set_pos(vector![rapier_cursor.x + generic_physics_prop_save.size.x / 2., rapier_cursor.y - generic_physics_prop_save.size.y / 2.].into(), &mut area.space);
+
+                area.generic_physics_props.push(generic_physics_prop);
             }
         }
     }
@@ -275,6 +287,7 @@ pub struct AreaEditor {
     selected_mode: usize,
     mode_options: Vec<Mode>,
     camera_rect: Rect,
+    previous_cursor: Vec2,
     cursor: Vec2,
     clip_point_1: Option<Vec2>,
     clip_point_2: Option<Vec2>
@@ -306,7 +319,8 @@ impl AreaEditor {
             camera_rect,
             cursor: Vec2::ZERO,
             clip_point_1: None,
-            clip_point_2: None
+            clip_point_2: None,
+            previous_cursor: Vec2::ZERO
         }
     }
 
@@ -314,20 +328,36 @@ impl AreaEditor {
         macroquad_to_rapier(&self.cursor)
     }
 
+    pub fn move_delete(&mut self) {
+        
+        let mut decorations_remove: Vec<Decoration> = Vec::new();
+
+        for decoration in &mut self.area.decorations {
+
+            if Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y).contains(self.previous_cursor) || self.cursor == decoration.pos {
+
+                if is_key_down(KeyCode::Q) && self.cursor != self.previous_cursor {
+                    decoration.pos = self.cursor;
+                }
+
+                if is_key_released(KeyCode::Delete) {
+                    decorations_remove.push(decoration.clone());
+                }
+                
+            }
+        }
+
+        self.area.decorations.retain(|x| {!decorations_remove.contains(x)});
+    }
+
+    pub fn delete(&mut self) {
+        
+    }
+
     pub fn update_cursor(&mut self) {
 
-        // this is a temporary fix to avoid collisions with other controls
-        if is_key_down(KeyCode::LeftShift) {
-            return;
-        }
+        self.previous_cursor = self.cursor.clone();
 
-        if is_key_down(KeyCode::LeftControl) {
-            return;
-        }
-
-        if is_key_down(KeyCode::Tab) {
-            return;
-        }
 
         if is_key_released(KeyCode::Left) {
             self.cursor.x -= 50.;
@@ -372,20 +402,25 @@ impl AreaEditor {
             return;
         }
 
-        let rapier_clip_point_1 = macroquad_to_rapier(&self.clip_point_1.unwrap());
-        let rapier_clip_point_2 = macroquad_to_rapier(&self.clip_point_2.unwrap());
+        let rapier_clip_point_1 =  &self.clip_point_1.unwrap();
+        let rapier_clip_point_2 = &self.clip_point_2.unwrap();
 
         let x_hx = (rapier_clip_point_2.x - rapier_clip_point_1.x) / 2.;
-        let y_hx = (rapier_clip_point_2.y - rapier_clip_point_1.y) / 2.;
+        let y_hx = (rapier_clip_point_1.y - rapier_clip_point_2.y) / 2.;
 
-        let collider = self.area.space.collider_set.insert(
-            ColliderBuilder::cuboid(x_hx, y_hx) 
-                .position(vector![rapier_clip_point_1.x + x_hx, rapier_clip_point_1.y + y_hx].into())
+        let rigid_body = self.area.space.rigid_body_set.insert(
+            RigidBodyBuilder::fixed().position(vector![rapier_clip_point_1.x + x_hx, rapier_clip_point_1.y - y_hx].into())
+        );
+        let collider = self.area.space.collider_set.insert_with_parent(
+            ColliderBuilder::cuboid(x_hx, y_hx),
+            rigid_body,
+            &mut self.area.space.rigid_body_set
         );
 
         self.area.clips.push(
             Clip {
                 collider_handle: collider,
+                rigid_body_handle: rigid_body
             }
         );
 
@@ -410,7 +445,7 @@ impl AreaEditor {
         }
 
         let camera_speed = match is_key_down(KeyCode::LeftShift) {
-            true => 10.,
+            true => 30.,
             false => 5.,
         };
 
@@ -439,11 +474,17 @@ impl AreaEditor {
     
     pub fn draw_clip_points(&self) {
         if let Some(clip_point_1) = self.clip_point_1 {
-            draw_rectangle(clip_point_1.x, clip_point_1.y, 10., 10., RED);
+
+            let macroquad_pos = rapier_to_macroquad(&clip_point_1);
+
+            draw_rectangle(macroquad_pos.x, macroquad_pos.y, 10., 10., RED);
         }
 
         if let Some(clip_point_2) = self.clip_point_2 {
-            draw_rectangle(clip_point_2.x, clip_point_2.y, 10., 10., GREEN);
+
+            let macroquad_pos = rapier_to_macroquad(&clip_point_2);
+
+            draw_rectangle(macroquad_pos.x, macroquad_pos.y, 10., 10., GREEN);
         }
     }
 
@@ -454,7 +495,8 @@ impl AreaEditor {
         color.a = 0.2;
 
         for clip in &self.area.clips {
-            draw_collider_hitbox(&self.area.space, clip.collider_handle, color);
+
+            draw_hitbox(&self.area.space, clip.rigid_body_handle, clip.collider_handle, color);
         }
     }
     pub async fn draw(&mut self) {
@@ -508,11 +550,11 @@ impl AreaEditor {
             }
 
             if self.clip_point_1.is_none() {
-                self.clip_point_1 = Some(self.cursor)
+                self.clip_point_1 = Some(self.rapier_cursor())
             } else if self.clip_point_1.is_some() && self.clip_point_2.is_none() {
-                self.clip_point_2 = Some(self.cursor)
+                self.clip_point_2 = Some(self.rapier_cursor())
             } else {
-                self.clip_point_1 = Some(self.cursor);
+                self.clip_point_1 = Some(self.rapier_cursor());
 
                 self.clip_point_2 = None
             }
@@ -526,6 +568,11 @@ impl AreaEditor {
                 self.create_clip();
             }
         }
+
+        self.move_delete();
+
+        self.area.space.step(Duration::from_secs_f64(0.016));
+        
 
         self.clip_tick();
 
@@ -552,10 +599,6 @@ impl AreaEditor {
         self.change_mode();
 
         self.update_camera();
-        
-    }
-
-    pub fn save_arena(&self) {
         
     }
 

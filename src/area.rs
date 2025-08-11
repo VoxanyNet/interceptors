@@ -3,7 +3,7 @@ use macroquad_tiled::{load_map, Map};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle};
 use serde::{Deserialize, Serialize};
 
-use crate::{background::{Background, BackgroundSave}, clip::{Clip, ClipSave}, decoration::{self, Decoration, DecorationSave}, generic_physics_prop::{self, GenericPhysicsProp, GenericPhysicsPropSave}, player::{Player, PlayerSave}, prop::{Prop, PropSave}, space::Space, texture_loader::TextureLoader, ClientTickContext};
+use crate::{background::{Background, BackgroundSave}, clip::{Clip, ClipSave}, decoration::{self, Decoration, DecorationSave}, generic_physics_prop::{self, GenericPhysicsProp, GenericPhysicsPropSave}, player::{Player, PlayerSave}, space::Space, texture_loader::TextureLoader, ClientTickContext};
 
 pub struct Area {
     pub backgrounds: Vec<Background>,

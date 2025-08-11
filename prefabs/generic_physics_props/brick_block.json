@@ -14,5 +14,6 @@
     ]
   },
   "mass": 10.0,
-  "sprite_path": "assets/brick_block.png"
+  "sprite_path": "assets/brick_block.png",
+  "id": null
 }

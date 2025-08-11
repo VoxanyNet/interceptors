@@ -33,3 +33,5 @@ impl Ping {
 pub struct LoadLobby {
     pub area: AreaSave
 }
+
+// Option for prop id in save only, must be actual id when loaded into game, None when needs to be set yourself

@@ -14,16 +14,17 @@ pub struct Space {
     pub impulse_joint_set: ImpulseJointSet,
     pub multibody_joint_set: MultibodyJointSet,
     pub ccd_solver: CCDSolver,
-    pub query_pipeline: QueryPipeline
+    pub query_pipeline: QueryPipeline,
 }
 
 impl Space {
     pub fn step(&mut self, dt: Duration) {
 
         self.integration_parameters.dt = dt.as_secs_f32();
+        
 
         self.physics_pipeline.step(
-            &vector![-9.8, 0.].into(), 
+            &vector![0., -998.].into(), 
             &self.integration_parameters, 
             &mut self.island_manager, 
             &mut self.broad_phase, 

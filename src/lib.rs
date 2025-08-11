@@ -1,19 +1,18 @@
 use std::{collections::HashMap, fmt::Display, net::{TcpListener, TcpStream}};
 
 use ewebsock::{WsReceiver, WsSender};
-use macroquad::{camera::Camera2D, color::{Color, WHITE}, input::mouse_position, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}, window::screen_height};
+use macroquad::{camera::Camera2D, color::{Color, WHITE}, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}, window::{get_internal_gl, screen_height}};
 use nalgebra::geometry;
 use rapier2d::prelude::{ColliderHandle, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 use tungstenite::WebSocket;
 use uuid::Uuid;
 
-use crate::{space::Space, texture_loader::TextureLoader, updates::NetworkPacket};
+use crate::{all_keys::ALL_KEYS, space::Space, texture_loader::TextureLoader, updates::NetworkPacket};
 
 pub mod space;
 pub mod updates;
 pub mod area;
-pub mod prop;
 pub mod texture_loader;
 pub mod world;
 pub mod decoration;
@@ -21,8 +20,39 @@ pub mod player;
 pub mod clip;
 pub mod background;
 pub mod generic_physics_prop;
+pub mod all_keys;
 
+pub fn is_key_down_exclusive(required: &[KeyCode]) -> bool {
+    // All required keys must be down
+    if !required.iter().all(|&k| is_key_down(k)) {
+        return false;
+    }
 
+    // No other keys must be down
+    for &key in ALL_KEYS.iter() {
+        if !required.contains(&key) && is_key_down(key) {
+            return false;
+        }
+    }
+
+    true
+}
+
+pub fn is_key_released_exclusive(required: &[KeyCode]) -> bool {
+    // All required keys must be down
+    if !required.iter().all(|&k| is_key_released(k)) {
+        return false;
+    }
+
+    // No other keys must be down
+    for &key in ALL_KEYS.iter() {
+        if !required.contains(&key) && (is_key_down(key) || is_key_released(key)) {
+            return false;
+        }
+    }
+
+    true
+}
 pub async fn draw_texture_onto_physics_body(
     rigid_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,
@@ -63,13 +93,14 @@ pub async fn draw_texture_onto_physics_body(
     
 }
 
-pub fn draw_collider_hitbox(space: &Space, collider_handle: ColliderHandle, color: Color) {
+pub fn draw_hitbox(space: &Space, rigid_body_handle: RigidBodyHandle, collider_handle: ColliderHandle, color: Color) {
+    let rigid_body = space.rigid_body_set.get(rigid_body_handle).unwrap();
     let collider = space.collider_set.get(collider_handle).unwrap();
 
     let shape = collider.shape().as_cuboid().unwrap();
 
     let position = collider.position().translation;
-    let rotation = collider.rotation().angle();
+    let rotation = rigid_body.rotation().angle();
 
     let draw_pos = rapier_to_macroquad(&vec2(position.x, position.y));
 

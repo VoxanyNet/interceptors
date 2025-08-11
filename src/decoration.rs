@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{space::Space, texture_loader::TextureLoader};
 
 // literally just a sprite with position and size
+#[derive(Clone, PartialEq)]
 pub struct Decoration {
     pub pos: Vec2, // macroquad pos
     pub sprite_path: String,

@@ -34,6 +34,25 @@ impl Background {
             }
         );
 
+        if self.repeat {
+            for x in -20..20 {
+                draw_texture_ex(
+                    texture, 
+                    (self.pos.x + (x as f32 * self.size.x)) + camera_rect.x * self.parallax, 
+                    self.pos.y, 
+                    WHITE, 
+                    DrawTextureParams {
+                        dest_size: Some(self.size),
+                        source: None,
+                        rotation: 0.,
+                        flip_x: false,
+                        flip_y: false,
+                        pivot: None,
+                    }
+                );
+            }
+        }
+
         let mut camera = Camera2D::from_display_rect(*camera_rect);
         camera.zoom.y = -camera.zoom.y;
 
