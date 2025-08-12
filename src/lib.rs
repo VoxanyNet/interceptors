@@ -21,6 +21,7 @@ pub mod clip;
 pub mod background;
 pub mod prop;
 pub mod all_keys;
+pub mod body_part;
 
 pub fn is_key_down_exclusive(required: &[KeyCode]) -> bool {
     // All required keys must be down
