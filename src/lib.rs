@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Display, net::{TcpListener, TcpStream}};
+use std::{collections::HashMap, fmt::Display, net::{TcpListener, TcpStream}, time::Duration};
 
 use ewebsock::{WsReceiver, WsSender};
 use macroquad::{camera::Camera2D, color::{Color, WHITE}, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}, window::{get_internal_gl, screen_height}};
@@ -19,7 +19,7 @@ pub mod decoration;
 pub mod player;
 pub mod clip;
 pub mod background;
-pub mod generic_physics_prop;
+pub mod prop;
 pub mod all_keys;
 
 pub fn is_key_down_exclusive(required: &[KeyCode]) -> bool {
@@ -134,16 +134,28 @@ pub fn rapier_mouse_world_pos(camera_rect: &Rect) -> Vec2 {
 pub struct ClientIO {
     pub send: WsSender,
     pub receive: WsReceiver,
+    pub packet_queue: Vec<NetworkPacket>
 }
 
 
 impl ClientIO {
     pub fn send_network_packet(&mut self, packet: NetworkPacket) {
+
+        self.packet_queue.push(packet);
+        
+
+    }
+
+    pub fn flush(&mut self) {
+
+        println!("{}", self.packet_queue.len());
         self.send.send(
             ewebsock::WsMessage::Binary(
-                bitcode::serialize(&packet).unwrap()
+                bitcode::serialize(&self.packet_queue).unwrap()
             )
         );
+
+        self.packet_queue.clear();
     }
 
     pub fn receive_packets(&mut self) -> Vec<NetworkPacket> {
@@ -176,9 +188,9 @@ impl ClientIO {
                 None => break, // this means there are no more updates
             };
 
-            let network_packet: NetworkPacket = bitcode::deserialize(&network_packet_bytes).unwrap();
+            let mut network_packets: Vec<NetworkPacket> = bitcode::deserialize(&network_packet_bytes).unwrap();
 
-            packets.push(network_packet);
+            packets.append(&mut network_packets);
 
         }
 
@@ -201,9 +213,11 @@ impl ClientId {
 pub struct ServerIO {
     pub clients: HashMap<ClientId, WebSocket<TcpStream>>,
     pub listener: TcpListener,
+    queued_packets: HashMap<ClientId, Vec<NetworkPacket>>
 }
 
 impl ServerIO {
+
     pub fn new() -> Self {
         let listener = match TcpListener::bind("127.0.0.1:5560") {
             Ok(listener) => listener,
@@ -218,22 +232,92 @@ impl ServerIO {
         Self {
             clients: HashMap::new(),
             listener,
+            queued_packets: HashMap::new()
         }
     }
 
-    // WE NEED TO ADD CLIENT IDs SO THAT WE CAN SPECIFY
-    pub fn send_all_clients(&mut self) {
-        for client in &mut self.clients {
+    /// Send the queued packets
+    pub fn flush(&mut self, total_sent_bytes: &mut usize) {
+
+        let mut disconnected_clients: Vec<ClientId> = Vec::new();
+
+        for (client_id, client) in &mut self.clients {
+            let queued_packets = match self.queued_packets.get(client_id) {
+                Some(queued_packets) => {
+
+                    if queued_packets.len() == 0 {
+                        continue;
+                    }
+
+                    queued_packets
+                },
+                None => panic!("didn't have a packet queue for client: {:?}", client_id),
+            };
+
+            let bytes = bitcode::serialize(&queued_packets).unwrap();
+
+            *total_sent_bytes += bytes.len();
+
+            match client.send(
+                
+                tungstenite::Message::Binary(
+                    bytes.into()
+                )
+            ) {
+                Ok(_) => {
+                    self.queued_packets.get_mut(client_id).unwrap().clear();
+                },
+                Err(_) => {
+                    disconnected_clients.push(*client_id);
+                },
+            }
+
 
         }
+
+        for client in disconnected_clients {
+            self.clients.remove(&client).unwrap();
+            self.queued_packets.remove(&client);
+        }
+    }
+
+    pub fn send_all_except(&mut self, packet: NetworkPacket, except: ClientId) {
+
+        for client_id in &mut self.clients.keys() {
+
+            if *client_id == except {
+                continue;
+            }
+
+            let queued_packets = self.queued_packets.get_mut(client_id).unwrap();
+
+
+            queued_packets.push(packet.clone());
+            
+        }
+
+        
+    }
+
+    pub fn send_all_clients(&mut self, packet: NetworkPacket) {
+
+
+        for client_id in &mut self.clients.keys() {
+
+            let queued_packets = self.queued_packets.get_mut(client_id).unwrap();
+
+            queued_packets.push(packet.clone());
+            
+            
+        }
+
+
     }
 
     pub fn send_client(&mut self, client_id: ClientId, packet: NetworkPacket) {
-        self.clients.get_mut(&client_id).unwrap().send(
-            tungstenite::Message::Binary(
-                bitcode::serialize(&packet).unwrap().into()
-            )
-        ).unwrap();
+        let queued_packets = self.queued_packets.get_mut(&client_id).unwrap();
+
+        queued_packets.push(packet);
     }
 
     pub fn accept_new_client(&mut self) -> Option<ClientId> {
@@ -295,6 +379,8 @@ impl ServerIO {
 
                 self.clients.insert(client_id, websocket_stream);
 
+                self.queued_packets.insert(client_id, Vec::new());
+
                 return Some(client_id)
 
             },
@@ -314,7 +400,10 @@ impl ServerIO {
 }
 
 pub struct ClientTickContext<'a> {
-    pub network_io: &'a mut ClientIO
+    pub network_io: &'a mut ClientIO,
+    pub last_tick_duration: &'a Duration,
+    pub client_id: &'a ClientId,
+    pub camera_rect: &'a mut Rect
 }
 
 pub fn macroquad_to_rapier(macroquad_coords: &Vec2) -> Vec2 {

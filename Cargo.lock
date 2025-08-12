@@ -423,6 +423,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "indexmap"
+version = "2.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe4cd85333e22411419a0bcae1297d25e58c9443848b11dc6a86fefe8c78a661"
+dependencies = [
+ "equivalent",
+ "hashbrown",
+ "serde",
+]
+
+[[package]]
 name = "interceptors"
 version = "0.1.0"
 dependencies = [
@@ -716,6 +727,7 @@ dependencies = [
  "either",
  "ena",
  "hashbrown",
+ "indexmap",
  "log",
  "nalgebra",
  "num-derive",
@@ -978,6 +990,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3a386a501cd104797982c15ae17aafe8b9261315b5d07e3ec803f2ea26be0fa"
 dependencies = [
  "approx",
+ "libm",
  "num-complex",
  "num-traits",
  "paste",

@@ -51,7 +51,7 @@ impl Decoration {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DecorationSave {
     pub pos: Vec2,
     pub size: Vec2,

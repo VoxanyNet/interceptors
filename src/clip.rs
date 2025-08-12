@@ -48,7 +48,7 @@ impl Clip {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ClipSave {
     pub size: Vec2,
     pub pos: Vec2,

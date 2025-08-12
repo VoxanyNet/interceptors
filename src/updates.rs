@@ -1,16 +1,19 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::area::AreaSave;
+use crate::{area::{AreaId, AreaSave}, prop::{NewProp, PropPosUpdate, PropUpdateOwner}};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum NetworkPacket {
     Ping(Ping),
-    LoadLobby(LoadLobby)
+    LoadArea(LoadArea),
+    PropPosUpdate(PropPosUpdate),
+    PropUpdateOwner(PropUpdateOwner),
+    NewProp(NewProp)
     
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct Ping {
     pub id: u64
 }
@@ -29,9 +32,11 @@ impl Ping {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct LoadLobby {
-    pub area: AreaSave
+#[derive(Serialize, Deserialize,  Clone)]
+pub struct LoadArea {
+    pub area: AreaSave,
+    pub id: AreaId
 }
+
 
 // Option for prop id in save only, must be actual id when loaded into game, None when needs to be set yourself

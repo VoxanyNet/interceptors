@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}, thread::spawn, time::Duration};
 
-use interceptors_lib::{area::{Area, AreaSave}, background::{Background, BackgroundSave}, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, generic_physics_prop::{self, GenericPhysicsProp, GenericPhysicsPropSave}, is_key_down_exclusive, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, space::{self, Space}, texture_loader::TextureLoader};
+use interceptors_lib::{area::{Area, AreaSave}, background::{Background, BackgroundSave}, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, prop::{self, Prop, PropSave}, is_key_down_exclusive, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, space::{self, Space}, texture_loader::TextureLoader};
 use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{GREEN, RED, WHITE}, file::load_string, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_position, mouse_wheel, KeyCode, MouseButton}, math::{Rect, Vec2}, prelude::camera::mouse, shapes::draw_rectangle, text::draw_text, ui::{self, root_ui}, window::{next_frame, screen_height, screen_width}};
 use nalgebra::{vector, Isometry2};
 use rapier2d::prelude::{ColliderBuilder, RigidBodyBuilder};
@@ -30,7 +30,7 @@ pub enum Mode {
 pub enum SpawnerCategory {
     Decoration,
     Background,
-    GenericPhysicsProp
+    Prop
 }
 
 pub struct SpawnerMenu {
@@ -41,12 +41,12 @@ pub struct SpawnerMenu {
 impl SpawnerMenu {
     pub fn new() -> Self {
 
-        let categories = vec![SpawnerCategory::Decoration, SpawnerCategory::Background, SpawnerCategory::GenericPhysicsProp];
+        let categories = vec![SpawnerCategory::Decoration, SpawnerCategory::Background, SpawnerCategory::Prop];
         let mut prefabs: HashMap<SpawnerCategory, Vec<String>> = HashMap::new();
 
         prefabs.insert(SpawnerCategory::Decoration, list_dir_entries("prefabs/decorations/").unwrap());
         prefabs.insert(SpawnerCategory::Background, list_dir_entries("prefabs/backgrounds/").unwrap());        
-        prefabs.insert(SpawnerCategory::GenericPhysicsProp, list_dir_entries("prefabs/generic_physics_props/").unwrap());  
+        prefabs.insert(SpawnerCategory::Prop, list_dir_entries("prefabs/generic_physics_props/").unwrap());  
 
         Self {  
             prefabs,
@@ -201,10 +201,10 @@ impl Spawner {
                 background.draw(textures, camera_rect).await
             },
 
-            SpawnerCategory::GenericPhysicsProp => {
-                let generic_physics_prop_save: GenericPhysicsPropSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
+            SpawnerCategory::Prop => {
+                let generic_physics_prop_save: PropSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
 
-                let mut generic_physics_prop = GenericPhysicsProp::from_save(generic_physics_prop_save.clone(), space);
+                let mut generic_physics_prop = Prop::from_save(generic_physics_prop_save.clone(), space);
 
                 generic_physics_prop.set_pos(vector![rapier_cursor.x + generic_physics_prop_save.size.x / 2., rapier_cursor.y - generic_physics_prop_save.size.y / 2.].into(), space);
 
@@ -244,14 +244,14 @@ impl Spawner {
                 area.backgrounds.insert(0, background);
             },
 
-            SpawnerCategory::GenericPhysicsProp => {
-                let generic_physics_prop_save: GenericPhysicsPropSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
+            SpawnerCategory::Prop => {
+                let generic_physics_prop_save: PropSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
 
-                let mut generic_physics_prop = GenericPhysicsProp::from_save(generic_physics_prop_save.clone(), &mut area.space);
+                let mut generic_physics_prop = Prop::from_save(generic_physics_prop_save.clone(), &mut area.space);
 
                 generic_physics_prop.set_pos(vector![rapier_cursor.x + generic_physics_prop_save.size.x / 2., rapier_cursor.y - generic_physics_prop_save.size.y / 2.].into(), &mut area.space);
 
-                area.generic_physics_props.push(generic_physics_prop);
+                area.props.push(generic_physics_prop);
             }
         }
     }
@@ -311,7 +311,7 @@ impl AreaEditor {
 
 
         Self {
-            area: Area::from_save(area_save),
+            area: Area::from_save(area_save, None),
             textures,
             spawner,
             selected_mode: 0,

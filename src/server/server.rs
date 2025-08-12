@@ -1,15 +1,15 @@
 use std::{fs::read_to_string, net::{TcpListener, TcpStream}, time::{Duration, Instant}};
 
-use interceptors_lib::{area::{Area, AreaSave}, space::Space, updates::{LoadLobby, NetworkPacket, Ping}, world::World, ClientId, ServerIO};
+use interceptors_lib::{area::{Area, AreaSave}, prop::{Prop, PropUpdateOwner}, space::Space, updates::{LoadArea, NetworkPacket, Ping}, world::World, ClientId, ServerIO};
 use macroquad::file::load_string;
 use tungstenite::{Message, WebSocket};
 
 pub struct Server {
     world: World,
-    space: Space,
     last_tick: Instant,
     last_tick_duration: Duration,
-    network_io: ServerIO
+    network_io: ServerIO,
+    total_bits_sent: usize
 }
 
 impl Server {
@@ -19,14 +19,14 @@ impl Server {
 
         let lobby_save: AreaSave = serde_json::from_str(&read_to_string("areas/lobby.json").unwrap()).unwrap();
 
-        world.lobby = Area::from_save(lobby_save);
+        world.areas.push(Area::from_save(lobby_save, None));
 
         Self {
-            space: Space::default(),
             last_tick: Instant::now(),
             last_tick_duration: Duration::from_micros(1),
             network_io: ServerIO::new(),
-            world
+            world,
+            total_bits_sent: 0
         }
 
     }
@@ -34,17 +34,33 @@ impl Server {
     pub fn handle_new_client(&mut self, new_client: ClientId) {
 
 
-        self.network_io.send_client(new_client, NetworkPacket::LoadLobby(
+        self.network_io.send_client(new_client, NetworkPacket::LoadArea(
 
-            LoadLobby {
-                area: self.world.lobby.save(),
+            // TEMPORARILY JUST SENDING THE FIRST AREA BUT WE NEED A WAY TO DESIGNATE A SPAWN AREA
+            LoadArea {
+                area: self.world.areas[0].save(),
+                id: self.world.areas[0].id
             }
         ));
+
+        // if this is the first client we give them ownership of all the props
+        if self.network_io.clients.len() == 1 {
+            for area in &mut self.world.areas {
+                for prop in &mut area.props {
+                    self.network_io.send_all_clients(NetworkPacket::PropUpdateOwner(PropUpdateOwner{ owner: Some(new_client), id: prop.id, area_id: area.id }));
+                }
+            }
+        }
     }
 
     pub fn run(&mut self) {
         loop {
-            self.tick();
+
+            // only tick every 8 ms
+            if self.last_tick.elapsed().as_millis() > 8 {
+                self.tick();
+            }
+            
 
             let new_client = self.network_io.accept_new_client();
 
@@ -63,20 +79,44 @@ impl Server {
     ) {
 
         for (client_id, network_packet) in network_packets {
-            match network_packet {
+            match &network_packet {
                 NetworkPacket::Ping(ping) => {
 
                     let client = self.network_io.clients.get_mut(&client_id).unwrap();
 
-                    // just reply to the ping
-                    client.send(
-                        Message::Binary(
-                            bitcode::serialize(
-                                &NetworkPacket::Ping(Ping::new_with_id(ping.id))
-                            ).unwrap().into()
-                        )
-                    ).unwrap();
+
+                    self.network_io.send_client(client_id, network_packet.clone());
+
                 },
+                NetworkPacket::PropPosUpdate(update) => {
+
+                    
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    let prop = area.props.iter_mut().find(|prop| {prop.id == update.id}).unwrap();
+
+                    prop.set_pos(update.pos, &mut area.space);
+
+                    self.network_io.send_all_except(network_packet, client_id);
+
+
+                },
+                NetworkPacket::NewProp(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    area.props.push(Prop::from_save(update.prop.clone(), &mut area.space));
+
+                    self.network_io.send_all_except(network_packet, client_id);
+
+                }
                 _ => {}
         }
         }
@@ -84,6 +124,7 @@ impl Server {
     }
 
     pub fn receive_packets(&mut self) -> Vec<(ClientId, NetworkPacket)>{
+        // we should really just return HashMap<ClientId, Vec<NetworkPacket>> but i dont feel like rewriting the handle packets function
 
         let mut disconnected_clients: Vec<ClientId> = Vec::default();
         let mut packets: Vec<(ClientId, NetworkPacket)> = Vec::new();
@@ -147,9 +188,12 @@ impl Server {
                     },
                 };
 
-                let packet: NetworkPacket = bitcode::deserialize(&update_bytes).unwrap();
+                let client_packets: Vec<NetworkPacket> = bitcode::deserialize(&update_bytes).unwrap();
 
-                packets.push((*client_id, packet));
+                // we should really just return HashMap<ClientId, Vec<NetworkPacket>>
+                for packet in client_packets {
+                    packets.push((*client_id, packet));
+                }
                 
             }
         }
@@ -161,7 +205,16 @@ impl Server {
     }
 
     pub fn tick(&mut self) {
-        self.space.step(self.last_tick_duration);
+
+        let megabits = self.total_bits_sent as f32 / 1000000 as f32;
+
+        dbg!(megabits);
+
+        
+
+        self.world.server_tick(&mut self.network_io, self.last_tick_duration);
+
+        self.network_io.flush(&mut self.total_bits_sent);
 
         self.last_tick_duration = self.last_tick.elapsed();
         self.last_tick = Instant::now();

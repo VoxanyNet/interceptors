@@ -1,10 +1,26 @@
-use macroquad::{color::WHITE, file::load_string, math::{Rect, Vec2}, miniquad::Backend, texture::{draw_texture_ex, load_texture, DrawTextureParams}, window::get_internal_gl};
+use std::time::Duration;
+
+use macroquad::{color::WHITE, file::load_string, input::{is_key_pressed, is_key_released, KeyCode}, math::{Rect, Vec2}, miniquad::Backend, texture::{draw_texture_ex, load_texture, DrawTextureParams}, ui::Id, window::get_internal_gl};
 use macroquad_tiled::{load_map, Map};
+use nalgebra::vector;
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-use crate::{background::{Background, BackgroundSave}, clip::{Clip, ClipSave}, decoration::{self, Decoration, DecorationSave}, generic_physics_prop::{self, GenericPhysicsProp, GenericPhysicsPropSave}, player::{Player, PlayerSave}, space::Space, texture_loader::TextureLoader, ClientTickContext};
+use crate::{background::{Background, BackgroundSave}, clip::{Clip, ClipSave}, decoration::{self, Decoration, DecorationSave}, player::{Player, PlayerSave}, prop::{self, NewProp, Prop, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, ClientTickContext, ServerIO};
 
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+pub struct AreaId {
+    id: u64
+}
+
+impl AreaId {
+    pub fn new() -> Self {
+        Self {
+            id: Uuid::new_v4().as_u64_pair().0,
+        }
+    }
+}
 pub struct Area {
     pub backgrounds: Vec<Background>,
     pub spawn_point: Vec2,
@@ -12,7 +28,8 @@ pub struct Area {
     pub decorations: Vec<Decoration>,
     pub clips: Vec<Clip>,
     pub players: Vec<Player>,
-    pub generic_physics_props: Vec<GenericPhysicsProp>
+    pub props: Vec<Prop>,
+    pub id: AreaId
 }
 
 impl Area {
@@ -26,7 +43,8 @@ impl Area {
             clips: Vec::new(),
             players: Vec::new(),
             backgrounds: Vec::new(),
-            generic_physics_props: Vec::new()
+            props: Vec::new(),
+            id: AreaId::new()
         }
     }
 
@@ -40,22 +58,60 @@ impl Area {
             decoration.draw(textures).await
         }
 
-        for generic_physics_prop in &self.generic_physics_props {
+        for generic_physics_prop in &self.props {
             generic_physics_prop.draw(&self.space, textures).await;
         }
 
     }
 
 
-    pub fn server_tick(&mut self) {
-        
+    pub fn server_tick(&mut self, io: &mut ServerIO, dt: Duration) {
+
+    }
+
+
+    pub fn spawn_prop(&mut self, ctx: &mut ClientTickContext) {
+
+        if is_key_released(KeyCode::E) {
+
+            println!("yes");
+
+
+            let mut new_prop = Prop::from_prefab("prefabs/generic_physics_props/brick_block.json".to_string(), &mut self.space);
+
+            new_prop.owner = Some(*ctx.client_id);
+
+            let mouse_pos = rapier_mouse_world_pos(&ctx.camera_rect);
+
+            new_prop.set_pos(vector![mouse_pos.x, mouse_pos.y].into(), &mut self.space);
+
+
+            ctx.network_io.send_network_packet(
+                NetworkPacket::NewProp(
+                    NewProp
+                    {
+                        prop: new_prop.save(&mut self.space), 
+                        area_id: self.id
+                    }
+                )
+            );
+
+            self.props.push(new_prop);
+        }
     }
 
     pub fn client_tick(&mut self, ctx: &mut ClientTickContext) {
-        
+
+        self.spawn_prop(ctx);
+
+        self.space.step(*ctx.last_tick_duration);
+
+        for prop in &mut self.props {
+            prop.client_tick(&mut self.space, self.id, ctx);
+        }
     }
 
-    pub fn from_save(save: AreaSave) -> Self {
+    pub fn from_save(save: AreaSave, id: Option<AreaId>) -> Self {
 
         let mut space = Space::new();
 
@@ -63,7 +119,7 @@ impl Area {
         let mut clips: Vec<Clip> = Vec::new();
         let mut players: Vec<Player> = Vec::new();
         let mut backgrounds: Vec<Background> = Vec::new();
-        let mut generic_physics_props: Vec<GenericPhysicsProp> = Vec::new();
+        let mut generic_physics_props: Vec<Prop> = Vec::new();
 
         for decoration_save in save.decorations {
             decorations.push(
@@ -91,9 +147,16 @@ impl Area {
         
         for generic_physics_prop in save.generic_physics_props {
             generic_physics_props.push(
-                GenericPhysicsProp::from_save(generic_physics_prop, &mut space)
+                Prop::from_save(generic_physics_prop, &mut space)
             );
         }
+
+        // if we are loading the id from the server we need to use the provided id
+        let id = match id {
+            Some(id) => id,
+            None => AreaId::new(),
+        };
+
         Self {
             spawn_point: save.spawn_point,
             space,
@@ -101,7 +164,8 @@ impl Area {
             clips,
             players,
             backgrounds,
-            generic_physics_props
+            props: generic_physics_props,
+            id
         }
     }
 
@@ -111,7 +175,7 @@ impl Area {
         let mut clips: Vec<ClipSave> = Vec::new();
         let mut players: Vec<PlayerSave> = Vec::new();
         let mut backgrounds: Vec<BackgroundSave> = Vec::new();
-        let mut generic_physics_props: Vec<GenericPhysicsPropSave> = Vec::new();
+        let mut generic_physics_props: Vec<PropSave> = Vec::new();
 
         for decoration in &self.decorations {
             decorations.push(
@@ -137,7 +201,7 @@ impl Area {
             );
         }
 
-        for generic_physics_prop in &self.generic_physics_props {
+        for generic_physics_prop in &self.props {
             generic_physics_props.push(
                 generic_physics_prop.save(&self.space)
             );
@@ -156,7 +220,7 @@ impl Area {
 
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AreaSave {
     spawn_point: Vec2,
     decorations: Vec<DecorationSave>,
@@ -165,5 +229,5 @@ pub struct AreaSave {
     #[serde(default)]
     backgrounds: Vec<BackgroundSave>,
     #[serde(default)]
-    generic_physics_props: Vec<GenericPhysicsPropSave>
+    generic_physics_props: Vec<PropSave>
 }
