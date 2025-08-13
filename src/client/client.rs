@@ -1,12 +1,78 @@
 use std::{cmp::max, collections::HashMap, pin::Pin, time::{Duration, Instant}};
 
 use ewebsock::{WsReceiver, WsSender};
-use interceptors_lib::{area::Area, prop::Prop, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext};
+use interceptors_lib::{area::Area, mouse_world_pos, player::Player, prop::Prop, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext};
 use ldtk2::{Ldtk, LdtkJson};
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::WHITE, file::{load_file, load_string}, input::{is_key_released, mouse_wheel, KeyCode}, math::{Rect, Vec2}, texture::{draw_texture_ex, load_texture, DrawTextureParams, Texture2D}, time::draw_fps, ui::root_ui, window::next_frame};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{LIGHTGRAY, WHITE}, file::{load_file, load_string}, input::{is_key_released, mouse_position, mouse_wheel, KeyCode}, math::{vec2, Rect, Vec2}, prelude::{gl_use_default_material, gl_use_material, load_material, ShaderSource}, texture::{draw_texture_ex, load_texture, render_target, DrawTextureParams, Texture2D}, time::draw_fps, ui::root_ui, window::{clear_background, next_frame, screen_height, screen_width}};
 use macroquad_tiled::{load_map, Map};
 use uuid::Uuid;
 
+const CRT_FRAGMENT_SHADER: &'static str = r#"#version 100
+precision lowp float;
+
+varying vec4 color;
+varying vec2 uv;
+
+uniform sampler2D Texture;
+
+// https://www.shadertoy.com/view/XtlSD7
+
+vec2 CRTCurveUV(vec2 uv)
+{
+    uv = uv * 2.0 - 1.0;
+    vec2 offset = abs( uv.yx ) / vec2( 6.0, 4.0 );
+    uv = uv + uv * offset * offset;
+    uv = uv * 0.5 + 0.5;
+    return uv;
+}
+
+void DrawVignette( inout vec3 color, vec2 uv )
+{
+    float vignette = uv.x * uv.y * ( 1.0 - uv.x ) * ( 1.0 - uv.y );
+    vignette = clamp( pow( 16.0 * vignette, 0.3 ), 0.0, 1.0 );
+    color *= vignette;
+}
+
+
+void DrawScanline( inout vec3 color, vec2 uv )
+{
+    float iTime = 0.1;
+    float scanline 	= clamp( 0.95 + 0.05 * cos( 3.14 * ( uv.y + 0.008 * iTime ) * 240.0 * 1.0 ), 0.0, 1.0 );
+    float grille 	= 0.85 + 0.15 * clamp( 1.5 * cos( 3.14 * uv.x * 640.0 * 1.0 ), 0.0, 1.0 );
+    color *= scanline * grille * 1.2;
+}
+
+void main() {
+    vec2 crtUV = CRTCurveUV(uv);
+    vec3 res = texture2D(Texture, uv).rgb * color.rgb;
+    if (crtUV.x < 0.0 || crtUV.x > 1.0 || crtUV.y < 0.0 || crtUV.y > 1.0)
+    {
+        res = vec3(0.0, 0.0, 0.0);
+    }
+    DrawVignette(res, crtUV);
+    DrawScanline(res, uv);
+    gl_FragColor = vec4(res, 1.0);
+
+}
+"#;
+
+const CRT_VERTEX_SHADER: &'static str = "#version 100
+attribute vec3 position;
+attribute vec2 texcoord;
+attribute vec4 color0;
+
+varying lowp vec2 uv;
+varying lowp vec4 color;
+
+uniform mat4 Model;
+uniform mat4 Projection;
+
+void main() {
+    gl_Position = Projection * Model * vec4(position, 1);
+    color = color0 / 255.0;
+    uv = texcoord;
+}
+";
 
 pub struct Client {
     network_io: ClientIO,
@@ -106,6 +172,20 @@ impl Client {
 impl Client {
 
     pub async fn run(&mut self) {
+
+        let render_target = render_target(1280, 720);
+
+        render_target.texture.set_filter(macroquad::texture::FilterMode::Nearest);
+
+        let material = load_material(
+            ShaderSource::Glsl {
+                vertex: CRT_VERTEX_SHADER,
+                fragment: CRT_FRAGMENT_SHADER,
+            },
+            Default::default(),
+        )
+        .unwrap();
+
         
         loop {
 
@@ -115,7 +195,49 @@ impl Client {
 
             self.handle_packets(packets);
 
-            self.draw().await
+            let mut camera = Camera2D::from_display_rect(self.camera_rect);
+            
+            camera.render_target = Some(render_target.clone());
+
+            camera.zoom.y = -camera.zoom.y;
+
+            // let camera = &Camera2D{
+            //         zoom: vec2(1., 1.),
+            //         target: vec2(0.0, 0.0),
+            //         render_target: Some(render_target.clone()),
+            //         ..Default::default()
+            // };
+
+            
+
+            set_camera(
+                &camera
+            );
+
+            dbg!(camera.screen_to_world(mouse_position().into()));
+            
+
+            clear_background(LIGHTGRAY);
+
+            self.draw().await;
+
+            set_default_camera();
+
+            clear_background(WHITE);
+
+            gl_use_material(&material);
+
+            draw_texture_ex(&render_target.texture, 0.0, 0., WHITE, DrawTextureParams {
+                dest_size: Some(vec2(screen_width(), screen_height())),
+                ..Default::default()
+            });
+
+            gl_use_default_material();
+
+            next_frame().await;
+
+
+            
         }
     }
 
@@ -165,6 +287,25 @@ impl Client {
                 area.props.push(Prop::from_save(update.prop, &mut area.space));
 
 
+            },
+            NetworkPacket::NewPlayer(update) => {
+                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                area.players.push(Player::from_save(update.player, &mut area.space));
+            },
+            NetworkPacket::PlayerPositionUpdate(update) => {
+                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                let player = area.players.iter_mut().find(|player| {player.id == update.id}).unwrap();
+
+                player.set_pos(update.pos, &mut area.space);
+            },
+            NetworkPacket::PlayerCursorUpdate(update) => {
+                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                let player = area.players.iter_mut().find(|player| {player.id == update.id}).unwrap();
+
+                player.set_cursor_pos(update.pos);
             }
             _ => {
                 println!("unhandled network packet")
@@ -216,22 +357,11 @@ impl Client {
         self.last_tick_duration = self.last_tick.elapsed();
         self.last_tick = Instant::now();
     }
-    pub async fn draw(&mut self) {  
+    pub async fn draw(&mut self) { 
 
-        let mut camera = Camera2D::from_display_rect(self.camera_rect);
-        camera.zoom.y = -camera.zoom.y;
-
-        set_camera(&camera);
 
         self.world.draw(&mut self.textures, &self.camera_rect).await;
 
-
-        set_default_camera();
-        
-
-        draw_fps();
-
-        next_frame().await
     }
 }
 

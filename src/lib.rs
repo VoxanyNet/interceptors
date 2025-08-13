@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt::Display, net::{TcpListener, TcpStream}, tim
 
 use ewebsock::{WsReceiver, WsSender};
 use macroquad::{camera::Camera2D, color::{Color, WHITE}, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}, window::{get_internal_gl, screen_height}};
-use nalgebra::geometry;
+use nalgebra::{geometry, Vector2};
 use rapier2d::prelude::{ColliderHandle, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 use tungstenite::WebSocket;
@@ -54,6 +54,14 @@ pub fn is_key_released_exclusive(required: &[KeyCode]) -> bool {
 
     true
 }
+
+pub fn rapier_to_macroquad(rapier_coords: Vector2<f32>) -> Vec2 {
+    Vec2 {
+        x: rapier_coords.x,
+        y: (rapier_coords.y * -1.) + screen_height()
+    }
+}
+
 pub async fn draw_texture_onto_physics_body(
     rigid_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,
@@ -74,7 +82,7 @@ pub async fn draw_texture_onto_physics_body(
     let position = rigid_body.position().translation;
     let body_rotation = rigid_body.rotation().angle();
 
-    let draw_pos = rapier_to_macroquad(&vec2(position.x, position.y));
+    let draw_pos = rapier_to_macroquad(position.vector);
 
     draw_texture_ex(
         textures.get(texture_path).await, 
@@ -103,7 +111,7 @@ pub fn draw_hitbox(space: &Space, rigid_body_handle: RigidBodyHandle, collider_h
     let position = collider.position().translation;
     let rotation = rigid_body.rotation().angle();
 
-    let draw_pos = rapier_to_macroquad(&vec2(position.x, position.y));
+    let draw_pos = rapier_to_macroquad(position.vector);
 
     macroquad::shapes::draw_rectangle_ex(
         draw_pos.x,
@@ -126,10 +134,36 @@ pub fn mouse_world_pos(camera_rect: &Rect) -> Vec2 {
 
 }
 
-pub fn rapier_mouse_world_pos(camera_rect: &Rect) -> Vec2 {
-    macroquad_to_rapier(
+pub fn rapier_mouse_world_pos(camera_rect: &Rect) -> Vector2<f32> {
+
+    
+    let pos = macroquad_to_rapier(
         &mouse_world_pos(camera_rect)
-    )
+    );
+
+    Vector2::new(pos.x, pos.y)
+}
+
+pub fn get_angle_to_mouse(point: Vector2<f32>, camera_rect: &Rect) -> f32 {
+
+    let mouse_pos = rapier_mouse_world_pos(camera_rect);
+
+    let distance_to_mouse = Vec2::new(
+        mouse_pos.x - point.x,
+        mouse_pos.y - point.y 
+    );
+
+    distance_to_mouse.x.atan2(distance_to_mouse.y)
+}
+
+pub fn get_angle_between_rapier_points(point_1: Vector2<f32>, point_2: Vector2<f32>) -> f32 {
+
+    let distance_to_mouse = Vec2::new(
+        point_2.x - point_1.x,
+        point_2.y - point_1.y 
+    );
+
+    distance_to_mouse.x.atan2(distance_to_mouse.y)
 }
 
 pub struct ClientIO {
@@ -176,12 +210,14 @@ impl ClientIO {
                         },
                         ewebsock::WsEvent::Error(error) => {
 
+
+                            return Vec::new();
                             // this is stupid
-                            if error.contains("A non-blocking socket operation could not be completed immediately)") {
-                                println!("io error: {}", error);
-                                return Vec::new();
-                            }
-                            todo!("unhandled 'Error' event when trying to receive update from server: {}", error)
+                            // if error.contains("A non-blocking socket operation could not be completed immediately)") {
+                            //     println!("io error: {}", error);
+                            //     return Vec::new();
+                            // }
+                            //todo!("unhandled 'Error' event when trying to receive update from server: {}", error)
                         },
                         ewebsock::WsEvent::Closed => todo!("server closed"),
                     }
@@ -413,12 +449,5 @@ pub fn macroquad_to_rapier(macroquad_coords: &Vec2) -> Vec2 {
     Vec2 { 
         x: macroquad_coords.x, 
         y: (macroquad_coords.y * -1.) + screen_height()
-    }
-}
-
-pub fn rapier_to_macroquad(rapier_coords: &Vec2) -> Vec2 {
-    Vec2 {
-        x: rapier_coords.x,
-        y: (rapier_coords.y * -1.) + screen_height()
     }
 }

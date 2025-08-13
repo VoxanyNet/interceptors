@@ -2,12 +2,12 @@ use std::time::Duration;
 
 use macroquad::{color::WHITE, file::load_string, input::{is_key_pressed, is_key_released, KeyCode}, math::{Rect, Vec2}, miniquad::Backend, texture::{draw_texture_ex, load_texture, DrawTextureParams}, ui::Id, window::get_internal_gl};
 use macroquad_tiled::{load_map, Map};
-use nalgebra::vector;
+use nalgebra::{vector, Vector2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{background::{Background, BackgroundSave}, clip::{Clip, ClipSave}, decoration::{self, Decoration, DecorationSave}, player::{Player, PlayerSave}, prop::{self, NewProp, Prop, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, ClientTickContext, ServerIO};
+use crate::{background::{Background, BackgroundSave}, clip::{Clip, ClipSave}, decoration::{self, Decoration, DecorationSave}, player::{NewPlayer, Player, PlayerSave}, prop::{self, NewProp, Prop, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, ClientTickContext, ServerIO};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -23,7 +23,7 @@ impl AreaId {
 }
 pub struct Area {
     pub backgrounds: Vec<Background>,
-    pub spawn_point: Vec2,
+    pub spawn_point: Vector2<f32>,
     pub space: Space,
     pub decorations: Vec<Decoration>,
     pub clips: Vec<Clip>,
@@ -37,7 +37,7 @@ impl Area {
 
         
         Self {
-            spawn_point: Vec2::ZERO,
+            spawn_point: Vector2::zeros(),
             space: Space::new(),
             decorations: Vec::new(),
             clips: Vec::new(),
@@ -62,6 +62,10 @@ impl Area {
             generic_physics_prop.draw(&self.space, textures).await;
         }
 
+        for player in &self.players {
+            player.draw(&self.space, textures).await;
+        }
+
     }
 
 
@@ -69,12 +73,32 @@ impl Area {
 
     }
 
+    pub fn spawn_player(&mut self, ctx: &mut ClientTickContext) {
+        if is_key_released(KeyCode::F) {
+
+            let mouse_pos = rapier_mouse_world_pos(&ctx.camera_rect);
+
+            let player = Player::new(vector![mouse_pos.x, mouse_pos.y].into(), &mut self.space, *ctx.client_id);
+
+            ctx.network_io.send_network_packet(
+                NetworkPacket::NewPlayer(
+                    NewPlayer {
+                        player: player.save(&mut self.space),
+                        area_id: self.id,
+                    }
+                )
+            );
+
+            self.players.push(player);
+
+           
+        }
+    }
+
 
     pub fn spawn_prop(&mut self, ctx: &mut ClientTickContext) {
 
         if is_key_released(KeyCode::E) {
-
-            println!("yes");
 
 
             let mut new_prop = Prop::from_prefab("prefabs/generic_physics_props/brick_block.json".to_string(), &mut self.space);
@@ -104,10 +128,16 @@ impl Area {
 
         self.spawn_prop(ctx);
 
+        self.spawn_player(ctx);
+
         self.space.step(*ctx.last_tick_duration);
 
         for prop in &mut self.props {
             prop.client_tick(&mut self.space, self.id, ctx);
+        }
+
+        for player in &mut self.players {
+            player.client_tick(ctx, &mut self.space, self.id);
         }
     }
 
@@ -135,7 +165,7 @@ impl Area {
 
         for player_save in save.players {
             players.push(
-                Player::from_save(player_save)
+                Player::from_save(player_save, &mut space)
             );
         }
 
@@ -191,7 +221,7 @@ impl Area {
 
         for player in &self.players {
             players.push(
-                player.save()
+                player.save(&self.space)
             );
         }
 
@@ -222,7 +252,7 @@ impl Area {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AreaSave {
-    spawn_point: Vec2,
+    spawn_point: Vector2<f32>,
     decorations: Vec<DecorationSave>,
     clips: Vec<ClipSave>,
     players: Vec<PlayerSave>,

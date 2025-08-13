@@ -17,7 +17,7 @@ impl Background {
     pub async fn draw(&self, textures: &mut TextureLoader, camera_rect: &Rect) {
         let texture = textures.get(&self.sprite_path).await;
 
-        set_default_camera();
+        //set_default_camera();
 
         draw_texture_ex(
             texture, 
@@ -53,10 +53,10 @@ impl Background {
             }
         }
 
-        let mut camera = Camera2D::from_display_rect(*camera_rect);
-        camera.zoom.y = -camera.zoom.y;
+        // let mut camera = Camera2D::from_display_rect(*camera_rect);
+        // camera.zoom.y = -camera.zoom.y;
 
-        set_camera(&camera);
+        // set_camera(&camera);
 
     }
 

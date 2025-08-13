@@ -2,32 +2,30 @@ use macroquad::math::Vec2;
 use nalgebra::{vector, Isometry2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle};
 
-use crate::{space::Space, texture_loader::TextureLoader, ClientId, ClientTickContext};
+use crate::{draw_texture_onto_physics_body, space::Space, texture_loader::TextureLoader, ClientId, ClientTickContext};
 
 pub struct BodyPart {
-    collider_handle: ColliderHandle,
-    body_handle: RigidBodyHandle,
+    pub collider_handle: ColliderHandle,
+    pub body_handle: RigidBodyHandle,
     sprite_path: String,
     scale: u16, 
     owner: ClientId,
-    previous_pos: Isometry2<f32>
 }
 
 impl BodyPart {
     pub fn new(
-        sprite_path: String,
+        sprite_path: &str,
         scale: u16,
         mass: f32,
-        pos: Vec2,
+        pos: Isometry2<f32>,
         space: &mut Space,
-        textures: &mut TextureLoader,
         owner: ClientId,
         texture_size: Vec2
     ) -> Self {
 
         let rigid_body_handle = space.rigid_body_set.insert(
             RigidBodyBuilder::dynamic()
-                .position(vector![pos.x, pos.y].into())
+                .position(pos)
                 .ccd_enabled(true)
                 .build()
         );
@@ -36,7 +34,8 @@ impl BodyPart {
             ColliderBuilder::cuboid(
                 (texture_size.x / 2.) * scale as f32, 
                 (texture_size.y / 2.) * scale as f32
-            ), 
+            )
+                .mass(mass), 
             rigid_body_handle, 
             &mut space.rigid_body_set
         );
@@ -44,25 +43,33 @@ impl BodyPart {
         Self {
             collider_handle,
             body_handle: rigid_body_handle,
-            sprite_path,
+            sprite_path: sprite_path.to_string(),
             scale,
             owner,
         }
 
     }
 
+    pub async fn draw(&self, textures: &mut TextureLoader, space: &Space) {
+        draw_texture_onto_physics_body(
+            self.body_handle, 
+            self.collider_handle, 
+            &space, 
+            &self.sprite_path, 
+            textures, 
+            false, 
+            false, 
+            0.
+        ).await
+    }
+
     pub fn owner_tick(&mut self, ctx: &mut ClientTickContext, space: &mut Space) {
         
-        let current_pos = space.rigid_body_set.get(self.body_handle).unwrap().position();
-
-        if *self.previous_pos != current_pos {
-            
-        }
     }
 
     pub fn tick(&mut self, space: &mut Space, ctx: &mut ClientTickContext) {
         if *ctx.client_id != self.owner {
-            self.owner_tick(ctx);
+            self.owner_tick(ctx, space);
         }
 
 

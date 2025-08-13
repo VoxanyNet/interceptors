@@ -2,7 +2,7 @@ use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf
 
 use interceptors_lib::{area::{Area, AreaSave}, background::{Background, BackgroundSave}, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, prop::{self, Prop, PropSave}, is_key_down_exclusive, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, space::{self, Space}, texture_loader::TextureLoader};
 use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{GREEN, RED, WHITE}, file::load_string, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_position, mouse_wheel, KeyCode, MouseButton}, math::{Rect, Vec2}, prelude::camera::mouse, shapes::draw_rectangle, text::draw_text, ui::{self, root_ui}, window::{next_frame, screen_height, screen_width}};
-use nalgebra::{vector, Isometry2};
+use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ColliderBuilder, RigidBodyBuilder};
 use serde::{de, Deserialize, Serialize};
 use strum::{Display, EnumIter};
@@ -475,14 +475,14 @@ impl AreaEditor {
     pub fn draw_clip_points(&self) {
         if let Some(clip_point_1) = self.clip_point_1 {
 
-            let macroquad_pos = rapier_to_macroquad(&clip_point_1);
+            let macroquad_pos = rapier_to_macroquad(Vector2::new(clip_point_1.x, clip_point_1.y));
 
             draw_rectangle(macroquad_pos.x, macroquad_pos.y, 10., 10., RED);
         }
 
         if let Some(clip_point_2) = self.clip_point_2 {
 
-            let macroquad_pos = rapier_to_macroquad(&clip_point_2);
+            let macroquad_pos = rapier_to_macroquad(Vector2::new(clip_point_2.x, clip_point_2.y));
 
             draw_rectangle(macroquad_pos.x, macroquad_pos.y, 10., 10., GREEN);
         }

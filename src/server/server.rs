@@ -1,6 +1,6 @@
 use std::{fs::read_to_string, net::{TcpListener, TcpStream}, time::{Duration, Instant}};
 
-use interceptors_lib::{area::{Area, AreaSave}, prop::{Prop, PropUpdateOwner}, space::Space, updates::{LoadArea, NetworkPacket, Ping}, world::World, ClientId, ServerIO};
+use interceptors_lib::{area::{Area, AreaSave}, player::Player, prop::{Prop, PropUpdateOwner}, space::Space, updates::{LoadArea, NetworkPacket, Ping}, world::World, ClientId, ServerIO};
 use macroquad::file::load_string;
 use tungstenite::{Message, WebSocket};
 
@@ -116,6 +116,43 @@ impl Server {
 
                     self.network_io.send_all_except(network_packet, client_id);
 
+                },
+                NetworkPacket::NewPlayer(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    area.players.push(Player::from_save(update.player.clone(), &mut area.space));
+
+                    self.network_io.send_all_except(network_packet, client_id);
+                },
+                NetworkPacket::PlayerPositionUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    let player = area.players.iter_mut().find(|player| {player.id == update.id}).unwrap();
+
+                    player.set_pos(update.pos, &mut area.space);
+
+                    self.network_io.send_all_except(network_packet, client_id);
+                },
+                NetworkPacket::PlayerCursorUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    let player = area.players.iter_mut().find(|player| {player.id == update.id}).unwrap();
+
+                    player.set_cursor_pos(update.pos);
+
+                    //self.network_io.send_all_except(network_packet, client_id);
                 }
                 _ => {}
         }
