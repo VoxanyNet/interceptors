@@ -260,12 +260,12 @@ impl Client {
                 self.world.areas.push(Area::from_save(load_area.area, Some(load_area.id)));
             }
 
-            NetworkPacket::PropPosUpdate(update) => {
+            NetworkPacket::PropVelocityUpdate(update) => {
                 let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id} ).unwrap();
 
                 let prop = area.props.iter_mut().find(|prop| {prop.id == update.id}).unwrap();
 
-                prop.set_pos(update.pos, &mut area.space);
+                prop.set_velocity(update.velocity, &mut area.space);
             },
             NetworkPacket::PropUpdateOwner(update) => {
                 let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
@@ -287,12 +287,16 @@ impl Client {
 
                 area.players.push(Player::from_save(update.player, &mut area.space));
             },
-            NetworkPacket::PlayerPositionUpdate(update) => {
+            NetworkPacket::PlayerVelocityUpdate(update) => {
                 let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
                 let player = area.players.iter_mut().find(|player| {player.id == update.id}).unwrap();
 
-                player.set_pos(update.pos, &mut area.space);
+                let player_body = area.space.rigid_body_set.get(player.body.body_handle).unwrap();
+
+                let player_pos = player_body.position();
+
+                player.set_velocity(update.velocity, &mut area.space);
             },
             NetworkPacket::PlayerCursorUpdate(update) => {
                 let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();

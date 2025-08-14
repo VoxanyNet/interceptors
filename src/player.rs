@@ -2,7 +2,7 @@ use std::f32::consts::PI;
 
 use macroquad::{color::RED, input::{is_key_down, KeyCode}, math::{Rect, Vec2}, shapes::draw_circle};
 use nalgebra::{vector, Isometry2, Vector2};
-use rapier2d::prelude::{ColliderHandle, ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyHandle};
+use rapier2d::prelude::{ColliderHandle, ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -30,10 +30,10 @@ pub struct Player {
     pub id: PlayerId,
     health: u32,
     head: BodyPart,
-    body: BodyPart,
+    pub body: BodyPart,
     max_speed: Vector2<f32>,
     owner: ClientId,
-    previous_pos: Isometry2<f32>,
+    previous_velocity: RigidBodyVelocity,
     head_joint_handle: Option<ImpulseJointHandle>,
     facing: Facing,
     cursor_pos_rapier: Vector2<f32>,
@@ -43,6 +43,9 @@ pub struct Player {
 
 impl Player {
 
+    pub fn set_velocity(&mut self, velocity: RigidBodyVelocity , space: &mut Space) {
+        space.rigid_body_set.get_mut(self.body.body_handle).unwrap().set_vels(velocity, true);
+    }
     pub fn set_pos(&mut self, pos: Isometry2<f32>, space: &mut Space) {
         space.rigid_body_set.get_mut(self.body.body_handle).unwrap().set_position(pos, true);
     }
@@ -79,7 +82,7 @@ impl Player {
             head,
             body,
             owner,
-            previous_pos: pos,
+            previous_velocity: RigidBodyVelocity::zero(),
             head_joint_handle: Some(joint),
             facing: Facing::Right,
             cursor_pos_rapier: Vector2::zeros(),
@@ -150,7 +153,7 @@ impl Player {
 
     pub fn client_tick(&mut self, ctx: &mut ClientTickContext, space: &mut Space, area_id: AreaId) {
 
-        let current_pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().clone();
+        let current_velocity = space.rigid_body_set.get(self.body.body_handle).unwrap().vels().clone();
         
         self.angle_head_to_mouse(space);
 
@@ -158,7 +161,7 @@ impl Player {
             self.owner_tick(space, ctx, area_id);
         }
 
-        self.previous_pos = current_pos
+        self.previous_velocity = current_velocity;
         
     }
 
@@ -230,15 +233,16 @@ impl Player {
 
         self.control(space, ctx);
 
-        let current_pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().clone();
+        let current_velocity = space.rigid_body_set.get(self.body.body_handle).unwrap().vels();
 
-        if self.previous_pos != current_pos {
+        if self.previous_velocity != *current_velocity {
             ctx.network_io.send_network_packet(
-                crate::updates::NetworkPacket::PlayerPositionUpdate(
-                    PlayerPositionUpdate { 
+                crate::updates::NetworkPacket::PlayerVelocityUpdate(
+                    PlayerVelocityUpdate { 
                         id: self.id.clone(), 
                         area_id, 
-                        pos: current_pos 
+                        velocity: *current_velocity
+                        
                     }
                 )
             );
@@ -276,10 +280,10 @@ pub struct PlayerSave {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct PlayerPositionUpdate {
+pub struct PlayerVelocityUpdate {
     pub id: PlayerId,
     pub area_id: AreaId,
-    pub pos: Isometry2<f32>
+    pub velocity: RigidBodyVelocity
 }
 
 #[derive(Serialize, Deserialize, Clone)]

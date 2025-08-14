@@ -1,16 +1,16 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{area::{AreaId, AreaSave}, player::{NewPlayer, PlayerCursorUpdate, PlayerPositionUpdate}, prop::{NewProp, PropPosUpdate, PropUpdateOwner}};
+use crate::{area::{AreaId, AreaSave}, player::{NewPlayer, PlayerCursorUpdate, PlayerVelocityUpdate}, prop::{NewProp, PropVelocityUpdate, PropUpdateOwner}};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub enum NetworkPacket {
     Ping(Ping),
     LoadArea(LoadArea),
-    PropPosUpdate(PropPosUpdate),
+    PropVelocityUpdate(PropVelocityUpdate),
     PropUpdateOwner(PropUpdateOwner),
     NewProp(NewProp),
-    PlayerPositionUpdate(PlayerPositionUpdate),
+    PlayerVelocityUpdate(PlayerVelocityUpdate),
     NewPlayer(NewPlayer),
     PlayerCursorUpdate(PlayerCursorUpdate)
 }

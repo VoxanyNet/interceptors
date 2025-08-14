@@ -88,7 +88,7 @@ impl Server {
                     self.network_io.send_client(client_id, network_packet.clone());
 
                 },
-                NetworkPacket::PropPosUpdate(update) => {
+                NetworkPacket::PropVelocityUpdate(update) => {
 
                     
                     let area = self.world.areas.iter_mut().find(
@@ -99,7 +99,7 @@ impl Server {
 
                     let prop = area.props.iter_mut().find(|prop| {prop.id == update.id}).unwrap();
 
-                    prop.set_pos(update.pos, &mut area.space);
+                    prop.set_velocity(update.velocity, &mut area.space);
 
                     self.network_io.send_all_except(network_packet, client_id);
 
@@ -128,7 +128,7 @@ impl Server {
 
                     self.network_io.send_all_except(network_packet, client_id);
                 },
-                NetworkPacket::PlayerPositionUpdate(update) => {
+                NetworkPacket::PlayerVelocityUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(
                         |area| {
                             area.id == update.area_id
@@ -137,7 +137,7 @@ impl Server {
 
                     let player = area.players.iter_mut().find(|player| {player.id == update.id}).unwrap();
 
-                    player.set_pos(update.pos, &mut area.space);
+                    player.set_velocity(update.velocity, &mut area.space);
 
                     self.network_io.send_all_except(network_packet, client_id);
                 },
@@ -152,7 +152,7 @@ impl Server {
 
                     player.set_cursor_pos(update.pos);
 
-                    //self.network_io.send_all_except(network_packet, client_id);
+                    self.network_io.send_all_except(network_packet, client_id);
                 }
                 _ => {}
         }

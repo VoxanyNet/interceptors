@@ -2,7 +2,7 @@ use std::{f32::consts::E, fs::read_to_string};
 
 use macroquad::{math::Vec2, miniquad::window::quit};
 use nalgebra::{vector, Isometry2};
-use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle};
+use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -12,7 +12,7 @@ pub struct Prop {
     pub rigid_body_handle: RigidBodyHandle,
     pub collider_handle: ColliderHandle,
     sprite_path: String,
-    previous_pos: Isometry2<f32>,
+    previous_velocity: RigidBodyVelocity,
     pub id: PropId,
     pub owner: Option<ClientId>
 }
@@ -33,14 +33,14 @@ impl Prop {
 
     pub fn owner_tick(&mut self, ctx: &mut ClientTickContext, space: &mut Space, area_id: AreaId) {
 
-        let current_pos = *space.rigid_body_set.get(self.rigid_body_handle).unwrap().position();
+        let current_velocity = *space.rigid_body_set.get(self.rigid_body_handle).unwrap().vels();
 
-        if current_pos != self.previous_pos {
+        if current_velocity != self.previous_velocity {
             //println!("sending pos update");
             ctx.network_io.send_network_packet (
-                NetworkPacket::PropPosUpdate(
-                    PropPosUpdate {
-                        pos: current_pos,
+                NetworkPacket::PropVelocityUpdate(
+                    PropVelocityUpdate {
+                        velocity: current_velocity,
                         id: self.id,
                         area_id: area_id
                     }
@@ -57,12 +57,16 @@ impl Prop {
             }
         }
 
-        let current_pos = *space.rigid_body_set.get(self.rigid_body_handle).unwrap().position();
+        let current_velocity = *space.rigid_body_set.get(self.rigid_body_handle).unwrap().vels();
 
-        self.previous_pos = current_pos;
+        self.previous_velocity = current_velocity;
     }
     pub fn set_pos(&mut self, position: Isometry2<f32>, space: &mut Space) {
         space.rigid_body_set.get_mut(self.rigid_body_handle).unwrap().set_position(position, true);
+    }
+
+    pub fn set_velocity(&mut self, velocity: RigidBodyVelocity, space: &mut Space) {
+        space.rigid_body_set.get_mut(self.rigid_body_handle).unwrap().set_vels(velocity, true);
     }
 
     pub fn from_save(save: PropSave, space: &mut Space) -> Self {
@@ -91,7 +95,7 @@ impl Prop {
             rigid_body_handle: body,
             collider_handle: collider,
             sprite_path: save.sprite_path,
-            previous_pos: save.pos,
+            previous_velocity: RigidBodyVelocity::zero(),
             id,
             owner: save.owner
             
@@ -159,8 +163,8 @@ impl PropId {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PropPosUpdate {
-    pub pos: Isometry2<f32>,
+pub struct PropVelocityUpdate {
+    pub velocity: RigidBodyVelocity,
     pub id: PropId,
     pub area_id: AreaId
 }
