@@ -3,7 +3,7 @@ use std::{cmp::max, collections::HashMap, pin::Pin, time::{Duration, Instant}};
 use ewebsock::{WsReceiver, WsSender};
 use interceptors_lib::{area::Area, mouse_world_pos, player::Player, prop::Prop, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext};
 use ldtk2::{Ldtk, LdtkJson};
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{LIGHTGRAY, WHITE}, file::{load_file, load_string}, input::{is_key_released, mouse_position, mouse_wheel, KeyCode}, math::{vec2, Rect, Vec2}, prelude::{gl_use_default_material, gl_use_material, load_material, ShaderSource}, texture::{draw_texture_ex, load_texture, render_target, DrawTextureParams, Texture2D}, time::draw_fps, ui::root_ui, window::{clear_background, next_frame, screen_height, screen_width}};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{LIGHTGRAY, WHITE}, file::{load_file, load_string}, input::{is_key_down, is_key_released, mouse_position, mouse_wheel, KeyCode}, math::{vec2, Rect, Vec2}, prelude::{gl_use_default_material, gl_use_material, load_material, ShaderSource}, texture::{draw_texture_ex, load_texture, render_target, DrawTextureParams, Texture2D}, time::draw_fps, ui::root_ui, window::{clear_background, next_frame, screen_height, screen_width}};
 use macroquad_tiled::{load_map, Map};
 use uuid::Uuid;
 
@@ -213,17 +213,11 @@ impl Client {
             set_camera(
                 &camera
             );
-
-            dbg!(camera.screen_to_world(mouse_position().into()));
             
-
-            clear_background(LIGHTGRAY);
 
             self.draw().await;
 
             set_default_camera();
-
-            clear_background(WHITE);
 
             gl_use_material(&material);
 
