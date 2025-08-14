@@ -3,7 +3,7 @@ use std::{cmp::max, collections::HashMap, pin::Pin};
 use ewebsock::{WsReceiver, WsSender};
 use interceptors_lib::{area::Area, mouse_world_pos, player::Player, prop::Prop, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
 use ldtk2::{Ldtk, LdtkJson};
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{LIGHTGRAY, WHITE}, file::{load_file, load_string}, input::{is_key_down, is_key_released, mouse_position, mouse_wheel, KeyCode}, math::{vec2, Rect, Vec2}, prelude::{gl_use_default_material, gl_use_material, load_material, ShaderSource}, texture::{draw_texture_ex, load_texture, render_target, DrawTextureParams, Texture2D}, time::draw_fps, ui::root_ui, window::{clear_background, next_frame, screen_height, screen_width}};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{LIGHTGRAY, WHITE}, file::{load_file, load_string}, input::{is_key_down, is_key_released, mouse_position, mouse_wheel, KeyCode}, math::{vec2, Rect, Vec2}, prelude::{gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, texture::{draw_texture_ex, load_texture, render_target, DrawTextureParams, RenderTarget, Texture2D}, time::draw_fps, ui::root_ui, window::{clear_background, next_frame, screen_height, screen_width}};
 use macroquad_tiled::{load_map, Map};
 const CRT_FRAGMENT_SHADER: &'static str = r#"#version 100
 precision lowp float;
@@ -85,7 +85,9 @@ pub struct Client {
     last_tick: web_time::Instant,
     latency: web_time::Duration,
     last_ping_sample: web_time::Instant,
-    prefab_data: Prefabs
+    prefab_data: Prefabs,
+    material: Material,
+    render_target: RenderTarget
 }
 
 impl Client {
@@ -142,6 +144,18 @@ impl Client {
             )
         );
 
+        let render_target = render_target(1280, 720);
+
+        render_target.texture.set_filter(macroquad::texture::FilterMode::Nearest);
+
+        let material = load_material(
+            ShaderSource::Glsl {
+                vertex: CRT_VERTEX_SHADER,
+                fragment: CRT_FRAGMENT_SHADER,
+            },
+            Default::default(),
+        ).unwrap();
+
         let server = ClientIO {
             send: server_send,
             receive: server_receive,
@@ -169,7 +183,9 @@ impl Client {
             last_tick_duration: web_time::Duration::from_millis(1),
             latency: web_time::Duration::from_millis(1),
             last_ping_sample: web_time::Instant::now(),
-            prefab_data
+            prefab_data,
+            material,
+            render_target
 
         }
         
@@ -181,19 +197,6 @@ impl Client {
 
     pub async fn run(&mut self) {
 
-        //let render_target = render_target(1280, 720);
-
-        //render_target.texture.set_filter(macroquad::texture::FilterMode::Nearest);
-
-        // let material = load_material(
-        //     ShaderSource::Glsl {
-        //         vertex: CRT_VERTEX_SHADER,
-        //         fragment: CRT_FRAGMENT_SHADER,
-        //     },
-        //     Default::default(),
-        // )
-        // .unwrap();
-
         
         loop {
 
@@ -202,41 +205,6 @@ impl Client {
             let packets = self.network_io.receive_packets();
 
             self.handle_packets(packets);
-
-            let mut camera = Camera2D::from_display_rect(self.camera_rect);
-            
-            //camera.render_target = Some(render_target.clone());
-
-            camera.zoom.y = -camera.zoom.y;
-
-            // let camera = &Camera2D{
-            //         zoom: vec2(1., 1.),
-            //         target: vec2(0.0, 0.0),
-            //         render_target: Some(render_target.clone()),
-            //         ..Default::default()
-            // };
-
-            
-
-            set_camera(
-                &camera
-            );
-            
-
-            self.draw().await;
-
-            set_default_camera();
-
-            //gl_use_material(&material);
-
-            // draw_texture_ex(&render_target.texture, 0.0, 0., WHITE, DrawTextureParams {
-            //     dest_size: Some(vec2(screen_width(), screen_height())),
-            //     ..Default::default()
-            // });
-
-            //gl_use_default_material();
-
-            next_frame().await;
 
 
             
@@ -366,8 +334,33 @@ impl Client {
     }
     pub async fn draw(&mut self) { 
 
+        let mut camera = Camera2D::from_display_rect(self.camera_rect);
+            
+        camera.render_target = Some(self.render_target.clone());
+
+        camera.zoom.y = -camera.zoom.y;
+
+        set_camera(
+            &camera
+        );            
 
         self.world.draw(&mut self.textures, &self.camera_rect).await;
+
+        set_default_camera();
+
+        gl_use_material(&self.material);
+
+        draw_texture_ex(&self.render_target.texture, 0.0, 0., WHITE, DrawTextureParams {
+            dest_size: Some(vec2(screen_width(), screen_height())),
+            ..Default::default()
+        });
+
+        gl_use_default_material();
+
+        next_frame().await;
+
+
+        
 
     }
 }

@@ -473,10 +473,6 @@ impl Prefabs {
         }
     }
     pub fn get_prefab_data(&self, path: impl ToString) -> String {
-
-        for path in self.prefabs.keys() {
-            log(&path);
-        }
         
         self.prefabs.get(&path.to_string()).unwrap().clone()
     }

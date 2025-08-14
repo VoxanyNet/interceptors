@@ -71,22 +71,34 @@ HTML=$(
 		    <meta charset="utf-8">
 		    <title>Liquidators</title>
 		    <style>
-		        html,
-		        body,
-		        canvas {
-		            margin: 0px;
-		            padding: 0px;
-		            width: 100%;
-		            height: 100%;
-		            overflow: hidden;
-		            position: absolute;
-		            z-index: 0;
-		        }
-		    </style>
+				html, body {
+					margin: 0;
+					padding: 0;
+					height: 100%;
+					display: flex;
+					justify-content: center;
+					align-items: center;
+					background: black; /* Optional: letterbox effect */
+				}
+
+				#canvas-container {
+					position: relative;
+					width: 80vw; /* scales with window size */
+					aspect-ratio: 16 / 9; /* keeps the shape consistent */
+				}
+
+				canvas {
+					width: 100%;
+					height: 100%;
+					display: block;
+				}
+			</style>
 		</head>
 		<body style="margin: 0; padding: 0; height: 100vh; width: 100vw;">
-		    <canvas id="glcanvas" tabindex='1' hidden></canvas>
-		    <script src="https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js"></script>
+		    <div id="canvas-container">
+    			<canvas id="glcanvas" tabindex="1" hidden></canvas>
+			</div>
+		    <script src="https://dl.vxny.io/193547000489312256/bundle.js"></script>
 		    <script type="module">
 		        import init, { set_wasm } from "./${PROJECT_NAME}.js";
 		        async function impl_run() {
