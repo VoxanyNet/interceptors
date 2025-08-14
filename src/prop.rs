@@ -4,9 +4,8 @@ use macroquad::{math::Vec2, miniquad::window::quit};
 use nalgebra::{vector, Isometry2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
-use crate::{area::AreaId, draw_texture_onto_physics_body, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, ClientId, ClientTickContext, ServerIO};
+use crate::{area::AreaId, draw_texture_onto_physics_body, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientId, ClientTickContext, ServerIO};
 
 pub struct Prop {
     pub rigid_body_handle: RigidBodyHandle,
@@ -157,7 +156,7 @@ pub struct PropId {
 impl PropId {
     pub fn new() -> Self {
         Self {
-            id: Uuid::new_v4().as_u64_pair().0,
+            id: uuid_u64(),
         }
     }
 }

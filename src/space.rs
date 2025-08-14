@@ -18,7 +18,7 @@ pub struct Space {
 }
 
 impl Space {
-    pub fn step(&mut self, dt: Duration) {
+    pub fn step(&mut self, dt: web_time::Duration) {
 
         self.integration_parameters.dt = dt.as_secs_f32();
         

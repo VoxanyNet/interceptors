@@ -6,8 +6,8 @@ use tungstenite::{Message, WebSocket};
 
 pub struct Server {
     world: World,
-    last_tick: Instant,
-    last_tick_duration: Duration,
+    last_tick: web_time::Instant,
+    last_tick_duration: web_time::Duration,
     network_io: ServerIO,
     total_bits_sent: usize
 }
@@ -22,8 +22,8 @@ impl Server {
         world.areas.push(Area::from_save(lobby_save, None));
 
         Self {
-            last_tick: Instant::now(),
-            last_tick_duration: Duration::from_micros(1),
+            last_tick: web_time::Instant::now(),
+            last_tick_duration: web_time::Duration::from_micros(1),
             network_io: ServerIO::new(),
             world,
             total_bits_sent: 0
@@ -254,6 +254,6 @@ impl Server {
         self.network_io.flush(&mut self.total_bits_sent);
 
         self.last_tick_duration = self.last_tick.elapsed();
-        self.last_tick = Instant::now();
+        self.last_tick = web_time::Instant::now();
     }
 }

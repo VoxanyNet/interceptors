@@ -1,12 +1,11 @@
 use std::{collections::HashMap, fmt::Display, net::{TcpListener, TcpStream}, time::Duration};
 
 use ewebsock::{WsReceiver, WsSender};
-use macroquad::{camera::Camera2D, color::{Color, WHITE}, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}, window::{get_internal_gl, screen_height}};
+use macroquad::{camera::Camera2D, color::{Color, WHITE}, file::load_string, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}, window::{get_internal_gl, screen_height}};
 use nalgebra::{geometry, Vector2};
 use rapier2d::prelude::{ColliderHandle, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 use tungstenite::WebSocket;
-use uuid::Uuid;
 
 use crate::{all_keys::ALL_KEYS, space::Space, texture_loader::TextureLoader, updates::NetworkPacket};
 
@@ -60,6 +59,24 @@ pub fn rapier_to_macroquad(rapier_coords: Vector2<f32>) -> Vec2 {
         x: rapier_coords.x,
         y: (rapier_coords.y * -1.) + screen_height()
     }
+}
+
+pub fn uuid_string() -> String {
+ 
+    // WTF
+    let mut buf = [0u8; 4];
+    getrandom::getrandom(&mut buf).unwrap();
+    u32::from_be_bytes(buf).to_string()
+
+}
+
+pub fn uuid_u64() -> u64 {
+ 
+    // WTF
+    let mut buf = [0u8; 8];
+    getrandom::getrandom(&mut buf).unwrap();
+    u64::from_be_bytes(buf)
+
 }
 
 pub async fn draw_texture_onto_physics_body(
@@ -243,7 +260,7 @@ pub struct ClientId {
 impl ClientId {
     pub fn new() -> Self {
         Self {
-            id: Uuid::new_v4().as_u64_pair().0
+            id: uuid_u64()
         }
     }
 }
@@ -438,9 +455,48 @@ impl ServerIO {
 
 pub struct ClientTickContext<'a> {
     pub network_io: &'a mut ClientIO,
-    pub last_tick_duration: &'a Duration,
+    pub last_tick_duration: &'a web_time::Duration,
     pub client_id: &'a ClientId,
-    pub camera_rect: &'a mut Rect
+    pub camera_rect: &'a mut Rect,
+    pub prefabs: &'a Prefabs
+}
+
+pub struct Prefabs {
+    prefabs: HashMap<String, String>
+}
+
+impl Prefabs {
+
+    pub fn new() -> Self {
+        Self {
+            prefabs: HashMap::new(),
+        }
+    }
+    pub fn get_prefab_data(&self, path: impl ToString) -> String {
+
+        for path in self.prefabs.keys() {
+            log(&path);
+        }
+        
+        self.prefabs.get(&path.to_string()).unwrap().clone()
+    }
+
+    pub async fn load_prefab_data(&mut self, path: impl ToString) {
+
+        let data = load_string(&path.to_string()).await.unwrap();
+
+        self.prefabs.insert(path.to_string(), data);
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+pub fn log(message: &str) {
+    println!("{message}");
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn log(message: &str) {
+    web_sys::console::log_1(&message.into());
 }
 
 pub fn macroquad_to_rapier(macroquad_coords: &Vec2) -> Vec2 {

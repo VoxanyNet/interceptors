@@ -571,7 +571,7 @@ impl AreaEditor {
 
         self.move_delete();
 
-        self.area.space.step(Duration::from_secs_f64(0.016));
+        self.area.space.step(web_time::Duration::from_secs_f64(0.016));
         
 
         self.clip_tick();

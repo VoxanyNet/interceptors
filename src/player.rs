@@ -4,9 +4,8 @@ use macroquad::{color::RED, input::{is_key_down, KeyCode}, math::{Rect, Vec2}, s
 use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ColliderHandle, ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
-use crate::{area::{Area, AreaId}, body_part::BodyPart, get_angle_between_rapier_points, get_angle_to_mouse, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, space::{self, Space}, updates::NetworkPacket, ClientId, ClientTickContext};
+use crate::{area::{Area, AreaId}, body_part::BodyPart, get_angle_between_rapier_points, get_angle_to_mouse, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, space::{self, Space}, updates::NetworkPacket, uuid_u64, ClientId, ClientTickContext};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -16,7 +15,7 @@ pub struct PlayerId {
 impl PlayerId {
     pub fn new() -> Self {
         Self {
-            id: Uuid::new_v4().as_u64_pair().0,
+            id: uuid_u64(),
         }
     }
 }

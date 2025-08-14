@@ -1,13 +1,12 @@
-use std::time::Duration;
+use std::{path::Path, time::Duration};
 
 use macroquad::{color::WHITE, file::load_string, input::{is_key_pressed, is_key_released, KeyCode}, math::{Rect, Vec2}, miniquad::Backend, texture::{draw_texture_ex, load_texture, DrawTextureParams}, ui::Id, window::get_internal_gl};
 use macroquad_tiled::{load_map, Map};
 use nalgebra::{vector, Vector2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
-use crate::{background::{Background, BackgroundSave}, clip::{Clip, ClipSave}, decoration::{self, Decoration, DecorationSave}, player::{NewPlayer, Player, PlayerSave}, prop::{self, NewProp, Prop, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, ClientTickContext, ServerIO};
+use crate::{background::{Background, BackgroundSave}, clip::{Clip, ClipSave}, decoration::{self, Decoration, DecorationSave}, player::{NewPlayer, Player, PlayerSave}, prop::{self, NewProp, Prop, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, ServerIO};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -17,7 +16,7 @@ pub struct AreaId {
 impl AreaId {
     pub fn new() -> Self {
         Self {
-            id: Uuid::new_v4().as_u64_pair().0,
+            id: uuid_u64()
         }
     }
 }
@@ -69,7 +68,7 @@ impl Area {
     }
 
 
-    pub fn server_tick(&mut self, io: &mut ServerIO, dt: Duration) {
+    pub fn server_tick(&mut self, io: &mut ServerIO, dt: web_time::Duration) {
 
     }
 
@@ -99,9 +98,11 @@ impl Area {
     pub fn spawn_prop(&mut self, ctx: &mut ClientTickContext) {
 
         if is_key_released(KeyCode::E) {
+;
+            
+            let prefab_save: PropSave = serde_json::from_str(&ctx.prefabs.get_prefab_data("prefabs\\generic_physics_props\\brick_block.json")).unwrap();
 
-
-            let mut new_prop = Prop::from_prefab("prefabs/generic_physics_props/brick_block.json".to_string(), &mut self.space);
+            let mut new_prop = Prop::from_save(prefab_save, &mut self.space);
 
             new_prop.owner = Some(*ctx.client_id);
 

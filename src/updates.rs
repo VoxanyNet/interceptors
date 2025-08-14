@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-
-use crate::{area::{AreaId, AreaSave}, player::{NewPlayer, PlayerCursorUpdate, PlayerVelocityUpdate}, prop::{NewProp, PropVelocityUpdate, PropUpdateOwner}};
+use crate::{area::{AreaId, AreaSave}, player::{NewPlayer, PlayerCursorUpdate, PlayerVelocityUpdate}, prop::{NewProp, PropUpdateOwner, PropVelocityUpdate}, uuid_u64};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub enum NetworkPacket {
@@ -23,7 +21,7 @@ pub struct Ping {
 impl Ping {
     pub fn new() -> Self {
         Self {
-            id: Uuid::new_v4().as_u64_pair().0
+            id: uuid_u64()
         }
     }
 

@@ -1,12 +1,10 @@
-use std::{cmp::max, collections::HashMap, pin::Pin, time::{Duration, Instant}};
+use std::{cmp::max, collections::HashMap, pin::Pin};
 
 use ewebsock::{WsReceiver, WsSender};
-use interceptors_lib::{area::Area, mouse_world_pos, player::Player, prop::Prop, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext};
+use interceptors_lib::{area::Area, mouse_world_pos, player::Player, prop::Prop, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
 use ldtk2::{Ldtk, LdtkJson};
 use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{LIGHTGRAY, WHITE}, file::{load_file, load_string}, input::{is_key_down, is_key_released, mouse_position, mouse_wheel, KeyCode}, math::{vec2, Rect, Vec2}, prelude::{gl_use_default_material, gl_use_material, load_material, ShaderSource}, texture::{draw_texture_ex, load_texture, render_target, DrawTextureParams, Texture2D}, time::draw_fps, ui::root_ui, window::{clear_background, next_frame, screen_height, screen_width}};
 use macroquad_tiled::{load_map, Map};
-use uuid::Uuid;
-
 const CRT_FRAGMENT_SHADER: &'static str = r#"#version 100
 precision lowp float;
 
@@ -74,21 +72,30 @@ void main() {
 }
 ";
 
+include!(concat!(env!("OUT_DIR"), "/prefabs.rs"));
+
 pub struct Client {
     network_io: ClientIO,
-    pings: HashMap<u64, Instant>,
+    pings: HashMap<u64, web_time::Instant>,
     world: World, 
     client_id: ClientId,
     camera_rect: Rect,
     textures: TextureLoader,
-    last_tick_duration: Duration,
-    last_tick: Instant,
-    latency: Duration,
-    last_ping_sample: Instant
+    last_tick_duration: web_time::Duration,
+    last_tick: web_time::Instant,
+    latency: web_time::Duration,
+    last_ping_sample: web_time::Instant,
+    prefab_data: Prefabs
 }
 
 impl Client {
     pub async fn connect() -> Self {
+
+        let mut prefab_data = Prefabs::new();
+
+        for prefab_path in PREFAB_PATHS {
+            prefab_data.load_prefab_data(prefab_path).await
+        }
 
         let url = "ws://127.0.0.1:5560";
 
@@ -158,10 +165,11 @@ impl Client {
             client_id,
             camera_rect,
             textures,
-            last_tick: Instant::now(),
-            last_tick_duration: Duration::from_millis(1),
-            latency: Duration::from_millis(1),
-            last_ping_sample: Instant::now() - Duration::from_secs(10)
+            last_tick: web_time::Instant::now(),
+            last_tick_duration: web_time::Duration::from_millis(1),
+            latency: web_time::Duration::from_millis(1),
+            last_ping_sample: web_time::Instant::now(),
+            prefab_data
 
         }
         
@@ -173,18 +181,18 @@ impl Client {
 
     pub async fn run(&mut self) {
 
-        let render_target = render_target(1280, 720);
+        //let render_target = render_target(1280, 720);
 
-        render_target.texture.set_filter(macroquad::texture::FilterMode::Nearest);
+        //render_target.texture.set_filter(macroquad::texture::FilterMode::Nearest);
 
-        let material = load_material(
-            ShaderSource::Glsl {
-                vertex: CRT_VERTEX_SHADER,
-                fragment: CRT_FRAGMENT_SHADER,
-            },
-            Default::default(),
-        )
-        .unwrap();
+        // let material = load_material(
+        //     ShaderSource::Glsl {
+        //         vertex: CRT_VERTEX_SHADER,
+        //         fragment: CRT_FRAGMENT_SHADER,
+        //     },
+        //     Default::default(),
+        // )
+        // .unwrap();
 
         
         loop {
@@ -197,7 +205,7 @@ impl Client {
 
             let mut camera = Camera2D::from_display_rect(self.camera_rect);
             
-            camera.render_target = Some(render_target.clone());
+            //camera.render_target = Some(render_target.clone());
 
             camera.zoom.y = -camera.zoom.y;
 
@@ -219,14 +227,14 @@ impl Client {
 
             set_default_camera();
 
-            gl_use_material(&material);
+            //gl_use_material(&material);
 
-            draw_texture_ex(&render_target.texture, 0.0, 0., WHITE, DrawTextureParams {
-                dest_size: Some(vec2(screen_width(), screen_height())),
-                ..Default::default()
-            });
+            // draw_texture_ex(&render_target.texture, 0.0, 0., WHITE, DrawTextureParams {
+            //     dest_size: Some(vec2(screen_width(), screen_height())),
+            //     ..Default::default()
+            // });
 
-            gl_use_default_material();
+            //gl_use_default_material();
 
             next_frame().await;
 
@@ -243,7 +251,7 @@ impl Client {
             self.network_io.send_network_packet(NetworkPacket::Ping(ping));
         };
 
-        self.pings.insert(ping.id.clone(), Instant::now());
+        self.pings.insert(ping.id.clone(), web_time::Instant::now());
 
     }
 
@@ -318,7 +326,7 @@ impl Client {
 
             let ping = Ping::new();
 
-            self.pings.insert(ping.id, Instant::now());
+            self.pings.insert(ping.id, web_time::Instant::now());
 
             self.network_io.send_network_packet(
                 NetworkPacket::Ping(ping)
@@ -345,7 +353,8 @@ impl Client {
             network_io: &mut self.network_io,
             last_tick_duration: &self.last_tick_duration,
             client_id: &self.client_id,
-            camera_rect: &mut self.camera_rect
+            camera_rect: &mut self.camera_rect,
+            prefabs: &self.prefab_data
         };
 
         self.world.client_tick(&mut ctx);
@@ -353,7 +362,7 @@ impl Client {
         self.network_io.flush();
         
         self.last_tick_duration = self.last_tick.elapsed();
-        self.last_tick = Instant::now();
+        self.last_tick = web_time::Instant::now();
     }
     pub async fn draw(&mut self) { 
 
