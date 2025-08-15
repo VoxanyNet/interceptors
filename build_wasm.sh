@@ -99,16 +99,13 @@ HTML=$(
 		            });
 		            load("./${PROJECT_NAME}_bg.wasm");
 		        }
-		        window.run = function() {
-		            document.getElementById("run-container").remove();
-		            document.getElementById("glcanvas").removeAttribute("hidden");
-		            document.getElementById("glcanvas").focus();
-		            impl_run();
-		        }
+		        window.onload = function() {
+					const canvas = document.getElementById("glcanvas");
+					canvas.removeAttribute("hidden");
+					canvas.focus();
+					impl_run();
+				};
 		    </script>
-		    <div id="run-container" style="display: flex; justify-content: center; align-items: center; height: 100%; flex-direction: column;">
-		        <button onclick="run()">Run Game</button>
-		    </div>
 		</body>
 		</html>
 	END

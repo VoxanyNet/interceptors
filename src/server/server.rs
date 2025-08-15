@@ -245,7 +245,7 @@ impl Server {
 
         let megabits = self.total_bits_sent as f32 / 1000000 as f32;
 
-        dbg!(megabits);
+        //dbg!(megabits);
 
         
 

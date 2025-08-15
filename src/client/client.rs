@@ -205,9 +205,11 @@ impl Client {
 
             let mut camera = Camera2D::from_display_rect(self.camera_rect);
             
+            camera.zoom.y = -camera.zoom.y;
+
             //camera.render_target = Some(render_target.clone());
 
-            camera.zoom.y = -camera.zoom.y;
+            
 
             // let camera = &Camera2D{
             //         zoom: vec2(1., 1.),
@@ -333,9 +335,19 @@ impl Client {
             );
         }
     }
+
+    pub fn update_camera_to_match_screen_size(&mut self) {
+        self.camera_rect.w = screen_width();
+        self.camera_rect.h = screen_height();
+    }
+
     pub fn tick(&mut self) {
 
+        self.update_camera_to_match_screen_size();
+
         self.measure_latency();
+
+        interceptors_lib::log(&format!("{:?}, {:?}", screen_width(), screen_height()));
 
         // if is_key_released(KeyCode::E) {
         //     self.camera_rect.w *= 1.2;

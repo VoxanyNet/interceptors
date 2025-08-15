@@ -63,7 +63,6 @@ pub fn rapier_to_macroquad(rapier_coords: Vector2<f32>) -> Vec2 {
 
 pub fn uuid_string() -> String {
  
-    // WTF
     let mut buf = [0u8; 4];
     getrandom::getrandom(&mut buf).unwrap();
     u32::from_be_bytes(buf).to_string()
@@ -473,10 +472,6 @@ impl Prefabs {
         }
     }
     pub fn get_prefab_data(&self, path: impl ToString) -> String {
-
-        for path in self.prefabs.keys() {
-            log(&path);
-        }
         
         self.prefabs.get(&path.to_string()).unwrap().clone()
     }
