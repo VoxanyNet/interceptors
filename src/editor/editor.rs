@@ -1,10 +1,10 @@
-use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}, thread::spawn, time::Duration};
+use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}};
 
-use interceptors_lib::{area::{Area, AreaSave}, background::{Background, BackgroundSave}, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, prop::{self, Prop, PropSave}, is_key_down_exclusive, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, space::{self, Space}, texture_loader::TextureLoader};
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{GREEN, RED, WHITE}, file::load_string, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_position, mouse_wheel, KeyCode, MouseButton}, math::{Rect, Vec2}, prelude::camera::mouse, shapes::draw_rectangle, text::draw_text, ui::{self, root_ui}, window::{next_frame, screen_height, screen_width}};
-use nalgebra::{vector, Isometry2, Vector2};
+use interceptors_lib::{area::{Area, AreaSave}, background::{Background, BackgroundSave}, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, prop::{Prop, PropSave}, is_key_released_exclusive, macroquad_to_rapier, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{GREEN, RED, WHITE}, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel, KeyCode, MouseButton}, math::{Rect, Vec2}, shapes::draw_rectangle, text::draw_text, window::{next_frame, screen_height, screen_width}};
+use nalgebra::{vector, Vector2};
 use rapier2d::prelude::{ColliderBuilder, RigidBodyBuilder};
-use serde::{de, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
 

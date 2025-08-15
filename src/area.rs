@@ -1,12 +1,9 @@
-use std::{path::Path, time::Duration};
 
-use macroquad::{color::WHITE, file::load_string, input::{is_key_pressed, is_key_released, KeyCode}, math::{Rect, Vec2}, miniquad::Backend, texture::{draw_texture_ex, load_texture, DrawTextureParams}, ui::Id, window::get_internal_gl};
-use macroquad_tiled::{load_map, Map};
+use macroquad::{input::{is_key_released, KeyCode}, math::Rect};
 use nalgebra::{vector, Vector2};
-use rapier2d::prelude::{ColliderBuilder, ColliderHandle};
 use serde::{Deserialize, Serialize};
 
-use crate::{background::{Background, BackgroundSave}, clip::{Clip, ClipSave}, decoration::{self, Decoration, DecorationSave}, player::{NewPlayer, Player, PlayerSave}, prop::{self, NewProp, Prop, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, ServerIO};
+use crate::{background::{Background, BackgroundSave}, clip::{Clip, ClipSave}, decoration::{Decoration, DecorationSave}, player::{NewPlayer, Player, PlayerSave}, prop::{NewProp, Prop, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, ServerIO};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {

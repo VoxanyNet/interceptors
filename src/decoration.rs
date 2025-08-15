@@ -1,9 +1,7 @@
 use macroquad::{color::WHITE, math::Vec2, texture::{draw_texture_ex, DrawTextureParams}};
-use nalgebra::vector;
-use rapier2d::prelude::{ColliderBuilder, ColliderHandle};
 use serde::{Deserialize, Serialize};
 
-use crate::{space::Space, texture_loader::TextureLoader};
+use crate::texture_loader::TextureLoader;
 
 // literally just a sprite with position and size
 #[derive(Clone, PartialEq)]

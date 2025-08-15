@@ -1,10 +1,7 @@
-use std::{cmp::max, collections::HashMap, pin::Pin};
+use std::collections::HashMap;
 
-use ewebsock::{WsReceiver, WsSender};
-use interceptors_lib::{area::Area, mouse_world_pos, player::Player, prop::Prop, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
-use ldtk2::{Ldtk, LdtkJson};
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{LIGHTGRAY, WHITE}, file::{load_file, load_string}, input::{is_key_down, is_key_released, mouse_position, mouse_wheel, KeyCode}, math::{vec2, Rect, Vec2}, prelude::{gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, texture::{draw_texture_ex, load_texture, render_target, DrawTextureParams, RenderTarget, Texture2D}, time::draw_fps, ui::root_ui, window::{clear_background, next_frame, screen_height, screen_width}};
-use macroquad_tiled::{load_map, Map};
+use interceptors_lib::{area::Area, player::Player, prop::Prop, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, input::{is_key_released, KeyCode}, math::Rect, prelude::{load_material, Material, ShaderSource}, texture::{render_target, RenderTarget}, window::{next_frame, screen_height, screen_width}};
 const CRT_FRAGMENT_SHADER: &'static str = r#"#version 100
 precision lowp float;
 

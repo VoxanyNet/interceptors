@@ -1,8 +1,5 @@
-use std::io::read_to_string;
 
-use ewebsock::{WsReceiver, WsSender};
-use ldtk2::{serde_json, Ldtk};
-use macroquad::{miniquad::conf::Platform, window::{next_frame, Conf}};
+use macroquad::{miniquad::conf::Platform, window::Conf};
 
 use crate::client::Client;
 
@@ -11,7 +8,7 @@ mod client;
 
 
 fn window_conf() -> Conf {
-    let mut conf = Conf {
+    let conf = Conf {
         window_title: "Interceptors".to_owned(),
         window_width: 1280,
         window_height: 720,

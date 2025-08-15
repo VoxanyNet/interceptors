@@ -1,6 +1,5 @@
-use std::{collections::HashMap, time::Duration};
 
-use rapier2d::{na::vector, prelude::{BroadPhase, CCDSolver, ColliderHandle, ColliderSet, DefaultBroadPhase, ImpulseJoint, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, NarrowPhase, PhysicsHooks, PhysicsPipeline, QueryPipeline, RigidBodyHandle, RigidBodySet}};
+use rapier2d::{na::vector, prelude::{CCDSolver, ColliderSet, DefaultBroadPhase, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, NarrowPhase, PhysicsPipeline, QueryPipeline, RigidBodySet}};
 
 #[derive(Default)]
 pub struct Space {

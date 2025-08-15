@@ -1,9 +1,7 @@
-use std::time::Duration;
 
-use macroquad::{math::Rect, ui::widgets::Texture};
-use serde::{Deserialize, Serialize};
+use macroquad::math::Rect;
 
-use crate::{area::{Area, AreaSave}, texture_loader::TextureLoader, ClientTickContext, ServerIO};
+use crate::{area::Area, texture_loader::TextureLoader, ClientTickContext, ServerIO};
 
 pub struct World {
     pub areas: Vec<Area>

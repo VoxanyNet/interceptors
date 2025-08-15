@@ -1,4 +1,4 @@
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::WHITE, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams}};
+use macroquad::{color::WHITE, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams}};
 use serde::{Deserialize, Serialize};
 
 use crate::texture_loader::TextureLoader;

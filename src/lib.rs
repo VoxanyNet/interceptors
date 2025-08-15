@@ -1,8 +1,8 @@
-use std::{collections::HashMap, fmt::Display, net::{TcpListener, TcpStream}, time::Duration};
+use std::{collections::HashMap, net::{TcpListener, TcpStream}};
 
 use ewebsock::{WsReceiver, WsSender};
-use macroquad::{camera::Camera2D, color::{Color, WHITE}, file::load_string, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}, window::{get_internal_gl, screen_height}};
-use nalgebra::{geometry, Vector2};
+use macroquad::{camera::Camera2D, color::{Color, WHITE}, file::load_string, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}};
+use nalgebra::Vector2;
 use rapier2d::prelude::{ColliderHandle, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 use tungstenite::WebSocket;

@@ -1,7 +1,7 @@
-use std::{f32::consts::E, fs::read_to_string};
+use std::fs::read_to_string;
 
-use macroquad::{math::Vec2, miniquad::window::quit};
-use nalgebra::{vector, Isometry2};
+use macroquad::math::Vec2;
+use nalgebra::Isometry2;
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 

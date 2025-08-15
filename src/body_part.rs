@@ -1,5 +1,5 @@
 use macroquad::math::Vec2;
-use nalgebra::{vector, Isometry2};
+use nalgebra::Isometry2;
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle};
 
 use crate::{draw_texture_onto_physics_body, space::Space, texture_loader::TextureLoader, ClientId, ClientTickContext};
