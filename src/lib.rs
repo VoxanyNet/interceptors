@@ -57,7 +57,7 @@ pub fn is_key_released_exclusive(required: &[KeyCode]) -> bool {
 pub fn rapier_to_macroquad(rapier_coords: Vector2<f32>) -> Vec2 {
     Vec2 {
         x: rapier_coords.x,
-        y: (rapier_coords.y * -1.) + screen_height()
+        y: (rapier_coords.y * -1.) + 720.
     }
 }
 
@@ -499,6 +499,6 @@ pub fn macroquad_to_rapier(macroquad_coords: &Vec2) -> Vec2 {
     // translate macroquad coords to rapier coords
     Vec2 { 
         x: macroquad_coords.x, 
-        y: (macroquad_coords.y * -1.) + screen_height()
+        y: (macroquad_coords.y * -1.) + 720.
     }
 }
