@@ -336,7 +336,8 @@ impl Client {
 
         let mut camera = Camera2D::from_display_rect(self.camera_rect);
             
-        camera.render_target = Some(self.render_target.clone());
+        
+        //camera.render_target = Some(self.render_target.clone());
 
         camera.zoom.y = -camera.zoom.y;
 
@@ -348,14 +349,14 @@ impl Client {
 
         set_default_camera();
 
-        gl_use_material(&self.material);
+        //gl_use_material(&self.material);
 
-        draw_texture_ex(&self.render_target.texture, 0.0, 0., WHITE, DrawTextureParams {
-            dest_size: Some(vec2(screen_width(), screen_height())),
-            ..Default::default()
-        });
+        // draw_texture_ex(&self.render_target.texture, 0.0, 0., WHITE, DrawTextureParams {
+        //     dest_size: Some(vec2(screen_width(), screen_height())),
+        //     ..Default::default()
+        // });
 
-        gl_use_default_material();
+        //gl_use_default_material();
 
         next_frame().await;
 
