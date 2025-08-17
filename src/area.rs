@@ -3,7 +3,7 @@ use macroquad::{input::{is_key_released, KeyCode}, math::Rect};
 use nalgebra::{vector, Vector2};
 use serde::{Deserialize, Serialize};
 
-use crate::{background::{Background, BackgroundSave}, clip::{Clip, ClipSave}, decoration::{Decoration, DecorationSave}, player::{NewPlayer, Player, PlayerSave}, prop::{NewProp, Prop, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, ServerIO};
+use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, decoration::{Decoration, DecorationSave}, player::{NewPlayer, Player, PlayerSave}, prop::{NewProp, Prop, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, ServerIO};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -25,7 +25,8 @@ pub struct Area {
     pub clips: Vec<Clip>,
     pub players: Vec<Player>,
     pub props: Vec<Prop>,
-    pub id: AreaId
+    pub id: AreaId,
+    pub bullet_trails: Vec<BulletTrail>
 }
 
 impl Area {
@@ -40,7 +41,8 @@ impl Area {
             players: Vec::new(),
             backgrounds: Vec::new(),
             props: Vec::new(),
-            id: AreaId::new()
+            id: AreaId::new(),
+            bullet_trails: Vec::new()
         }
     }
 
@@ -95,7 +97,6 @@ impl Area {
     pub fn spawn_prop(&mut self, ctx: &mut ClientTickContext) {
 
         if is_key_released(KeyCode::E) {
-;
             
             let prefab_save: PropSave = serde_json::from_str(&ctx.prefabs.get_prefab_data("prefabs\\generic_physics_props\\brick_block.json")).unwrap();
 
@@ -193,7 +194,8 @@ impl Area {
             players,
             backgrounds,
             props: generic_physics_props,
-            id
+            id,
+            bullet_trails: Vec::new() // we dont save bullet trails bsecause that'd be silly
         }
     }
 

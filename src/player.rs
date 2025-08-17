@@ -5,7 +5,7 @@ use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::AreaId, body_part::BodyPart, get_angle_between_rapier_points, rapier_mouse_world_pos, space::Space, updates::NetworkPacket, uuid_u64, ClientId, ClientTickContext};
+use crate::{area::AreaId, body_part::BodyPart, get_angle_between_rapier_points, rapier_mouse_world_pos, shotgun::Shotgun, space::Space, updates::NetworkPacket, uuid_u64, weapon::{BulletImpactData, Weapon, WeaponType}, ClientId, ClientTickContext};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -27,8 +27,9 @@ pub enum Facing {
 
 pub struct Player {
     pub id: PlayerId,
+    pub weapon: Option<WeaponType>,
     health: u32,
-    head: BodyPart,
+    pub head: BodyPart,
     pub body: BodyPart,
     max_speed: Vector2<f32>,
     owner: ClientId,
@@ -36,11 +37,36 @@ pub struct Player {
     head_joint_handle: Option<ImpulseJointHandle>,
     facing: Facing,
     cursor_pos_rapier: Vector2<f32>,
-    previous_cursor_pos: Vector2<f32>
+    previous_cursor_pos: Vector2<f32>,
+
     
 }
 
 impl Player {
+
+    pub fn handle_bullet_impact(&mut self, space: &Space, bullet_impact: BulletImpactData) {
+
+        let our_pos = space.collider_set.get(bullet_impact.impacted_collider).unwrap().position();
+
+        let distance = our_pos.translation.vector - bullet_impact.shooter_pos.vector;
+
+        let fall_off_multiplier = (-0.01 * distance.norm()).exp();
+
+        if bullet_impact.impacted_collider == self.body.collider_handle {
+
+            let damage = (50.0 * fall_off_multiplier).round() as u32;
+
+            self.health = self.health.saturating_sub(damage);
+        }
+
+        // headshot
+        if bullet_impact.impacted_collider == self.head.collider_handle {
+
+            let damage = (100.0 * fall_off_multiplier).round() as u32;
+
+            self.health = self.health.saturating_sub(damage);
+        }
+    }
 
     pub fn set_velocity(&mut self, velocity: RigidBodyVelocity , space: &mut Space) {
         space.rigid_body_set.get_mut(self.body.body_handle).unwrap().set_vels(velocity, true);
@@ -75,6 +101,8 @@ impl Player {
             true
         );
 
+        let body_handle = body.body_handle.clone();
+
         Self {
             id: PlayerId::new(),
             health: 100,
@@ -86,7 +114,16 @@ impl Player {
             facing: Facing::Right,
             cursor_pos_rapier: Vector2::zeros(),
             previous_cursor_pos: Vector2::zeros(),
-            max_speed: Vector2::new(350., 80.)
+            max_speed: Vector2::new(350., 80.),
+            weapon: Some(WeaponType::Shotgun(
+                Shotgun::new(
+                    space, 
+                    Vector2::zeros(), 
+                    owner.clone(), 
+                    Some(body_handle), 
+                    Facing::Right
+                )
+            ))
         }
     }
 
@@ -200,6 +237,10 @@ impl Player {
         
         self.body.draw(textures, space).await;
         self.head.draw(textures, space).await;
+
+        if let Some(weapon) = &self.weapon {
+            //weapon.draw(space, textures).await
+        }
         
         
     }

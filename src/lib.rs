@@ -3,7 +3,7 @@ use std::{collections::HashMap, net::{TcpListener, TcpStream}};
 use ewebsock::{WsReceiver, WsSender};
 use macroquad::{camera::Camera2D, color::{Color, WHITE}, file::load_string, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}};
 use nalgebra::Vector2;
-use rapier2d::prelude::{ColliderHandle, RigidBodyHandle};
+use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 use tungstenite::WebSocket;
 
@@ -21,6 +21,13 @@ pub mod background;
 pub mod prop;
 pub mod all_keys;
 pub mod body_part;
+pub mod weapon;
+pub mod shotgun;
+pub mod bullet_trail;
+
+pub fn collider_from_texture_size(texture_size: Vec2) -> ColliderBuilder {
+    ColliderBuilder::cuboid(texture_size.x / 2., texture_size.y / 2.)
+}
 
 pub fn is_key_down_exclusive(required: &[KeyCode]) -> bool {
     // All required keys must be down
