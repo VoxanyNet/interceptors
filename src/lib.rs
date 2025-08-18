@@ -7,7 +7,7 @@ use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 use tungstenite::WebSocket;
 
-use crate::{all_keys::ALL_KEYS, space::Space, texture_loader::TextureLoader, updates::NetworkPacket};
+use crate::{all_keys::ALL_KEYS, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, space::Space, texture_loader::TextureLoader, updates::NetworkPacket};
 
 pub mod space;
 pub mod updates;
@@ -24,6 +24,47 @@ pub mod body_part;
 pub mod weapon;
 pub mod shotgun;
 pub mod bullet_trail;
+pub mod screen_shake;
+pub mod sound_loader;
+
+pub struct SwapIter<'a, T> {
+    vec: &'a mut Vec<T>,
+    index: usize
+}
+
+impl<'a, T> SwapIter<'a, T> {
+    pub fn new(collection: &'a mut Vec<T>) -> Self {
+        Self {
+            vec: collection,
+            index: 0,
+        }
+    }
+
+    pub fn next(&mut self) -> (&mut Vec<T>, T) {
+        let element = self.vec.swap_remove(self.index);
+
+        (&mut self.vec, element)
+
+        // dont increment to the next index because we just removed an element which implicity "increments" the index
+    }
+
+    pub fn restore(&mut self, element: T) {
+        
+        // return the element to the vector
+        self.vec.push(element);
+
+        // swap the restored element back to its original position
+        let len = self.vec.len();
+        self.vec.swap(len - 1, self.index);
+
+        self.index += 1;
+    }
+
+    pub fn not_done(&self) -> bool {
+        self.index < self.vec.len()
+    }
+}
+
 
 pub fn collider_from_texture_size(texture_size: Vec2) -> ColliderBuilder {
     ColliderBuilder::cuboid(texture_size.x / 2., texture_size.y / 2.)
@@ -206,7 +247,6 @@ impl ClientIO {
 
     pub fn flush(&mut self) {
 
-        println!("{}", self.packet_queue.len());
         self.send.send(
             ewebsock::WsMessage::Binary(
                 bitcode::serialize(&self.packet_queue).unwrap()
@@ -464,7 +504,9 @@ pub struct ClientTickContext<'a> {
     pub last_tick_duration: &'a web_time::Duration,
     pub client_id: &'a ClientId,
     pub camera_rect: &'a mut Rect,
-    pub prefabs: &'a Prefabs
+    pub prefabs: &'a Prefabs,
+    pub screen_shake: &'a mut ScreenShakeParameters,
+    pub sounds: &'a SoundLoader
 }
 
 pub struct Prefabs {

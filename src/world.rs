@@ -27,6 +27,7 @@ impl World {
         }
     }
 
+
     pub async fn draw(&self, textures: &mut TextureLoader, camera_rect: &Rect) {
     
 

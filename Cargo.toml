@@ -9,7 +9,7 @@ bitcode = { version = "0.6.6", features = ["serde"] }
 ewebsock = "0.8.0"
 fxhash = "0.2.1"
 ldtk2 = "0.8.0"
-macroquad = { version = "0.4.14", features = ["glam-serde"] }
+macroquad = { version = "0.4.14", features = ["audio", "glam-serde"] }
 macroquad-tiled = "0.2.1"
 nalgebra = "0.33.2"
 rapier2d = { version = "0.26.1", features = ["enhanced-determinism", "serde-serialize"] }
@@ -21,6 +21,7 @@ tungstenite = "0.23.0"
 getrandom ={ version = "*", features = ["js"]}
 web-time = "1.1.0"
 web-sys = { version = "0.3.77", features = ["console"] }
+noise = "0.9.0"
 #web-sys = { version = "0.3.72", features = ["console"] }
 
 [[bin]]

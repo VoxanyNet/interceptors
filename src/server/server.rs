@@ -152,7 +152,16 @@ impl Server {
                     player.set_cursor_pos(update.pos);
 
                     self.network_io.send_all_except(network_packet, client_id);
-                }
+                },
+                NetworkPacket::PlayerFacingUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                    let player = area.players.iter_mut().find(|player| {player.id == update.id}).unwrap();
+
+                    player.set_facing(update.facing);
+
+                    self.network_io.send_all_except(network_packet, client_id);
+                },
                 _ => {}
         }
         }
@@ -247,7 +256,7 @@ impl Server {
         //dbg!(megabits);
 
         
-
+        
         self.world.server_tick(&mut self.network_io, self.last_tick_duration);
 
         self.network_io.flush(&mut self.total_bits_sent);

@@ -1,7 +1,10 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Instant};
 
-use interceptors_lib::{area::Area, player::Player, prop::Prop, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, input::{is_key_released, KeyCode}, math::Rect, prelude::{load_material, Material, ShaderSource}, texture::{render_target, RenderTarget}, window::{next_frame, screen_height, screen_width}};
+use interceptors_lib::{area::Area, player::Player, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::WHITE, input::{is_key_released, KeyCode}, math::{vec2, Rect}, prelude::{gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::{next_frame, screen_height, screen_width}};
+
+include!(concat!(env!("OUT_DIR"), "/assets.rs"));
+
 const CRT_FRAGMENT_SHADER: &'static str = r#"#version 100
 precision lowp float;
 
@@ -84,7 +87,10 @@ pub struct Client {
     last_ping_sample: web_time::Instant,
     prefab_data: Prefabs,
     material: Material,
-    render_target: RenderTarget
+    render_target: RenderTarget,
+    screen_shake: ScreenShakeParameters,
+    start: web_time::Instant,
+    sounds: SoundLoader
 }
 
 impl Client {
@@ -169,6 +175,17 @@ impl Client {
             h: 720.,
         };
 
+
+        let mut sounds = SoundLoader::new();
+
+        for asset in ASSET_PATHS {
+            if asset.ends_with(".wav") {
+
+                dbg!(asset);
+                sounds.load(asset).await
+            }
+        }
+
         Self {
             network_io: server,
             pings: HashMap::new(),
@@ -182,7 +199,10 @@ impl Client {
             last_ping_sample: web_time::Instant::now(),
             prefab_data,
             material,
-            render_target
+            render_target,
+            screen_shake: ScreenShakeParameters::default(None, None),
+            start: Instant::now(),
+            sounds
 
         }
         
@@ -203,44 +223,7 @@ impl Client {
 
             self.handle_packets(packets);
 
-            let mut camera = Camera2D::from_display_rect(self.camera_rect);
-            
-            camera.zoom.y = -camera.zoom.y;
-
-            //camera.render_target = Some(render_target.clone());
-
-            
-
-            // let camera = &Camera2D{
-            //         zoom: vec2(1., 1.),
-            //         target: vec2(0.0, 0.0),
-            //         render_target: Some(render_target.clone()),
-            //         ..Default::default()
-            // };
-
-            
-
-            set_camera(
-                &camera
-            );
-            
-
             self.draw().await;
-
-            set_default_camera();
-
-            //gl_use_material(&material);
-
-            // draw_texture_ex(&render_target.texture, 0.0, 0., WHITE, DrawTextureParams {
-            //     dest_size: Some(vec2(screen_width(), screen_height())),
-            //     ..Default::default()
-            // });
-
-            //gl_use_default_material();
-
-            next_frame().await;
-
-
             
         }
     }
@@ -314,7 +297,14 @@ impl Client {
                 let player = area.players.iter_mut().find(|player| {player.id == update.id}).unwrap();
 
                 player.set_cursor_pos(update.pos);
-            }
+            },
+            NetworkPacket::PlayerFacingUpdate(update) => {
+                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                let player = area.players.iter_mut().find(|player| {player.id == update.id}).unwrap();
+
+                player.set_facing(update.facing);
+            },
             _ => {
                 println!("unhandled network packet")
             }
@@ -347,8 +337,6 @@ impl Client {
 
         self.measure_latency();
 
-        interceptors_lib::log(&format!("{:?}, {:?}", screen_width(), screen_height()));
-
         // if is_key_released(KeyCode::E) {
         //     self.camera_rect.w *= 1.2;
         //     self.camera_rect.h *= 1.2;
@@ -366,7 +354,9 @@ impl Client {
             last_tick_duration: &self.last_tick_duration,
             client_id: &self.client_id,
             camera_rect: &mut self.camera_rect,
-            prefabs: &self.prefab_data
+            prefabs: &self.prefab_data,
+            screen_shake: &mut self.screen_shake,
+            sounds: &self.sounds
         };
 
         self.world.client_tick(&mut ctx);
@@ -376,12 +366,52 @@ impl Client {
         self.last_tick_duration = self.last_tick.elapsed();
         self.last_tick = web_time::Instant::now();
     }
+
+    pub fn calculate_shaken_camera_rect(&self) -> Rect {
+
+        let elapsed = self.start.elapsed().as_secs_f64();
+
+        let x_shake = {
+            let frequency_modifier = self.screen_shake.x_frequency;
+            
+            let magnitude_modifier = self.screen_shake.x_intensity;
+
+            let offset = self.screen_shake.x_offset;
+
+            magnitude_modifier * ((frequency_modifier * elapsed) + offset).sin()
+
+            
+        };
+
+        let y_shake = {
+            let frequency_modifier = self.screen_shake.y_frequency;
+            
+            let magnitude_modifier = self.screen_shake.y_intensity;
+
+            let offset = self.screen_shake.y_offset;
+
+            magnitude_modifier * ((frequency_modifier * elapsed) + offset).sin()
+        };
+
+        
+        // add shake
+        Rect {
+            x: self.camera_rect.x + x_shake as f32,
+            y: self.camera_rect.y + y_shake as f32,
+            w: self.camera_rect.w,
+            h: self.camera_rect.h,
+        }
+    }
     pub async fn draw(&mut self) { 
 
-        let mut camera = Camera2D::from_display_rect(self.camera_rect);
+        let shaken_camera_rect = self.calculate_shaken_camera_rect();
+
+        let mut camera = Camera2D::from_display_rect(shaken_camera_rect);
+
+        self.apply_screen_shake_decays();
             
         
-        //camera.render_target = Some(self.render_target.clone());
+        camera.render_target = Some(self.render_target.clone());
 
         camera.zoom.y = -camera.zoom.y;
 
@@ -393,20 +423,35 @@ impl Client {
 
         set_default_camera();
 
-        //gl_use_material(&self.material);
+        gl_use_material(&self.material);
 
-        // draw_texture_ex(&self.render_target.texture, 0.0, 0., WHITE, DrawTextureParams {
-        //     dest_size: Some(vec2(screen_width(), screen_height())),
-        //     ..Default::default()
-        // });
+        draw_texture_ex(&self.render_target.texture, 0.0, 0., WHITE, DrawTextureParams {
+            dest_size: Some(vec2(screen_width(), screen_height())),
+            ..Default::default()
+        });
 
-        //gl_use_default_material();
+        gl_use_default_material();
 
         next_frame().await;
 
 
         
 
+    }
+
+    pub fn apply_screen_shake_decays(&mut self) {
+        // apply decays
+        let x_frequency_decay = self.screen_shake.x_frequency_decay * self.last_tick_duration.as_secs_f64();
+        let y_frequency_decay = self.screen_shake.y_frequency_decay * self.last_tick_duration.as_secs_f64();
+
+        let x_intensity_decay = self.screen_shake.x_intensity_decay * self.last_tick_duration.as_secs_f64();
+        let y_intensity_decay = self.screen_shake.y_intensity_decay * self.last_tick_duration.as_secs_f64();
+
+        self.screen_shake.x_frequency = (self.screen_shake.x_frequency - x_frequency_decay).max(0.0);
+        self.screen_shake.y_frequency = (self.screen_shake.y_frequency - y_frequency_decay).max(0.0);
+
+        self.screen_shake.x_intensity = (self.screen_shake.x_intensity - x_intensity_decay).max(0.0);
+        self.screen_shake.y_intensity = (self.screen_shake.y_intensity - y_intensity_decay).max(0.0);
     }
 }
 

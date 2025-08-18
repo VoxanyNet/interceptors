@@ -1,17 +1,19 @@
 use std::{collections::HashSet, time::Instant};
 
-use macroquad::{input::{is_key_released, KeyCode}, math::Vec2};
+use macroquad::{audio::{load_sound, play_sound_once}, input::{is_key_released, KeyCode}, math::Vec2};
 use nalgebra::{point, vector, Vector2};
 use rapier2d::{math::Translation, parry::query::Ray, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 use serde::{Deserialize, Serialize};
 
-use crate::{bullet_trail::BulletTrail, collider_from_texture_size, draw_texture_onto_physics_body, player::{Facing, Player}, prop::Prop, shotgun::Shotgun, space::Space, texture_loader::TextureLoader, ClientId, ClientTickContext};
+use crate::{area::AreaId, bullet_trail::BulletTrail, collider_from_texture_size, draw_texture_onto_physics_body, player::{Facing, Player}, prop::{Prop, PropVelocityUpdate}, shotgun::Shotgun, space::Space, texture_loader::TextureLoader, ClientId, ClientTickContext};
 
 pub struct WeaponFireContext<'a> {
     pub space: &'a mut Space,
     pub players: &'a mut Vec<Player>,
     pub props: &'a mut Vec<Prop>,
-    pub bullet_trails: &'a mut Vec<BulletTrail>
+    pub bullet_trails: &'a mut Vec<BulletTrail>,
+    pub facing: Facing,
+    pub area_id: AreaId
 }
 
 #[derive(Clone)]
@@ -25,6 +27,18 @@ pub enum WeaponType {
 }
 
 impl WeaponType {
+
+    pub fn player_joint_handle(&self) -> Option<ImpulseJointHandle> {
+        match self {
+            WeaponType::Shotgun(shotgun) => shotgun.player_joint_handle(),
+        }
+    }
+
+    pub fn rigid_body_handle(&self) -> RigidBodyHandle {
+        match self {
+            WeaponType::Shotgun(shotgun) => shotgun.rigid_body_handle(),
+        }
+    }
     pub fn fire(&mut self, ctx: &mut ClientTickContext, weapon_fire_context: &mut WeaponFireContext) {
         match self {
             WeaponType::Shotgun(shotgun) => shotgun.fire(ctx, weapon_fire_context),
@@ -37,9 +51,9 @@ impl WeaponType {
         }
     }
 
-    pub async fn draw(&self, space: &Space, textures: &mut TextureLoader) {
+    pub async fn draw(&self, space: &Space, textures: &mut TextureLoader, facing: Facing) {
         match self {
-            WeaponType::Shotgun(shotgun) => shotgun.draw(space, textures).await,
+            WeaponType::Shotgun(shotgun) => shotgun.draw(space, textures, facing).await,
         }
     }
 
@@ -51,7 +65,6 @@ pub struct Weapon {
     pub rigid_body: RigidBodyHandle,
     pub sprite: String,
     pub owner: ClientId,
-    pub facing: Facing,
     pub scale: f32,
     pub aim_angle_offset: f32,
     pub fire_sound_path: String,
@@ -151,7 +164,6 @@ impl Weapon {
             rigid_body,
             sprite: sprite_path,
             owner: owner,
-            facing,
             scale,
             aim_angle_offset,
             fire_sound_path: fire_sound_path.to_string(),
@@ -172,9 +184,9 @@ impl Weapon {
         }
     }
 
-    pub async fn draw(&self, space: &Space, textures: &mut TextureLoader) {
+    pub async fn draw(&self, space: &Space, textures: &mut TextureLoader, facing: Facing) {
 
-        let flip_x = match self.facing {
+        let flip_x = match facing {
             Facing::Right => false,
             Facing::Left => true,
         };
@@ -204,17 +216,13 @@ impl Weapon {
         // dont shoot while reloading
         if self.last_reload.elapsed() < self.reload_duration {
 
-            // let mut sound = SoundHandle::new("assets/sounds/pistol_dry_fire.wav", [0., 0., 0.]);
-            // sound.play();
 
-            // self.sounds.push(sound);
+            play_sound_once(ctx.sounds.get("assets\\sounds\\pistol_dry_fire.wav"));
 
             
             return;
         }
 
-        
-        self.rounds -= 1;
 
         // automatically reload if zero bullets
         if self.rounds == 0 {
@@ -224,14 +232,20 @@ impl Weapon {
             // let mut sound = SoundHandle::new("assets/sounds/pistol_dry_fire.wav", [0., 0., 0.]);
             // sound.play();
 
+            play_sound_once(ctx.sounds.get("assets\\sounds\\pistol_dry_fire.wav"));
+
             // self.sounds.push(sound);
 
             return;
         }
+
+        self.rounds -= 1;
         
-        //self.shake_screen(ctx);
+        self.shake_screen(ctx);
 
         //self.play_sound();
+
+        play_sound_once(ctx.sounds.get(self.fire_sound_path.clone()));
 
         let shotgun_body = weapon_fire_context.space.rigid_body_set.get(self.rigid_body).unwrap().clone();
 
@@ -247,7 +261,7 @@ impl Weapon {
             y: weapon_angle.sin() * -1.,
         };
         
-        match self.facing {
+        match weapon_fire_context.facing {
             Facing::Right => {},
             Facing::Left => {
                 macroquad_angle_bullet_vector.x *= -1.;
@@ -292,6 +306,8 @@ impl Weapon {
         //     },
         //     None => {},
         // }
+
+        
         
         // from here on out needs to be cleaned up and put into seperate functions
         let ray = Ray::new(point![shotgun_pos.x, shotgun_pos.y], vector![rapier_angle_bullet_vector.x, rapier_angle_bullet_vector.y]);
@@ -350,6 +366,37 @@ impl Weapon {
             
         }
 
+        for prop in &mut *weapon_fire_context.props {
+            if !intersections.contains(&prop.collider_handle) {
+                continue;
+            }
+
+            let rigid_body = weapon_fire_context.space.rigid_body_set.get_mut(prop.rigid_body_handle).unwrap();
+
+            let mut new_velocity = rigid_body.linvel().clone();
+            
+            new_velocity.x += rapier_angle_bullet_vector.x * 500.;
+            new_velocity.y += rapier_angle_bullet_vector.y * 500.;
+        
+            rigid_body.set_linvel(
+                new_velocity, 
+                true
+            );
+
+            // manually create a prop velocity update if we dont own it (because if we do it just happens automatically)
+            if prop.owner != Some(self.owner) {
+                ctx.network_io.send_network_packet(
+                    crate::updates::NetworkPacket::PropVelocityUpdate(
+                        PropVelocityUpdate {
+                            velocity: *rigid_body.vels(),
+                            id: prop.id,
+                            area_id: weapon_fire_context.area_id,
+                        }
+                    )
+                );
+            }
+        }
+
         for handle in intersections {
             let collider = weapon_fire_context.space.collider_set.get(handle).unwrap();
             
@@ -357,12 +404,21 @@ impl Weapon {
 
         }
         
+        
 
         // apply knockback to any rigid body hit
-        self.knockback_generic_rigid_bodies(&mut hit_rigid_bodies, weapon_fire_context.space, rapier_angle_bullet_vector);
+        //self.knockback_generic_rigid_bodies(&mut hit_rigid_bodies, weapon_fire_context.space, rapier_angle_bullet_vector);
 
 
 
+    }
+
+    pub fn shake_screen(&self, ctx: &mut ClientTickContext) {
+        ctx.screen_shake.x_frequency = self.x_screen_shake_frequency;
+        ctx.screen_shake.x_intensity = self.x_screen_shake_intensity;
+
+        ctx.screen_shake.x_frequency_decay = 10.;
+        ctx.screen_shake.x_intensity_decay = 20.;
     }
 
     // pub fn shake_screen(&self, ctx: &mut ClientTickContext) {
@@ -394,6 +450,8 @@ impl Weapon {
                 new_velocity, 
                 true
             );
+
+            
         }
     }
 

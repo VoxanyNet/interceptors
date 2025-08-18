@@ -1,11 +1,11 @@
 use std::f32::consts::PI;
 
-use macroquad::{input::{is_key_down, KeyCode}, math::Vec2};
+use macroquad::{input::{is_key_down, is_key_released, is_mouse_button_released, KeyCode}, math::{Rect, Vec2}};
 use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::AreaId, body_part::BodyPart, get_angle_between_rapier_points, rapier_mouse_world_pos, shotgun::Shotgun, space::Space, updates::NetworkPacket, uuid_u64, weapon::{BulletImpactData, Weapon, WeaponType}, ClientId, ClientTickContext};
+use crate::{area::AreaId, body_part::BodyPart, bullet_trail::{self, BulletTrail}, get_angle_between_rapier_points, prop::Prop, rapier_mouse_world_pos, shotgun::Shotgun, space::Space, updates::NetworkPacket, uuid_u64, weapon::{BulletImpactData, Weapon, WeaponFireContext, WeaponType}, ClientId, ClientTickContext};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -20,6 +20,7 @@ impl PlayerId {
     }
 }
 
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum Facing {
     Right,
     Left
@@ -44,6 +45,9 @@ pub struct Player {
 
 impl Player {
 
+    pub fn set_facing(&mut self, facing: Facing) {
+        self.facing = facing
+    } 
     pub fn handle_bullet_impact(&mut self, space: &Space, bullet_impact: BulletImpactData) {
 
         let our_pos = space.collider_set.get(bullet_impact.impacted_collider).unwrap().position();
@@ -57,6 +61,8 @@ impl Player {
             let damage = (50.0 * fall_off_multiplier).round() as u32;
 
             self.health = self.health.saturating_sub(damage);
+
+            return;
         }
 
         // headshot
@@ -187,14 +193,25 @@ impl Player {
         }
     }
 
-    pub fn client_tick(&mut self, ctx: &mut ClientTickContext, space: &mut Space, area_id: AreaId) {
+    pub fn client_tick(
+        &mut self, 
+        ctx: &mut ClientTickContext, 
+        space: &mut Space, 
+        area_id: AreaId,
+        players: &mut Vec<Player>,
+        props: &mut Vec<Prop>,
+        bullet_trails: &mut Vec<BulletTrail>,
+
+    ) {
 
         let current_velocity = space.rigid_body_set.get(self.body.body_handle).unwrap().vels().clone();
+
+        self.angle_weapon_to_mouse(space, &ctx.camera_rect);
         
         self.angle_head_to_mouse(space);
 
         if self.owner == *ctx.client_id {
-            self.owner_tick(space, ctx, area_id);
+            self.owner_tick(space, ctx, area_id, players, props, bullet_trails);
         }
 
         self.previous_velocity = current_velocity;
@@ -235,14 +252,109 @@ impl Player {
 
     pub async fn draw(&self, space: &Space, textures:&mut crate::texture_loader::TextureLoader ) {
         
-        self.body.draw(textures, space).await;
-        self.head.draw(textures, space).await;
+        let flip_x = match self.facing {
+            Facing::Right => false,
+            Facing::Left => true,
+        };
+
+        self.body.draw(textures, space, flip_x).await;
+        self.head.draw(textures, space, flip_x).await;
 
         if let Some(weapon) = &self.weapon {
-            //weapon.draw(space, textures).await
+            weapon.draw(space, textures, self.facing).await
         }
         
         
+    }
+
+    pub fn change_facing_direction(&mut self, space: &Space, ctx: &mut ClientTickContext, area_id: AreaId) {
+        let velocity = space.rigid_body_set.get(self.body.body_handle).unwrap().linvel();
+
+
+        if velocity.x > 100. {
+
+            if !is_key_down(KeyCode::D) {
+                return;
+            }
+
+            if self.facing != Facing::Right {
+                self.facing = Facing::Right;
+
+                ctx.network_io.send_network_packet(
+                    NetworkPacket::PlayerFacingUpdate(
+                        PlayerFacingUpdate { area_id: area_id, id: self.id, facing: Facing::Right }
+                    )
+                );
+                
+            }
+
+        }
+
+        if velocity.x < -100. {
+
+            if !is_key_down(KeyCode::A) {
+                return;
+            }
+
+            if self.facing != Facing::Left {
+                self.facing = Facing::Left;
+
+                ctx.network_io.send_network_packet(
+                    NetworkPacket::PlayerFacingUpdate(
+                        PlayerFacingUpdate { area_id: area_id, id: self.id, facing: Facing::Left }
+                    )
+                );
+
+            }
+        }
+    }
+
+    pub fn angle_weapon_to_mouse(&mut self, space: &mut Space, camera_rect: &Rect) {
+
+        let shotgun_joint_handle = match self.weapon.as_ref().unwrap().player_joint_handle() {
+            Some(shotgun_joint_handle) => shotgun_joint_handle,
+            None => return,
+        };
+
+        // lol
+        let body_body = space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
+
+        let body_body_pos = Vec2::new(body_body.translation().x, body_body.translation().y);
+
+        let weapon_pos = space.rigid_body_set.get(self.weapon.as_ref().unwrap().rigid_body_handle()).unwrap().translation();
+
+        let angle_to_mouse = get_angle_between_rapier_points(Vector2::new(weapon_pos.x, weapon_pos.y), self.cursor_pos_rapier);
+
+        let shotgun_joint = space.impulse_joint_set.get_mut(shotgun_joint_handle, true).unwrap();
+
+        let shotgun_joint_data = shotgun_joint.data.as_revolute_mut().unwrap();
+
+        // anchor the shotgun in a different position if its supposed to be on our right side
+        let shotgun_anchor_pos = match self.facing {
+            Facing::Right => vector![-30., 0.].into(),
+            Facing::Left => vector![30., 0.].into(),
+        };
+
+        shotgun_joint_data.set_local_anchor2(shotgun_anchor_pos);
+
+        let target_angle = match self.facing {
+            Facing::Right => {
+                -angle_to_mouse + (PI / 2.)
+            },
+            Facing::Left => {
+                (angle_to_mouse + (PI / 2.)) * -1.
+            },
+        };
+
+
+        if target_angle.abs() > 0.799 {
+            // dont try to set the angle if we know its beyond the limit
+            return;
+        }
+
+        shotgun_joint_data.set_motor_position(target_angle, 3000., 50.);
+
+        return;
     }
 
     pub fn jump(&mut self, body: &mut RigidBody) {
@@ -267,9 +379,32 @@ impl Player {
         }
     }
 
-    pub fn owner_tick(&mut self, space: &mut Space, ctx: &mut ClientTickContext, area_id: AreaId) {
+    pub fn owner_tick(
+        &mut self, 
+        space: &mut Space, 
+        ctx: &mut ClientTickContext, 
+        area_id: AreaId,
+        players: &mut Vec<Player>,
+        props: &mut Vec<Prop>,
+        bullet_trails: &mut Vec<BulletTrail>,
+    ) {
         
         self.update_cursor_pos(ctx, area_id);
+
+        if let Some(weapon) = &mut self.weapon {
+            if is_mouse_button_released(macroquad::input::MouseButton::Left) {
+                weapon.fire(ctx, &mut WeaponFireContext {
+                    space,
+                    players,
+                    props,
+                    bullet_trails,
+                    facing: self.facing,
+                    area_id
+                });
+            }
+        }
+
+        self.change_facing_direction(space, ctx, area_id);
 
         self.control(space, ctx);
 
@@ -337,4 +472,11 @@ pub struct PlayerCursorUpdate {
     pub area_id: AreaId,
     pub id: PlayerId,
     pub pos: Vector2<f32>
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct PlayerFacingUpdate {
+    pub area_id: AreaId,
+    pub id: PlayerId,
+    pub facing: Facing
 }

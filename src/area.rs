@@ -3,7 +3,7 @@ use macroquad::{input::{is_key_released, KeyCode}, math::Rect};
 use nalgebra::{vector, Vector2};
 use serde::{Deserialize, Serialize};
 
-use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, decoration::{Decoration, DecorationSave}, player::{NewPlayer, Player, PlayerSave}, prop::{NewProp, Prop, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, ServerIO};
+use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, decoration::{Decoration, DecorationSave}, player::{NewPlayer, Player, PlayerSave}, prop::{NewProp, Prop, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, ServerIO, SwapIter};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -68,7 +68,7 @@ impl Area {
 
 
     pub fn server_tick(&mut self, io: &mut ServerIO, dt: web_time::Duration) {
-
+        self.space.step(dt);
     }
 
     pub fn spawn_player(&mut self, ctx: &mut ClientTickContext) {
@@ -135,8 +135,14 @@ impl Area {
             prop.client_tick(&mut self.space, self.id, ctx);
         }
 
-        for player in &mut self.players {
-            player.client_tick(ctx, &mut self.space, self.id);
+        let mut players_iter = SwapIter::new(&mut self.players);
+
+        while players_iter.not_done() {
+            let (players, mut player) = players_iter.next();
+
+            player.client_tick(ctx, &mut self.space, self.id, players, &mut self.props, &mut self.bullet_trails);
+
+            players_iter.restore(player);
         }
     }
 

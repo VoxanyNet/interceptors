@@ -1,6 +1,6 @@
 use macroquad::math::Vec2;
 use nalgebra::Vector2;
-use rapier2d::prelude::RigidBodyHandle;
+use rapier2d::prelude::{ImpulseJointHandle, RigidBodyHandle};
 
 use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapon::{Weapon, WeaponFireContext}, ClientId, ClientTickContext};
 
@@ -14,8 +14,17 @@ impl Shotgun {
         self.weapon.fire(ctx, weapon_fire_context);
     }
 
+    pub fn player_joint_handle(&self) -> Option<ImpulseJointHandle> {
+        self.weapon.player_joint_handle
+    }
+
     pub fn reload(&mut self) {
         self.weapon.reload();
+    }
+
+
+    pub fn rigid_body_handle(&self) -> RigidBodyHandle {
+        self.weapon.rigid_body
     }
 
     pub fn new(space: &mut Space, pos: Vector2<f32>, owner: ClientId, player_rigid_body_handle: Option<RigidBodyHandle>, facing: Facing) -> Self {
@@ -30,7 +39,7 @@ impl Shotgun {
                 2., 
                 Some(0.),
                 Some(1.),
-                "assets/sounds/shotgun/fire.wav",
+                "assets\\sounds\\shotgun\\fire.wav",
                 20.,
                 10.,
                 0.,
@@ -48,10 +57,11 @@ impl Shotgun {
         
     }
 
-    pub async fn draw(&self, space: &Space, textures: &mut TextureLoader) {
+    pub async fn draw(&self, space: &Space, textures: &mut TextureLoader, facing: Facing) {
         self.weapon.draw(
             space, 
-            textures
+            textures,
+            facing
         ).await
     }
 }
