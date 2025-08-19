@@ -15,8 +15,8 @@ pub enum PropMaterial {
 }
 
 pub struct DissolvedPixel {
-    body: RigidBodyHandle,
-    collider: ColliderHandle,
+    pub body: RigidBodyHandle,
+    pub collider: ColliderHandle,
     color: Color,
     scale: f32
 }
@@ -47,8 +47,6 @@ impl DissolvedPixel {
 
         let rigid_body = space.rigid_body_set.insert(
             RigidBodyBuilder::dynamic()
-                .ccd_enabled(true)
-                .soft_ccd_prediction(20.)
                 .position(pos)
                 .additional_mass(mass)
                 .angvel(velocity.angvel)
@@ -109,6 +107,8 @@ impl Prop {
     pub fn despawn(&mut self, space: &mut Space) {
         space.rigid_body_set.remove(self.rigid_body_handle, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
 
+        self.despawn = true;
+
 
     }
     pub fn from_prefab(prefab_path: String, space: &mut Space) -> Self {
@@ -137,7 +137,9 @@ impl Prop {
         let x_scale = (half_extents.x * 2.) / texture.width() ;
 
         dbg!(x_scale);
-        let y_scale = texture.height() / (half_extents.y * 2.) / texture.height() ;
+        let y_scale = (half_extents.y * 2.) / texture.height();
+
+        dbg!(y_scale);
 
         let texture_data = texture.get_texture_data();
 
@@ -150,8 +152,8 @@ impl Prop {
                 let color = texture_data.get_pixel(x, y);
 
                 let translation = Vector2::new(
-                (body_translation.x + (x as f32 * x_scale)) - half_extents.x, 
-                    (body_translation.y + (y as f32 * y_scale)) + half_extents.y
+                ((body_translation.x + (x as f32 * x_scale)) - half_extents.x) + 0.5, 
+                ((body_translation.y - (y as f32 * y_scale)) + half_extents.y) - 0.5    
                 );
 
                 let position = Isometry2::new(
@@ -173,7 +175,7 @@ impl Prop {
             }
         }
 
-        self.despawn = true;
+        self.despawn(space);
 
         println!("dissolved");
     }
@@ -221,6 +223,10 @@ impl Prop {
     }   
 
     pub fn client_tick(&mut self, space: &mut Space, area_id: AreaId, ctx: &mut ClientTickContext, dissolved_pixels: &mut Vec<DissolvedPixel>) {
+
+        if self.despawn {
+            return;
+        }
 
         if let Some(owner) = self.owner {
             if owner == *ctx.client_id {
@@ -298,7 +304,9 @@ impl Prop {
 
     pub async fn draw(&self, space: &Space, textures: &mut TextureLoader) {
 
-
+        if self.despawn {
+            return;
+        }
         draw_texture_onto_physics_body(
             self.rigid_body_handle, 
             self.collider_handle, 

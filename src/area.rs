@@ -1,5 +1,7 @@
 
-use macroquad::{input::{is_key_released, KeyCode}, math::Rect};
+use std::time::Duration;
+
+use macroquad::{input::{is_key_down, is_key_released, KeyCode}, math::Rect};
 use nalgebra::{vector, Vector2};
 use serde::{Deserialize, Serialize};
 
@@ -133,6 +135,10 @@ impl Area {
 
         self.spawn_prop(ctx);
 
+        // if is_key_down(KeyCode::J) {
+        //     self.space.step(Duration::from_secs_f32(1./60.));
+        // }
+
         self.space.step(*ctx.last_tick_duration);
 
         let mut props_to_delete: Vec<PropId> = Vec::new();
@@ -147,8 +153,6 @@ impl Area {
                 props_to_delete.push(prop.id);
             }
         }
-
-    
 
         self.props.retain(|prop| {props_to_delete.contains(&prop.id) == false});
 
@@ -165,7 +169,7 @@ impl Area {
         while players_iter.not_done() {
             let (players, mut player) = players_iter.next();
 
-            player.client_tick(ctx, &mut self.space, self.id, players, &mut self.props, &mut self.bullet_trails);
+            player.client_tick(ctx, &mut self.space, self.id, players, &mut self.props, &mut self.bullet_trails, &mut self.dissolved_pixels);
 
             players_iter.restore(player);
         }

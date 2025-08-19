@@ -356,8 +356,8 @@ impl ServerIO {
         }
     }
 
-    /// Send the queued packets
-    pub fn flush(&mut self, total_sent_bytes: &mut usize) {
+    /// Send the queued packets and return disconnected client ids
+    pub fn flush(&mut self, total_sent_bytes: &mut usize) -> Vec<ClientId> {
 
         let mut disconnected_clients: Vec<ClientId> = Vec::new();
 
@@ -395,10 +395,12 @@ impl ServerIO {
 
         }
 
-        for client in disconnected_clients {
+        for client in &disconnected_clients {
             self.clients.remove(&client).unwrap();
             self.queued_packets.remove(&client);
-        }
+        };
+
+        disconnected_clients
     }
 
     pub fn send_all_except(&mut self, packet: NetworkPacket, except: ClientId) {

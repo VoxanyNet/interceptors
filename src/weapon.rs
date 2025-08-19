@@ -1,11 +1,11 @@
 use std::{collections::HashSet, path::{Path, PathBuf}, time::Instant};
 
-use macroquad::{audio::{load_sound, play_sound_once}, input::{is_key_released, KeyCode}, math::Vec2};
+use macroquad::{audio::{load_sound, play_sound_once}, input::{is_key_released, KeyCode}, math::Vec2, rand::RandomRange};
 use nalgebra::{point, vector, Vector2};
-use rapier2d::{math::Translation, parry::query::Ray, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
+use rapier2d::{math::{Translation, Vector}, parry::query::Ray, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::AreaId, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_texture_onto_physics_body, player::{Facing, Player}, prop::{Prop, PropVelocityUpdate}, shotgun::Shotgun, space::Space, texture_loader::TextureLoader, ClientId, ClientTickContext};
+use crate::{area::AreaId, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_texture_onto_physics_body, player::{Facing, Player}, prop::{DissolvedPixel, Prop, PropVelocityUpdate}, shotgun::Shotgun, space::Space, texture_loader::TextureLoader, ClientId, ClientTickContext};
 
 pub struct WeaponFireContext<'a> {
     pub space: &'a mut Space,
@@ -13,7 +13,8 @@ pub struct WeaponFireContext<'a> {
     pub props: &'a mut Vec<Prop>,
     pub bullet_trails: &'a mut Vec<BulletTrail>,
     pub facing: Facing,
-    pub area_id: AreaId
+    pub area_id: AreaId,
+    pub dissolved_pixels: &'a mut Vec<DissolvedPixel>
 }
 
 #[derive(Clone)]
@@ -381,38 +382,90 @@ impl Weapon {
                 continue;
             }
 
-            let rigid_body = weapon_fire_context.space.rigid_body_set.get_mut(prop.rigid_body_handle).unwrap();
+            prop.dissolve(ctx.textures, weapon_fire_context.space, weapon_fire_context.dissolved_pixels);
 
-            let mut new_velocity = rigid_body.linvel().clone();
+            prop.despawn(weapon_fire_context.space);
+
+
+            // let rigid_body = weapon_fire_context.space.rigid_body_set.get_mut(prop.rigid_body_handle).unwrap();
+
+            // rigid_body.apply_impulse(
+            //     Vector::new(rapier_angle_bullet_vector.x * 5000., rapier_angle_bullet_vector.y * 5000.), 
+            //     true
+            // );
+
+
             
-            new_velocity.x += rapier_angle_bullet_vector.x * 500.;
-            new_velocity.y += rapier_angle_bullet_vector.y * 500.;
+            // let mut new_velocity = rigid_body.linvel().clone();
+            
+            // new_velocity.x += rapier_angle_bullet_vector.x * 500.;
+            // new_velocity.y += rapier_angle_bullet_vector.y * 500.;
         
-            rigid_body.set_linvel(
-                new_velocity, 
-                true
-            );
+            // rigid_body.set_linvel(
+            //     new_velocity, 
+            //     true
+            // );
 
             // manually create a prop velocity update if we dont own it (because if we do it just happens automatically)
-            if prop.owner != Some(self.owner) {
-                ctx.network_io.send_network_packet(
-                    crate::updates::NetworkPacket::PropVelocityUpdate(
-                        PropVelocityUpdate {
-                            velocity: *rigid_body.vels(),
-                            id: prop.id,
-                            area_id: weapon_fire_context.area_id,
-                        }
-                    )
+            // if prop.owner != Some(self.owner) {
+            //     ctx.network_io.send_network_packet(
+            //         crate::updates::NetworkPacket::PropVelocityUpdate(
+            //             PropVelocityUpdate {
+            //                 velocity: *rigid_body.vels(),
+            //                 id: prop.id,
+            //                 area_id: weapon_fire_context.area_id,
+            //             }
+            //         )
+            //     );
+            // }
+
+            
+        }
+
+        weapon_fire_context.space.query_pipeline.update(&weapon_fire_context.space.collider_set);
+        // we query again because we might create new physics objects when a prop explodes
+        weapon_fire_context.space.query_pipeline.intersections_with_ray(&weapon_fire_context.space.rigid_body_set, &weapon_fire_context.space.collider_set, &ray, max_toi, solid, filter, 
+        |handle, _intersection| {
+
+            // dont want to intersect with the weapon itself
+            if self.collider == handle {
+                return true;
+            };
+
+            // might want to check if the body is already in here
+            intersections.push(handle);
+
+            true
+
+        });
+
+
+        for dissolved_pixel in &mut *weapon_fire_context.dissolved_pixels {
+            if !intersections.contains(&dissolved_pixel.collider) {
+                continue;
+            }
+
+            // randomize the bullet vector a little bit for each pixel
+            let mut bullet_vector = rapier_angle_bullet_vector.clone();
+
+            bullet_vector.x *= RandomRange::gen_range(1.5, 0.5);
+            bullet_vector.y *= RandomRange::gen_range(1.5, 0.5);
+
+            
+
+            let body = weapon_fire_context.space.rigid_body_set.get_mut(dissolved_pixel.body).unwrap();
+                body.apply_impulse(
+                Vector::new(rapier_angle_bullet_vector.x * 5000., rapier_angle_bullet_vector.y * 5000.), 
+                true
                 );
             }
-        }
 
-        for handle in intersections {
-            let collider = weapon_fire_context.space.collider_set.get(handle).unwrap();
+        // for handle in intersections {
+        //     let collider = weapon_fire_context.space.collider_set.get(handle).unwrap();
             
-            hit_rigid_bodies.push(collider.parent().unwrap());
+        //     hit_rigid_bodies.push(collider.parent().unwrap());
 
-        }
+        // }
         
         
 

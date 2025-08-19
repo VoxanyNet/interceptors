@@ -5,7 +5,7 @@ use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::AreaId, body_part::BodyPart, bullet_trail::{self, BulletTrail}, get_angle_between_rapier_points, prop::Prop, rapier_mouse_world_pos, rapier_to_macroquad, shotgun::Shotgun, space::Space, updates::NetworkPacket, uuid_u64, weapon::{BulletImpactData, Weapon, WeaponFireContext, WeaponType}, ClientId, ClientTickContext};
+use crate::{area::AreaId, body_part::BodyPart, bullet_trail::{self, BulletTrail}, get_angle_between_rapier_points, prop::{DissolvedPixel, Prop}, rapier_mouse_world_pos, rapier_to_macroquad, shotgun::Shotgun, space::Space, updates::NetworkPacket, uuid_u64, weapon::{BulletImpactData, Weapon, WeaponFireContext, WeaponType}, ClientId, ClientTickContext};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -236,6 +236,7 @@ impl Player {
         players: &mut Vec<Player>,
         props: &mut Vec<Prop>,
         bullet_trails: &mut Vec<BulletTrail>,
+        dissolved_pixels: &mut Vec<DissolvedPixel>
 
     ) {
 
@@ -246,7 +247,7 @@ impl Player {
         self.angle_head_to_mouse(space);
 
         if self.owner == *ctx.client_id {
-            self.owner_tick(space, ctx, area_id, players, props, bullet_trails);
+            self.owner_tick(space, ctx, area_id, players, props, bullet_trails, dissolved_pixels);
         }
 
         self.previous_velocity = current_velocity;
@@ -422,6 +423,7 @@ impl Player {
         players: &mut Vec<Player>,
         props: &mut Vec<Prop>,
         bullet_trails: &mut Vec<BulletTrail>,
+        dissolved_pixels: &mut Vec<DissolvedPixel>
     ) {
         
         self.update_cursor_pos(ctx, area_id);
@@ -434,7 +436,8 @@ impl Player {
                     props,
                     bullet_trails,
                     facing: self.facing,
-                    area_id
+                    area_id,
+                    dissolved_pixels
                 });
             }
         }

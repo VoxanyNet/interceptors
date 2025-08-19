@@ -1,6 +1,6 @@
 use std::fs::read_to_string;
 
-use interceptors_lib::{area::{Area, AreaSave}, bullet_trail::BulletTrail, player::Player, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket}, world::World, ClientId, ServerIO};
+use interceptors_lib::{area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, player::Player, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket}, world::World, ClientId, ServerIO};
 use tungstenite::Message;
 
 pub struct Server {
@@ -8,7 +8,8 @@ pub struct Server {
     last_tick: web_time::Instant,
     last_tick_duration: web_time::Duration,
     network_io: ServerIO,
-    total_bits_sent: usize
+    total_bits_sent: usize,
+    previous_tick_connected_clients: Vec<ClientId>
 }
 
 impl Server {
@@ -25,7 +26,8 @@ impl Server {
             last_tick_duration: web_time::Duration::from_micros(1),
             network_io: ServerIO::new(),
             world,
-            total_bits_sent: 0
+            total_bits_sent: 0,
+            previous_tick_connected_clients: Vec::new()
         }
 
     }
@@ -52,8 +54,42 @@ impl Server {
         }
     }
 
+    pub fn get_connected_clients_vector(&self) -> Vec<ClientId> {
+
+        let mut connected_clients = Vec::new();
+
+        for client_id in self.network_io.clients.keys() {
+            connected_clients.push(*client_id);
+        };
+
+        connected_clients
+    }
+
+    pub fn handle_disconnected_client(&mut self, client_id: ClientId) {
+        if self.network_io.clients.keys().len() == 0 {
+
+            let lobby: AreaSave = serde_json::from_str(&read_to_string("areas/lobby.json").unwrap()).unwrap();
+            self.world.areas[0] = Area::from_save(lobby, Some(AreaId::new()))
+        }
+    }
+
     pub fn run(&mut self) {
         loop {
+
+            let mut disconnected_clients = Vec::new();
+
+            for client_id in &self.previous_tick_connected_clients {
+                if !self.get_connected_clients_vector().contains(&client_id) {
+                    disconnected_clients.push(client_id.clone());
+                }
+            }
+
+            for client in disconnected_clients {
+                self.handle_disconnected_client(client);
+            }
+
+
+            self.previous_tick_connected_clients = self.get_connected_clients_vector();
 
             // only tick every 8 ms
             if self.last_tick.elapsed().as_millis() > 8 {

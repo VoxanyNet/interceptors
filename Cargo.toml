@@ -12,7 +12,7 @@ ldtk2 = "0.8.0"
 macroquad = { version = "0.4.14", features = ["audio", "glam-serde"] }
 macroquad-tiled = "0.2.1"
 nalgebra = "0.33.2"
-rapier2d = { version = "0.26.1", features = ["serde-serialize",] }
+rapier2d = { version = "0.26.1", features = ["serde-serialize"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.142"
 strum = { version = "0.27.2", features = ["derive"] }
