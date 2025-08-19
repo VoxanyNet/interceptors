@@ -1,0 +1,12 @@
+{
+    "pos": [
+        0.0,
+        0.0
+    ],
+
+    "sprite_path": "assets/stone1.png",
+    "size":  [
+        190.0,
+        74.0
+    ]
+}

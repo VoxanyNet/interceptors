@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::{area::{AreaId, AreaSave}, player::{NewPlayer, PlayerCursorUpdate, PlayerFacingUpdate, PlayerVelocityUpdate}, prop::{NewProp, PropUpdateOwner, PropVelocityUpdate}, uuid_u64};
+use crate::{area::{AreaId, AreaSave}, bullet_trail::SpawnBulletTrail, player::{NewPlayer, PlayerCursorUpdate, PlayerFacingUpdate, PlayerVelocityUpdate}, prop::{NewProp, PropUpdateOwner, PropVelocityUpdate}, uuid_u64};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub enum NetworkPacket {
@@ -11,7 +11,8 @@ pub enum NetworkPacket {
     PlayerVelocityUpdate(PlayerVelocityUpdate),
     NewPlayer(NewPlayer),
     PlayerCursorUpdate(PlayerCursorUpdate),
-    PlayerFacingUpdate(PlayerFacingUpdate)
+    PlayerFacingUpdate(PlayerFacingUpdate),
+    SpawnBulletTrail(SpawnBulletTrail)
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]

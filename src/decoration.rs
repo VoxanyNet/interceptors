@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use macroquad::{color::WHITE, math::Vec2, texture::{draw_texture_ex, DrawTextureParams}};
 use serde::{Deserialize, Serialize};
 
@@ -7,7 +9,7 @@ use crate::texture_loader::TextureLoader;
 #[derive(Clone, PartialEq)]
 pub struct Decoration {
     pub pos: Vec2, // macroquad pos
-    pub sprite_path: String,
+    pub sprite_path: PathBuf,
     pub size: Vec2
 }
 
@@ -30,7 +32,7 @@ impl Decoration {
     }
     
     pub async fn draw(&self, textures: &mut TextureLoader) {
-        let texture = textures.get(&self.sprite_path).await;
+        let texture = textures.get(&self.sprite_path);
 
         draw_texture_ex(
             texture, 
@@ -53,5 +55,5 @@ impl Decoration {
 pub struct DecorationSave {
     pub pos: Vec2,
     pub size: Vec2,
-    pub sprite_path: String
+    pub sprite_path: PathBuf
 }

@@ -1,0 +1,20 @@
+{
+  "size": [
+    92.0,
+    52.0
+  ],
+  "pos": {
+    "rotation": [
+      0.0,
+      0.0
+    ],
+    "translation": [
+      0.0,
+      0.0
+    ]
+  },
+  "mass": 10.0,
+  "sprite_path": "assets/stone2.png",
+  "material": "None",
+  "id": null
+}

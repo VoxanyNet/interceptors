@@ -1,11 +1,11 @@
-use std::{collections::HashSet, time::Instant};
+use std::{collections::HashSet, path::{Path, PathBuf}, time::Instant};
 
 use macroquad::{audio::{load_sound, play_sound_once}, input::{is_key_released, KeyCode}, math::Vec2};
 use nalgebra::{point, vector, Vector2};
 use rapier2d::{math::Translation, parry::query::Ray, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::AreaId, bullet_trail::BulletTrail, collider_from_texture_size, draw_texture_onto_physics_body, player::{Facing, Player}, prop::{Prop, PropVelocityUpdate}, shotgun::Shotgun, space::Space, texture_loader::TextureLoader, ClientId, ClientTickContext};
+use crate::{area::AreaId, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_texture_onto_physics_body, player::{Facing, Player}, prop::{Prop, PropVelocityUpdate}, shotgun::Shotgun, space::Space, texture_loader::TextureLoader, ClientId, ClientTickContext};
 
 pub struct WeaponFireContext<'a> {
     pub space: &'a mut Space,
@@ -63,11 +63,11 @@ pub struct Weapon {
     pub player_rigid_body_handle: Option<RigidBodyHandle>,
     pub collider: ColliderHandle,
     pub rigid_body: RigidBodyHandle,
-    pub sprite: String,
+    pub sprite: PathBuf,
     pub owner: ClientId,
     pub scale: f32,
     pub aim_angle_offset: f32,
-    pub fire_sound_path: String,
+    pub fire_sound_path: PathBuf,
     pub x_screen_shake_frequency: f64,
     pub x_screen_shake_intensity: f64,
     pub y_screen_shake_frequency: f64,
@@ -87,11 +87,11 @@ impl Weapon {
         pos: Vector2<f32>, 
         owner: ClientId, 
         player_rigid_body_handle: Option<RigidBodyHandle>,
-        sprite_path: String,
+        sprite_path: PathBuf,
         scale: f32,
         aim_angle_offset: Option<f32>,
         mass: Option<f32>,
-        fire_sound_path: &str,
+        fire_sound_path: PathBuf,
         x_screen_shake_frequency: f64,
         x_screen_shake_intensity: f64,
         y_screen_shake_frequency: f64,
@@ -166,7 +166,7 @@ impl Weapon {
             owner: owner,
             scale,
             aim_angle_offset,
-            fire_sound_path: fire_sound_path.to_string(),
+            fire_sound_path,
             x_screen_shake_frequency,
             x_screen_shake_intensity,
             y_screen_shake_frequency,
@@ -217,7 +217,7 @@ impl Weapon {
         if self.last_reload.elapsed() < self.reload_duration {
 
 
-            play_sound_once(ctx.sounds.get("assets\\sounds\\pistol_dry_fire.wav"));
+            play_sound_once(ctx.sounds.get(PathBuf::from("assets\\sounds\\pistol_dry_fire.wav")));
 
             
             return;
@@ -232,7 +232,7 @@ impl Weapon {
             // let mut sound = SoundHandle::new("assets/sounds/pistol_dry_fire.wav", [0., 0., 0.]);
             // sound.play();
 
-            play_sound_once(ctx.sounds.get("assets\\sounds\\pistol_dry_fire.wav"));
+            play_sound_once(ctx.sounds.get(PathBuf::from("assets\\sounds\\pistol_dry_fire.wav")));
 
             // self.sounds.push(sound);
 
@@ -277,19 +277,29 @@ impl Weapon {
 
         //self.knockback_player(space, rapier_angle_bullet_vector);
 
+        let bullet_trail = BulletTrail::new(
+            Vector2::new(
+                shotgun_pos.x, 
+                shotgun_pos.y + 10.
+            ), 
+            Vector2::new(
+                shotgun_pos.x + (macroquad_angle_bullet_vector.x * 10000.),
+                shotgun_pos.y - (macroquad_angle_bullet_vector.y * 10000.),
+            ),
+            None,
+            self.owner.clone()
+        ); 
+
+
+        ctx.network_io.send_network_packet(
+            crate::updates::NetworkPacket::SpawnBulletTrail(SpawnBulletTrail {
+                area_id: weapon_fire_context.area_id,
+                save: bullet_trail.save()
+            })
+        );
+
         weapon_fire_context.bullet_trails.push(
-            BulletTrail::new(
-                Vector2::new(
-                    shotgun_pos.x, 
-                    shotgun_pos.y + 10.
-                ), 
-                Vector2::new(
-                    shotgun_pos.x + (macroquad_angle_bullet_vector.x * 10000.),
-                    shotgun_pos.y - (macroquad_angle_bullet_vector.y * 10000.),
-                ),
-                None,
-                self.owner.clone()
-            )
+            bullet_trail
         );
         
         // match &self.shell_sprite {

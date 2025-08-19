@@ -3,7 +3,7 @@ use macroquad::{input::{is_key_released, KeyCode}, math::Rect};
 use nalgebra::{vector, Vector2};
 use serde::{Deserialize, Serialize};
 
-use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, decoration::{Decoration, DecorationSave}, player::{NewPlayer, Player, PlayerSave}, prop::{NewProp, Prop, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, ServerIO, SwapIter};
+use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, decoration::{Decoration, DecorationSave}, player::{NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, ServerIO, SwapIter};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -26,7 +26,8 @@ pub struct Area {
     pub players: Vec<Player>,
     pub props: Vec<Prop>,
     pub id: AreaId,
-    pub bullet_trails: Vec<BulletTrail>
+    pub bullet_trails: Vec<BulletTrail>,
+    pub dissolved_pixels: Vec<DissolvedPixel>
 }
 
 impl Area {
@@ -42,7 +43,8 @@ impl Area {
             backgrounds: Vec::new(),
             props: Vec::new(),
             id: AreaId::new(),
-            bullet_trails: Vec::new()
+            bullet_trails: Vec::new(),
+            dissolved_pixels: Vec::new()
         }
     }
 
@@ -64,6 +66,14 @@ impl Area {
             player.draw(&self.space, textures).await;
         }
 
+        for pixel in &self.dissolved_pixels {
+            pixel.draw(&self.space);
+        }
+
+        for bullet_trail in &self.bullet_trails {
+            bullet_trail.draw();
+        }
+
     }
 
 
@@ -72,25 +82,21 @@ impl Area {
     }
 
     pub fn spawn_player(&mut self, ctx: &mut ClientTickContext) {
-        if is_key_released(KeyCode::F) {
 
-            let mouse_pos = rapier_mouse_world_pos(&ctx.camera_rect);
+        let mouse_pos = rapier_mouse_world_pos(&ctx.camera_rect);
 
-            let player = Player::new(vector![mouse_pos.x, mouse_pos.y].into(), &mut self.space, *ctx.client_id);
+        let player = Player::new(vector![mouse_pos.x, mouse_pos.y].into(), &mut self.space, *ctx.client_id);
 
-            ctx.network_io.send_network_packet(
-                NetworkPacket::NewPlayer(
-                    NewPlayer {
-                        player: player.save(&mut self.space),
-                        area_id: self.id,
-                    }
-                )
-            );
+        ctx.network_io.send_network_packet(
+            NetworkPacket::NewPlayer(
+                NewPlayer {
+                    player: player.save(&mut self.space),
+                    area_id: self.id,
+                }
+            )
+        );
 
-            self.players.push(player);
-
-           
-        }
+        self.players.push(player);
     }
 
 
@@ -98,7 +104,7 @@ impl Area {
 
         if is_key_released(KeyCode::E) {
             
-            let prefab_save: PropSave = serde_json::from_str(&ctx.prefabs.get_prefab_data("prefabs\\generic_physics_props\\brick_block.json")).unwrap();
+            let prefab_save: PropSave = serde_json::from_str(&ctx.prefabs.get_prefab_data("prefabs\\generic_physics_props\\box2.json")).unwrap();
 
             let mut new_prop = Prop::from_save(prefab_save, &mut self.space);
 
@@ -127,12 +133,31 @@ impl Area {
 
         self.spawn_prop(ctx);
 
-        self.spawn_player(ctx);
-
         self.space.step(*ctx.last_tick_duration);
 
+        let mut props_to_delete: Vec<PropId> = Vec::new();
+
         for prop in &mut self.props {
-            prop.client_tick(&mut self.space, self.id, ctx);
+            prop.client_tick(&mut self.space, self.id, ctx, &mut self.dissolved_pixels);
+
+            if prop.despawn == true {
+
+                prop.despawn(&mut self.space);
+                
+                props_to_delete.push(prop.id);
+            }
+        }
+
+    
+
+        self.props.retain(|prop| {props_to_delete.contains(&prop.id) == false});
+
+        for bullet_trail in &mut self.bullet_trails {
+            bullet_trail.client_tick(ctx);
+        }
+
+        if is_key_released(KeyCode::F) {
+            self.spawn_player(ctx);
         }
 
         let mut players_iter = SwapIter::new(&mut self.players);
@@ -201,7 +226,9 @@ impl Area {
             backgrounds,
             props: generic_physics_props,
             id,
-            bullet_trails: Vec::new() // we dont save bullet trails bsecause that'd be silly
+            bullet_trails: Vec::new(), // we dont save bullet trails bsecause that'd be silly
+            dissolved_pixels: Vec::new(), // same here
+
         }
     }
 

@@ -1,11 +1,11 @@
-use std::f32::consts::PI;
+use std::{f32::consts::PI, path::PathBuf, str::FromStr};
 
-use macroquad::{input::{is_key_down, is_key_released, is_mouse_button_released, KeyCode}, math::{Rect, Vec2}};
+use macroquad::{input::{is_key_down, is_key_released, is_mouse_button_released, KeyCode}, math::{vec2, Rect, Vec2}};
 use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::AreaId, body_part::BodyPart, bullet_trail::{self, BulletTrail}, get_angle_between_rapier_points, prop::Prop, rapier_mouse_world_pos, shotgun::Shotgun, space::Space, updates::NetworkPacket, uuid_u64, weapon::{BulletImpactData, Weapon, WeaponFireContext, WeaponType}, ClientId, ClientTickContext};
+use crate::{area::AreaId, body_part::BodyPart, bullet_trail::{self, BulletTrail}, get_angle_between_rapier_points, prop::Prop, rapier_mouse_world_pos, rapier_to_macroquad, shotgun::Shotgun, space::Space, updates::NetworkPacket, uuid_u64, weapon::{BulletImpactData, Weapon, WeaponFireContext, WeaponType}, ClientId, ClientTickContext};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -48,6 +48,41 @@ impl Player {
     pub fn set_facing(&mut self, facing: Facing) {
         self.facing = facing
     } 
+
+    pub fn move_camera(&mut self, camera_rect: &mut Rect, space: &Space) {
+        let position = space.rigid_body_set.get(self.body.body_handle).unwrap().translation();
+
+        let macroquad_position = rapier_to_macroquad(*position);
+
+        // if self.rect.right() > camera_rect.right() - 100.{
+            
+        //     camera_rect.x = (self.rect.right() - camera_rect.w) + 100.;
+        // }
+        
+        if macroquad_position.x > camera_rect.right() - 200. {
+            camera_rect.x = (macroquad_position.x - camera_rect.w) + 200.;
+        }
+
+        if macroquad_position.x < camera_rect.left() + 200. {
+            
+            camera_rect.x = macroquad_position.x - 200.
+        }
+
+        if macroquad_position.y > camera_rect.bottom() - 100. {
+           
+
+            camera_rect.y = (macroquad_position.y - camera_rect.h) + 100.;
+        }
+
+        if macroquad_position.y < camera_rect.top() + 100. {
+        
+
+            camera_rect.y = macroquad_position.y - 100.
+        }
+
+
+    }
+
     pub fn handle_bullet_impact(&mut self, space: &Space, bullet_impact: BulletImpactData) {
 
         let our_pos = space.collider_set.get(bullet_impact.impacted_collider).unwrap().position();
@@ -87,9 +122,9 @@ impl Player {
     }
 
     pub fn new(pos: Isometry2<f32>, space: &mut Space, owner: ClientId) -> Self {
-        let head = BodyPart::new("assets/cat/head.png", 2, 10., pos, space, owner, Vec2::new(30., 28.));
+        let head = BodyPart::new(PathBuf::from_str("assets/cat/head.png").unwrap(), 2, 10., pos, space, owner, Vec2::new(30., 28.));
 
-        let body = BodyPart::new("assets/cat/body.png", 2, 100., pos, space, owner, Vec2::new(22., 19.));
+        let body = BodyPart::new(PathBuf::from_str("assets/cat/body.png").unwrap(), 2, 100., pos, space, owner, Vec2::new(22., 19.));
 
         // lock the rotation of the body
         space.rigid_body_set.get_mut(body.body_handle).unwrap().lock_rotations(true, true);
@@ -410,6 +445,8 @@ impl Player {
 
         let current_velocity = space.rigid_body_set.get(self.body.body_handle).unwrap().vels();
 
+        self.move_camera(ctx.camera_rect, space);
+        
         if self.previous_velocity != *current_velocity {
             ctx.network_io.send_network_packet(
                 crate::updates::NetworkPacket::PlayerVelocityUpdate(
@@ -422,6 +459,7 @@ impl Player {
                 )
             );
         }
+        
     }
 
     pub fn from_save(save: PlayerSave, space: &mut Space) -> Self {

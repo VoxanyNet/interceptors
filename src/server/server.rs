@@ -1,6 +1,6 @@
 use std::fs::read_to_string;
 
-use interceptors_lib::{area::{Area, AreaSave}, player::Player, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket}, world::World, ClientId, ServerIO};
+use interceptors_lib::{area::{Area, AreaSave}, bullet_trail::BulletTrail, player::Player, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket}, world::World, ClientId, ServerIO};
 use tungstenite::Message;
 
 pub struct Server {
@@ -162,6 +162,15 @@ impl Server {
 
                     self.network_io.send_all_except(network_packet, client_id);
                 },
+                NetworkPacket::SpawnBulletTrail(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                    area.bullet_trails.push(
+                        BulletTrail::from_save(update.save)
+                    );
+
+                    self.network_io.send_all_except(network_packet, client_id);
+                }
                 _ => {}
         }
         }

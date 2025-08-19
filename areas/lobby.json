@@ -6,6 +6,72 @@
   "decorations": [
     {
       "pos": [
+        600.0,
+        600.0
+      ],
+      "size": [
+        92.0,
+        52.0
+      ],
+      "sprite_path": "assets/stone2.png"
+    },
+    {
+      "pos": [
+        927.0,
+        621.0
+      ],
+      "size": [
+        42.0,
+        30.0
+      ],
+      "sprite_path": "assets/stone3.png"
+    },
+    {
+      "pos": [
+        300.0,
+        621.0
+      ],
+      "size": [
+        42.0,
+        30.0
+      ],
+      "sprite_path": "assets/stone3.png"
+    },
+    {
+      "pos": [
+        450.0,
+        579.0
+      ],
+      "size": [
+        190.0,
+        74.0
+      ],
+      "sprite_path": "assets/bush1.png"
+    },
+    {
+      "pos": [
+        950.0,
+        581.0
+      ],
+      "size": [
+        178.0,
+        72.0
+      ],
+      "sprite_path": "assets/bush2.png"
+    },
+    {
+      "pos": [
+        150.0,
+        382.0
+      ],
+      "size": [
+        238.0,
+        276.0
+      ],
+      "sprite_path": "assets/tree1.png"
+    },
+    {
+      "pos": [
         0.0,
         650.0
       ],
@@ -13,7 +79,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topleft.png"
     },
     {
       "pos": [
@@ -24,7 +90,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -35,18 +101,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
-    },
-    {
-      "pos": [
-        200.0,
-        650.0
-      ],
-      "size": [
-        50.0,
-        50.0
-      ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -57,7 +112,18 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        200.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -68,7 +134,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -79,7 +145,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -90,7 +156,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -101,7 +167,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -112,7 +178,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -123,7 +189,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -134,7 +200,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -145,7 +211,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -156,7 +222,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -167,7 +233,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -178,7 +244,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -189,7 +255,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -200,18 +266,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
-    },
-    {
-      "pos": [
-        900.0,
-        650.0
-      ],
-      "size": [
-        50.0,
-        50.0
-      ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -222,7 +277,18 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        900.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -233,18 +299,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
-    },
-    {
-      "pos": [
-        1050.0,
-        650.0
-      ],
-      "size": [
-        50.0,
-        50.0
-      ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -255,7 +310,18 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        1050.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -266,7 +332,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -277,40 +343,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
-    },
-    {
-      "pos": [
-        1250.0,
-        650.0
-      ],
-      "size": [
-        50.0,
-        50.0
-      ],
-      "sprite_path": "assets/brick_block.png"
-    },
-    {
-      "pos": [
-        1250.0,
-        700.0
-      ],
-      "size": [
-        50.0,
-        50.0
-      ],
-      "sprite_path": "assets/brick_block.png"
-    },
-    {
-      "pos": [
-        1200.0,
-        700.0
-      ],
-      "size": [
-        50.0,
-        50.0
-      ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_topmiddle.png"
     },
     {
       "pos": [
@@ -321,7 +354,18 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1200.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -332,7 +376,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -343,7 +387,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -354,7 +398,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -365,7 +409,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -376,7 +420,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -387,7 +431,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -398,7 +442,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -409,7 +453,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -420,7 +464,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -431,7 +475,18 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        650.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -442,7 +497,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -453,7 +508,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -464,7 +519,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -475,7 +530,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -486,7 +541,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -497,7 +552,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -508,7 +563,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -519,7 +574,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -530,7 +585,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -541,7 +596,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -552,7 +607,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -563,7 +618,7 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middlemiddle.png"
     },
     {
       "pos": [
@@ -574,17 +629,1018 @@
         50.0,
         50.0
       ],
-      "sprite_path": "assets/brick_block.png"
+      "sprite_path": "assets/grass_middleleft.png"
+    },
+    {
+      "pos": [
+        0.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middleleft.png"
+    },
+    {
+      "pos": [
+        50.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        100.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        150.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        200.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        250.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        350.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        300.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        400.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        450.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        500.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        550.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        600.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        650.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        700.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        750.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        800.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        850.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        900.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        950.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1000.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1050.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1100.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1150.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1200.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1250.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        1300.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        1350.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        1400.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        1450.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        1500.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        1550.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        1600.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        1650.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        1700.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        1750.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        1800.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        1850.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        1900.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        1950.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        2000.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        2050.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        2150.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        2100.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        2200.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        2250.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png"
+    },
+    {
+      "pos": [
+        2300.0,
+        650.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topright.png"
+    },
+    {
+      "pos": [
+        2300.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middleright.png"
+    },
+    {
+      "pos": [
+        2300.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middleright.png"
+    },
+    {
+      "pos": [
+        2250.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        2200.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        2150.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        2100.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        2050.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        2000.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1950.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1900.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1850.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1800.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1750.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1700.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1650.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1600.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1550.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1500.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1450.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1400.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1350.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1300.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1250.0,
+        700.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1250.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1300.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1350.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1400.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1450.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1500.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1550.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1600.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1650.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1700.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1750.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1800.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1850.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1900.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        1950.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        2000.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        2050.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        2100.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        2150.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        2200.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        2250.0,
+        750.0
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png"
     }
   ],
   "clips": [
     {
       "size": [
-        1300.0,
+        2350.0,
         100.0
       ],
       "pos": [
-        650.0,
+        1175.0,
         20.0
       ]
     }
@@ -631,5 +1687,6 @@
       "parallax": 0.25
     }
   ],
-  "generic_physics_props": []
+  "generic_physics_props": [
+  ]
 }

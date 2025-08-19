@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}};
+use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}, time::Instant};
 
 use interceptors_lib::{area::{Area, AreaSave}, background::{Background, BackgroundSave}, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, prop::{Prop, PropSave}, is_key_released_exclusive, macroquad_to_rapier, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader};
 use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{GREEN, RED, WHITE}, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel, KeyCode, MouseButton}, math::{Rect, Vec2}, shapes::draw_rectangle, text::draw_text, window::{next_frame, screen_height, screen_width}};
@@ -7,6 +7,8 @@ use rapier2d::prelude::{ColliderBuilder, RigidBodyBuilder};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
+include!(concat!(env!("OUT_DIR"), "/prefabs.rs"));
+include!(concat!(env!("OUT_DIR"), "/assets.rs"));
 
 fn list_dir_entries<P: AsRef<Path>>(path: P) -> std::io::Result<Vec<String>> {
     let path = path.as_ref(); // keep the original path reference
@@ -290,13 +292,26 @@ pub struct AreaEditor {
     previous_cursor: Vec2,
     cursor: Vec2,
     clip_point_1: Option<Vec2>,
-    clip_point_2: Option<Vec2>
+    clip_point_2: Option<Vec2>,
+    last_cursor_move: web_time::Instant
+}
+
+fn round_to_nearest_50(n: f32) -> f32 {
+    (n / 50.0).round() * 50.0
 }
 
 impl AreaEditor {
     pub async fn new() -> Self {
 
-        let textures = TextureLoader::new();
+        let mut textures = TextureLoader::new();
+
+        for asset in ASSET_PATHS {
+
+            if asset.ends_with(".png") {
+                textures.load(PathBuf::from(asset)).await;
+            }
+        }
+
         let spawner = Spawner::new().await;
 
         let camera_rect = Rect {
@@ -320,7 +335,8 @@ impl AreaEditor {
             cursor: Vec2::ZERO,
             clip_point_1: None,
             clip_point_2: None,
-            previous_cursor: Vec2::ZERO
+            previous_cursor: Vec2::ZERO,
+            last_cursor_move: web_time::Instant::now()
         }
     }
 
@@ -354,26 +370,74 @@ impl AreaEditor {
         
     }
 
+
     pub fn update_cursor(&mut self) {
 
         self.previous_cursor = self.cursor.clone();
+        
+
+        let cursor_move_amount = match is_key_down(KeyCode::LeftAlt) {
+            true =>  {
+                if self.last_cursor_move.elapsed().as_secs_f32() < 0.1 {
+                    return;
+                } else {
+                    1.
+                }
+            },
+            false => {
+                if self.last_cursor_move.elapsed().as_secs_f32() < 0.1 {
+                    return;
+                } else {
+                    50.
+                }
+            },
+        };
+
+        self.last_cursor_move = web_time::Instant::now();
 
 
-        if is_key_released(KeyCode::Left) {
-            self.cursor.x -= 50.;
+        if is_key_down(KeyCode::Left) {
+
+            if !is_key_down(KeyCode::LeftAlt) {
+                self.cursor.x = round_to_nearest_50(self.cursor.x);
+
+                dbg!("rounding");
+            }
+            
+
+            self.cursor.x -= cursor_move_amount;
         }
 
-        if is_key_released(KeyCode::Right) {
-            self.cursor.x += 50.;
+        if is_key_down(KeyCode::Right) {
+
+            if !is_key_down(KeyCode::LeftAlt) {
+                self.cursor.x = round_to_nearest_50(self.cursor.x);
+                dbg!("rounding");
+            }
+
+            self.cursor.x += cursor_move_amount;
         }
 
-        if is_key_released(KeyCode::Up) {
-            self.cursor.y -= 50.;
+        if is_key_down(KeyCode::Up) {
+
+            if !is_key_down(KeyCode::LeftAlt) {
+                self.cursor.y = round_to_nearest_50(self.cursor.y);
+                dbg!("rounding");
+            }
+
+            self.cursor.y -= cursor_move_amount;
         }
 
-        if is_key_released(KeyCode::Down) {
-            self.cursor.y += 50.;
+        if is_key_down(KeyCode::Down) {
+
+            if !is_key_down(KeyCode::LeftAlt) {
+                self.cursor.y = round_to_nearest_50(self.cursor.y);
+                dbg!("rounding");
+            }
+
+            self.cursor.y += cursor_move_amount;
         }
+
     }
 
     pub fn current_mode(&self) -> Mode {
@@ -427,6 +491,7 @@ impl AreaEditor {
 
 
     }
+
 
     pub fn update_camera(&mut self) {
         if mouse_wheel().1 < 0. {

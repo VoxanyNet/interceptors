@@ -1,7 +1,7 @@
-use std::{collections::HashMap, time::Instant};
+use std::{collections::HashMap, path::PathBuf, time::Instant};
 
-use interceptors_lib::{area::Area, player::Player, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::WHITE, input::{is_key_released, KeyCode}, math::{vec2, Rect}, prelude::{gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::{next_frame, screen_height, screen_width}};
+use interceptors_lib::{area::Area, bullet_trail::BulletTrail, player::Player, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::WHITE, input::{is_key_released, KeyCode}, math::{vec2, Rect}, prelude::{gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::{clear_background, next_frame, screen_height, screen_width}};
 
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
 
@@ -90,7 +90,8 @@ pub struct Client {
     render_target: RenderTarget,
     screen_shake: ScreenShakeParameters,
     start: web_time::Instant,
-    sounds: SoundLoader
+    sounds: SoundLoader,
+    spawned: bool
 }
 
 impl Client {
@@ -165,7 +166,7 @@ impl Client {
             packet_queue: Vec::new()
         };
 
-        let textures = TextureLoader::new();
+        let mut textures = TextureLoader::new();
 
 
         let camera_rect = Rect {
@@ -180,11 +181,16 @@ impl Client {
 
         for asset in ASSET_PATHS {
             if asset.ends_with(".wav") {
+                sounds.load(PathBuf::from(asset)).await
+            }
 
-                dbg!(asset);
-                sounds.load(asset).await
+            if asset.ends_with(".png") {
+                textures.load(PathBuf::from(asset)).await;
             }
         }
+
+
+
 
         Self {
             network_io: server,
@@ -201,8 +207,9 @@ impl Client {
             material,
             render_target,
             screen_shake: ScreenShakeParameters::default(None, None),
-            start: Instant::now(),
-            sounds
+            start: web_time::Instant::now(),
+            sounds,
+            spawned: false
 
         }
         
@@ -305,6 +312,13 @@ impl Client {
 
                 player.set_facing(update.facing);
             },
+            NetworkPacket::SpawnBulletTrail(update) => {
+                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                area.bullet_trails.push(
+                    BulletTrail::from_save(update.save)
+                );
+            }
             _ => {
                 println!("unhandled network packet")
             }
@@ -333,7 +347,9 @@ impl Client {
 
     pub fn tick(&mut self) {
 
-        self.update_camera_to_match_screen_size();
+    
+
+        //self.update_camera_to_match_screen_size();
 
         self.measure_latency();
 
@@ -356,8 +372,15 @@ impl Client {
             camera_rect: &mut self.camera_rect,
             prefabs: &self.prefab_data,
             screen_shake: &mut self.screen_shake,
-            sounds: &self.sounds
+            sounds: &self.sounds,
+            textures: &self.textures
         };
+
+        // if !self.spawned {
+        //     self.world.areas[0].spawn_player(&mut ctx);
+
+        //     self.spawned = true;
+        // }
 
         self.world.client_tick(&mut ctx);
 

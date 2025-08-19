@@ -1,0 +1,20 @@
+{
+  "size": [
+    84.0,
+    40.0
+  ],
+  "pos": {
+    "rotation": [
+      0.0,
+      0.0
+    ],
+    "translation": [
+      0.0,
+      0.0
+    ]
+  },
+  "mass": 500.0,
+  "sprite_path": "assets/anvil.png",
+  "material": "None",
+  "id": null
+}

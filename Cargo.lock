@@ -74,7 +74,7 @@ dependencies = [
  "arrayvec",
  "bitcode_derive",
  "bytemuck",
- "glam",
+ "glam 0.30.5",
  "serde",
 ]
 
@@ -398,6 +398,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "glam"
+version = "0.30.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2d1aab06663bdce00d6ca5e5ed586ec8d18033a771906c993a1e3755b368d85"
+
+[[package]]
 name = "hashbrown"
 version = "0.15.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -449,17 +455,6 @@ dependencies = [
  "color_quant",
  "num-traits",
  "png",
-]
-
-[[package]]
-name = "indexmap"
-version = "2.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe4cd85333e22411419a0bcae1297d25e58c9443848b11dc6a86fefe8c78a661"
-dependencies = [
- "equivalent",
- "hashbrown",
- "serde",
 ]
 
 [[package]]
@@ -553,7 +548,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2befbae373456143ef55aa93a73594d080adfb111dc32ec96a1123a3e4ff4ae"
 dependencies = [
  "fontdue",
- "glam",
+ "glam 0.27.0",
  "image",
  "macroquad_macro",
  "miniquad",
@@ -797,7 +792,6 @@ dependencies = [
  "either",
  "ena",
  "hashbrown",
- "indexmap",
  "log",
  "nalgebra",
  "num-derive",
@@ -1056,7 +1050,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3a386a501cd104797982c15ae17aafe8b9261315b5d07e3ec803f2ea26be0fa"
 dependencies = [
  "approx",
- "libm",
  "num-complex",
  "num-traits",
  "paste",

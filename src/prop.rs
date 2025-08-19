@@ -1,23 +1,116 @@
-use std::fs::read_to_string;
+use std::{default, fs::read_to_string, path::PathBuf, time::Instant};
 
-use macroquad::math::Vec2;
-use nalgebra::Isometry2;
-use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
+use macroquad::{audio::play_sound_once, color::Color, input::is_mouse_button_released, math::Vec2, shapes::{draw_rectangle_ex, DrawRectangleParams}};
+use nalgebra::{Isometry2, Vector2};
+use rapier2d::prelude::{ColliderBuilder, ColliderHandle, ColliderPair, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::AreaId, draw_texture_onto_physics_body, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientId, ClientTickContext, ServerIO};
+use crate::{area::AreaId, contains_point, draw_texture_onto_physics_body, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientId, ClientTickContext, ServerIO};
+
+#[derive(Serialize, Deserialize, Clone, Copy, Default, Debug)]
+pub enum PropMaterial {
+    Wood,
+    #[default]
+    None
+}
+
+pub struct DissolvedPixel {
+    body: RigidBodyHandle,
+    collider: ColliderHandle,
+    color: Color,
+    scale: f32
+}
+
+
+impl DissolvedPixel {
+
+    pub fn new(
+        pos: Isometry2<f32>, 
+        space: &mut Space,
+        color: Color,
+        scale: f32,
+        mass: Option<f32>,
+        velocity: Option<RigidBodyVelocity>
+    ) -> Self {
+
+        let velocity = match velocity {
+            Some(velocity) => velocity,
+            None => RigidBodyVelocity::zero(),
+        };
+
+        let mass = match mass {
+            Some(mass) => mass,
+            None => 1.,
+        };
+
+        
+
+        let rigid_body = space.rigid_body_set.insert(
+            RigidBodyBuilder::dynamic()
+                .ccd_enabled(true)
+                .soft_ccd_prediction(20.)
+                .position(pos)
+                .additional_mass(mass)
+                .angvel(velocity.angvel)
+                .linvel(velocity.linvel)
+        );
+
+        let collider = space.collider_set.insert_with_parent(
+            ColliderBuilder::cuboid(1., 1.),
+            rigid_body,
+            &mut space.rigid_body_set
+        );
+
+        Self {
+            body: rigid_body,
+            collider,
+            color,
+            scale,
+        }
+    }
+    pub fn draw(&self, space: &Space) {
+
+        let body = space.rigid_body_set.get(self.body).unwrap();
+
+        let macroquad_pos = rapier_to_macroquad(*body.translation());
+
+        let shape = space.collider_set.get(self.collider).unwrap().shape().as_cuboid().unwrap();
+
+
+        draw_rectangle_ex(
+            macroquad_pos.x, 
+            macroquad_pos.y, 
+            (shape.half_extents.x * 2.) * self.scale, 
+            (shape.half_extents.y * 2.) * self.scale, 
+            DrawRectangleParams { 
+                offset: macroquad::math::Vec2::new(0.5, 0.5), 
+                rotation: body.rotation().angle() * -1., 
+                color: self.color 
+            }
+        );
+        
+    }
+}
 
 pub struct Prop {
     pub rigid_body_handle: RigidBodyHandle,
     pub collider_handle: ColliderHandle,
-    sprite_path: String,
+    sprite_path: PathBuf,
     previous_velocity: RigidBodyVelocity,
+    material: PropMaterial,
     pub id: PropId,
-    pub owner: Option<ClientId>
+    pub owner: Option<ClientId>,
+    last_sound_play: web_time::Instant,
+    pub despawn: bool 
 }
 
 impl Prop {
     
+    pub fn despawn(&mut self, space: &mut Space) {
+        space.rigid_body_set.remove(self.rigid_body_handle, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
+
+
+    }
     pub fn from_prefab(prefab_path: String, space: &mut Space) -> Self {
 
         let prop_save: PropSave = serde_json::from_str(&read_to_string(prefab_path).unwrap()).unwrap();
@@ -30,10 +123,89 @@ impl Prop {
 
     }
 
-    pub fn owner_tick(&mut self, ctx: &mut ClientTickContext, space: &mut Space, area_id: AreaId) {
+    pub fn dissolve(&mut self, textures: &TextureLoader, space: &mut Space, dissolved_pixels: &mut Vec<DissolvedPixel>) {
+
+        let collider = space.collider_set.get(self.collider_handle).unwrap().clone();
+        let body = space.rigid_body_set.get(self.rigid_body_handle).unwrap().clone();
+
+        let body_translation = body.translation();
+
+        let texture = textures.get(&self.sprite_path);
+
+        let half_extents = collider.shape().as_cuboid().unwrap().half_extents;
+
+        let x_scale = (half_extents.x * 2.) / texture.width() ;
+
+        dbg!(x_scale);
+        let y_scale = texture.height() / (half_extents.y * 2.) / texture.height() ;
+
+        let texture_data = texture.get_texture_data();
+
+        let total_pixel_count = texture.width() * texture.height();
+
+        dbg!(&total_pixel_count);
+
+        for x in 0..texture.width() as u32 {
+            for y in 0..texture.height() as u32 {
+                let color = texture_data.get_pixel(x, y);
+
+                let translation = Vector2::new(
+                (body_translation.x + (x as f32 * x_scale)) - half_extents.x, 
+                    (body_translation.y + (y as f32 * y_scale)) + half_extents.y
+                );
+
+                let position = Isometry2::new(
+                    translation, 
+                    body.rotation().angle()
+                );
+
+                dissolved_pixels.push(
+                    DissolvedPixel::new(
+                        position, // do we need to shift this over by 0.5?  
+                        space, 
+                        color, 
+                        x_scale, 
+                        Some(collider.mass() / total_pixel_count), // this needs to be divided by the number of pixels 
+                        Some(*body.vels())
+                    )
+                );
+
+            }
+        }
+
+        self.despawn = true;
+
+        println!("dissolved");
+    }
+
+
+    pub fn play_impact_sound(&mut self, space: &Space, ctx: &mut ClientTickContext) {
+        for contact_pair in space.narrow_phase.contact_graph().interactions().into_iter() {
+            if contact_pair.collider1 == self.collider_handle || contact_pair.collider2 == self.collider_handle {
+                // dbg!(&contact_pair.manifolds);
+                // dbg!(&contact_pair.total_impulse());
+
+                if contact_pair.total_impulse_magnitude() > 2500. && self.last_sound_play.elapsed().as_secs() > 1 {
+
+                    
+                    
+                    play_sound_once(ctx.sounds.get(PathBuf::from("assets\\sounds\\crate\\tap.wav")));
+
+                    self.last_sound_play = web_time::Instant::now();
+                }
+            }
+        }
+    }
+
+    pub fn owner_tick(&mut self, ctx: &mut ClientTickContext, space: &mut Space, area_id: AreaId, dissolved_pixels: &mut Vec<DissolvedPixel>) {
+
+        self.play_impact_sound(space, ctx);
 
         let current_velocity = *space.rigid_body_set.get(self.rigid_body_handle).unwrap().vels();
-
+        
+        if contains_point(self.collider_handle, space, rapier_mouse_world_pos(&ctx.camera_rect)) && is_mouse_button_released(macroquad::input::MouseButton::Left) {
+            self.dissolve(ctx.textures, space, dissolved_pixels);
+        }
         if current_velocity != self.previous_velocity {
             //println!("sending pos update");
             ctx.network_io.send_network_packet (
@@ -48,11 +220,11 @@ impl Prop {
         }
     }   
 
-    pub fn client_tick(&mut self, space: &mut Space, area_id: AreaId, ctx: &mut ClientTickContext) {
+    pub fn client_tick(&mut self, space: &mut Space, area_id: AreaId, ctx: &mut ClientTickContext, dissolved_pixels: &mut Vec<DissolvedPixel>) {
 
         if let Some(owner) = self.owner {
             if owner == *ctx.client_id {
-                self.owner_tick(ctx, space, area_id);
+                self.owner_tick(ctx, space, area_id, dissolved_pixels);
             }
         }
 
@@ -96,7 +268,10 @@ impl Prop {
             sprite_path: save.sprite_path,
             previous_velocity: RigidBodyVelocity::zero(),
             id,
-            owner: save.owner
+            material: save.material,
+            owner: save.owner,
+            last_sound_play: web_time::Instant::now(),
+            despawn: false
             
         }
     }
@@ -116,7 +291,8 @@ impl Prop {
             mass,
             sprite_path: self.sprite_path.clone(),
             id: Some(self.id.clone()),
-            owner: self.owner
+            owner: self.owner,
+            material: self.material
         }
     }
 
@@ -133,7 +309,6 @@ impl Prop {
             false, 
             0.
         ).await;
-
     }
 }
 
@@ -142,10 +317,12 @@ pub struct PropSave {
     pub size: Vec2,
     pub pos: Isometry2<f32>,
     pub mass: f32,
-    pub sprite_path: String,
+    pub sprite_path: PathBuf,
     pub id: Option<PropId>,
     #[serde(default)]
-    pub owner: Option<ClientId>
+    pub owner: Option<ClientId>,
+    #[serde(default)]
+    pub material: PropMaterial
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default, Copy, PartialEq)]

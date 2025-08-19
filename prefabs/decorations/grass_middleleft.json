@@ -1,0 +1,12 @@
+{
+    "pos": [
+        0.0,
+        0.0
+    ],
+
+    "sprite_path": "assets/grass_middleleft.png",
+    "size":  [
+        50.0,
+        50.0
+    ]
+}

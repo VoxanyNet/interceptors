@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use macroquad::{color::WHITE, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams}};
 use serde::{Deserialize, Serialize};
 
@@ -7,7 +9,7 @@ use crate::texture_loader::TextureLoader;
 pub struct Background {
     pub repeat: bool,
     pub pos: Vec2,
-    pub sprite_path: String,
+    pub sprite_path: PathBuf,
     pub size: Vec2,
     pub parallax: f32
 }
@@ -15,7 +17,7 @@ pub struct Background {
 impl Background {
 
     pub async fn draw(&self, textures: &mut TextureLoader, camera_rect: &Rect) {
-        let texture = textures.get(&self.sprite_path).await;
+        let texture = textures.get(&self.sprite_path);
 
         //set_default_camera();
 
@@ -86,7 +88,7 @@ impl Background {
 pub struct BackgroundSave {
     repeat: bool,
     pos: Vec2,
-    sprite_path: String,
+    sprite_path: PathBuf,
     size: Vec2,
     parallax: f32
 }

@@ -1,0 +1,20 @@
+{
+  "size": [
+    100.0,
+    100.0
+  ],
+  "pos": {
+    "rotation": [
+      0.0,
+      0.0
+    ],
+    "translation": [
+      0.0,
+      0.0
+    ]
+  },
+  "mass": 10.0,
+  "sprite_path": "assets/box2.png",
+  "material": "Wood",
+  "id": null
+}

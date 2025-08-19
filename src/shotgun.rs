@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use macroquad::math::Vec2;
 use nalgebra::Vector2;
 use rapier2d::prelude::{ImpulseJointHandle, RigidBodyHandle};
@@ -35,11 +37,11 @@ impl Shotgun {
                 pos, 
                 owner, 
                 player_rigid_body_handle, 
-                "assets/shotgun.png".to_string(), 
+                PathBuf::from("assets\\shotgun.png"), 
                 2., 
                 Some(0.),
                 Some(1.),
-                "assets\\sounds\\shotgun\\fire.wav",
+                PathBuf::from("assets\\sounds\\shotgun\\fire.wav"),
                 20.,
                 10.,
                 0.,

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use macroquad::math::Vec2;
 use nalgebra::Isometry2;
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle};
@@ -7,14 +9,14 @@ use crate::{draw_texture_onto_physics_body, space::Space, texture_loader::Textur
 pub struct BodyPart {
     pub collider_handle: ColliderHandle,
     pub body_handle: RigidBodyHandle,
-    sprite_path: String,
+    sprite_path: PathBuf,
     scale: u16, 
     owner: ClientId,
 }
 
 impl BodyPart {
     pub fn new(
-        sprite_path: &str,
+        sprite_path: PathBuf,
         scale: u16,
         mass: f32,
         pos: Isometry2<f32>,
@@ -43,7 +45,7 @@ impl BodyPart {
         Self {
             collider_handle,
             body_handle: rigid_body_handle,
-            sprite_path: sprite_path.to_string(),
+            sprite_path: sprite_path,
             scale,
             owner,
         }

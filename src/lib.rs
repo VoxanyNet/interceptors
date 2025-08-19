@@ -1,11 +1,12 @@
-use std::{collections::HashMap, net::{TcpListener, TcpStream}};
+use std::{collections::HashMap, net::{TcpListener, TcpStream}, path::PathBuf};
 
 use ewebsock::{WsReceiver, WsSender};
 use macroquad::{camera::Camera2D, color::{Color, WHITE}, file::load_string, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}};
 use nalgebra::Vector2;
-use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyHandle};
+use rapier2d::prelude::{ColliderBuilder, ColliderHandle, QueryFilter, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 use tungstenite::WebSocket;
+use nalgebra::point;
 
 use crate::{all_keys::ALL_KEYS, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, space::Space, texture_loader::TextureLoader, updates::NetworkPacket};
 
@@ -130,7 +131,7 @@ pub async fn draw_texture_onto_physics_body(
     rigid_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,
     space: &Space, 
-    texture_path: &String, 
+    texture_path: &PathBuf, 
     textures: &mut TextureLoader, 
     flip_x: bool, 
     flip_y: bool, 
@@ -149,7 +150,7 @@ pub async fn draw_texture_onto_physics_body(
     let draw_pos = rapier_to_macroquad(position.vector);
 
     draw_texture_ex(
-        textures.get(texture_path).await, 
+        textures.get(texture_path), 
         draw_pos.x - shape.half_extents.x, 
         draw_pos.y - shape.half_extents.y, 
         WHITE, 
@@ -165,6 +166,25 @@ pub async fn draw_texture_onto_physics_body(
 
     
 }
+
+pub fn contains_point(collider_handle: ColliderHandle, space: &mut Space, point: Vector2<f32>) -> bool {
+    let mut contains_point: bool = false;
+
+    space.query_pipeline.update(&space.collider_set);
+
+    space.query_pipeline.intersections_with_point(
+        &space.rigid_body_set, &space.collider_set, &point![point.x, point.y], QueryFilter::default(), |handle| {
+            if collider_handle == handle {
+                contains_point = true;
+                return false
+            }
+
+            return true
+        }
+    );
+
+    contains_point
+} 
 
 pub fn draw_hitbox(space: &Space, rigid_body_handle: RigidBodyHandle, collider_handle: ColliderHandle, color: Color) {
     let rigid_body = space.rigid_body_set.get(rigid_body_handle).unwrap();
@@ -506,7 +526,8 @@ pub struct ClientTickContext<'a> {
     pub camera_rect: &'a mut Rect,
     pub prefabs: &'a Prefabs,
     pub screen_shake: &'a mut ScreenShakeParameters,
-    pub sounds: &'a SoundLoader
+    pub sounds: &'a SoundLoader,
+    pub textures: &'a TextureLoader
 }
 
 pub struct Prefabs {
