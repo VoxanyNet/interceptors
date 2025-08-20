@@ -13,7 +13,7 @@ pub struct Shotgun {
 impl Shotgun {
 
     pub fn fire(&mut self, ctx: &mut ClientTickContext, weapon_fire_context: &mut WeaponFireContext) {
-        self.weapon.fire(ctx, weapon_fire_context);
+        self.weapon.fire(ctx, weapon_fire_context, Some(20.), Some(3));
     }
 
     pub fn player_joint_handle(&self) -> Option<ImpulseJointHandle> {

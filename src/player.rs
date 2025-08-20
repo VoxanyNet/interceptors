@@ -84,10 +84,11 @@ impl Player {
     }
 
     pub fn handle_bullet_impact(&mut self, space: &Space, bullet_impact: BulletImpactData) {
+        
 
         let our_pos = space.collider_set.get(bullet_impact.impacted_collider).unwrap().position();
 
-        let distance = our_pos.translation.vector - bullet_impact.shooter_pos.vector;
+        let distance = our_pos.translation.vector - bullet_impact.shooter_pos.translation.vector;
 
         let fall_off_multiplier = (-0.01 * distance.norm()).exp();
 

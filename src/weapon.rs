@@ -1,11 +1,11 @@
 use std::{collections::HashSet, path::{Path, PathBuf}, time::Instant};
 
 use macroquad::{audio::{load_sound, play_sound_once}, input::{is_key_released, KeyCode}, math::Vec2, rand::RandomRange};
-use nalgebra::{point, vector, Vector2};
+use nalgebra::{point, vector, Isometry2, Vector2};
 use rapier2d::{math::{Translation, Vector}, parry::query::Ray, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::AreaId, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_texture_onto_physics_body, player::{Facing, Player}, prop::{DissolvedPixel, Prop, PropVelocityUpdate}, shotgun::Shotgun, space::Space, texture_loader::TextureLoader, ClientId, ClientTickContext};
+use crate::{area::AreaId, bullet_trail::{self, BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_texture_onto_physics_body, player::{Facing, Player}, prop::{DissolvedPixel, Prop, PropVelocityUpdate}, shotgun::Shotgun, space::Space, texture_loader::TextureLoader, ClientId, ClientTickContext};
 
 pub struct WeaponFireContext<'a> {
     pub space: &'a mut Space,
@@ -19,9 +19,11 @@ pub struct WeaponFireContext<'a> {
 
 #[derive(Clone)]
 pub struct BulletImpactData {
-    pub shooter_pos: Translation<f32>,
-    pub impacted_collider: ColliderHandle
-}
+    pub shooter_pos: Isometry2<f32>,
+    pub impacted_collider: ColliderHandle,
+    pub bullet_vector: Vector2<f32>
+} 
+
 
 pub enum WeaponType {
     Shotgun(Shotgun)
@@ -209,18 +211,18 @@ impl Weapon {
     pub fn fire(
         &mut self, 
         ctx: &mut ClientTickContext,
-        weapon_fire_context: &mut WeaponFireContext
+        weapon_fire_context: &mut WeaponFireContext,
+        innaccuracy_factor: Option<f32>,
+        bullet_count: Option<u32>
         
     ) {
 
+        let innaccuracy_factor = innaccuracy_factor.unwrap_or(0.);
+        let bullet_count = bullet_count.unwrap_or(1);
         
         // dont shoot while reloading
         if self.last_reload.elapsed() < self.reload_duration {
-
-
             play_sound_once(ctx.sounds.get(PathBuf::from("assets\\sounds\\pistol_dry_fire.wav")));
-
-            
             return;
         }
 
@@ -229,13 +231,7 @@ impl Weapon {
         if self.rounds == 0 {
             self.reload();
 
-            // // also play dry fire sound if no bullets
-            // let mut sound = SoundHandle::new("assets/sounds/pistol_dry_fire.wav", [0., 0., 0.]);
-            // sound.play();
-
             play_sound_once(ctx.sounds.get(PathBuf::from("assets\\sounds\\pistol_dry_fire.wav")));
-
-            // self.sounds.push(sound);
 
             return;
         }
@@ -244,48 +240,99 @@ impl Weapon {
         
         self.shake_screen(ctx);
 
-        //self.play_sound();
-
         play_sound_once(ctx.sounds.get(self.fire_sound_path.clone()));
 
-        let shotgun_body = weapon_fire_context.space.rigid_body_set.get(self.rigid_body).unwrap().clone();
+        
 
-        let weapon_angle = shotgun_body.rotation().angle();
+        let mut bullet_vectors = Vec::new();
 
-        let shotgun_pos = shotgun_body.position().translation;
+        for _ in 0..bullet_count {
+            
 
-        let shotgun_velocity = shotgun_body.linvel();
+            let bullet_vector = self.get_bullet_vector_rapier(&weapon_fire_context.space, weapon_fire_context.facing);
 
-        // we use the angle of the gun to get the direction of the bullet
-        let mut macroquad_angle_bullet_vector = Vec2 {
-            x:  weapon_angle.cos(),
-            y: weapon_angle.sin() * -1.,
+            let innacuracy_coefficient = RandomRange::gen_range(1. - innaccuracy_factor, 1. + innaccuracy_factor);
+
+            let innacurate_bullet_vector = Vector2::new(
+                bullet_vector.x * innacuracy_coefficient, 
+                bullet_vector.y * innacuracy_coefficient
+            );
+
+            bullet_vectors.push(innacurate_bullet_vector);
+        };
+
+        let mut impacts = Vec::new();
+        
+        for bullet_vector in &bullet_vectors {
+
+        
+            impacts.append(&mut self.get_impacts(weapon_fire_context.space, *bullet_vector));
+
+            self.create_bullet_trail(ctx, *bullet_vector, weapon_fire_context.space, weapon_fire_context.area_id, weapon_fire_context.bullet_trails);
+
         };
         
-        match weapon_fire_context.facing {
-            Facing::Right => {},
-            Facing::Left => {
-                macroquad_angle_bullet_vector.x *= -1.;
-                macroquad_angle_bullet_vector.y *= -1.;
-            }
+        // PLAYERS
+        for player in &mut *weapon_fire_context.players {
+
+            let body_collider = player.body.collider_handle;
+            let head_collider = player.head.collider_handle;
+
+            for impact in  impacts.iter().filter(|intersection| {intersection.impacted_collider == body_collider || intersection.impacted_collider == head_collider}) {
+                player.handle_bullet_impact(&weapon_fire_context.space, impact.clone());
+            };
+
+            
+            
         }
 
-        let rapier_angle_bullet_vector = Vec2 {
-            x: macroquad_angle_bullet_vector.x,
-            y: macroquad_angle_bullet_vector.y * -1.
+        for prop in &mut *weapon_fire_context.props {
+
+            let collider = prop.collider_handle;
+
+            for impact in impacts.iter().filter(|impact| {impact.impacted_collider == collider}) {
+                prop.handle_bullet_impact(ctx, &impact, weapon_fire_context.space, weapon_fire_context.area_id, weapon_fire_context.dissolved_pixels);
+            };
+
+            
+
+            
+        }
+
+        for bullet_vector in &bullet_vectors {
+        
+            impacts.append(&mut self.get_impacts(weapon_fire_context.space, *bullet_vector));
+
         };
 
+        for dissolved_pixel in &mut *weapon_fire_context.dissolved_pixels {
 
-        //self.knockback_player(space, rapier_angle_bullet_vector);
+            let collider = dissolved_pixel.collider;
+
+            for impact in impacts.iter().filter(|impact| {impact.impacted_collider == collider}) {
+                let body = weapon_fire_context.space.rigid_body_set.get_mut(dissolved_pixel.body).unwrap();
+                body.apply_impulse(
+                    Vector::new(impact.bullet_vector.x * 5000., impact.bullet_vector.y * 5000.), 
+                    true
+                );
+            }
+        };
+            
+
+    }
+    
+    pub fn create_bullet_trail(&mut self, ctx: &mut ClientTickContext, bullet_vector: Vector2<f32>, space: &Space, area_id: AreaId, bullet_trails: &mut Vec<BulletTrail>) {
+
+        let weapon_pos = space.rigid_body_set.get(self.rigid_body).unwrap().position();
 
         let bullet_trail = BulletTrail::new(
             Vector2::new(
-                shotgun_pos.x, 
-                shotgun_pos.y + 10.
+                weapon_pos.translation.x, 
+                weapon_pos.translation.y + 10.
             ), 
             Vector2::new(
-                shotgun_pos.x + (macroquad_angle_bullet_vector.x * 10000.),
-                shotgun_pos.y - (macroquad_angle_bullet_vector.y * 10000.),
+                weapon_pos.translation.x + (bullet_vector.x * 10000.),
+                weapon_pos.translation.y - ((bullet_vector.y * 10000.) * -1.),
             ),
             None,
             self.owner.clone()
@@ -294,186 +341,86 @@ impl Weapon {
 
         ctx.network_io.send_network_packet(
             crate::updates::NetworkPacket::SpawnBulletTrail(SpawnBulletTrail {
-                area_id: weapon_fire_context.area_id,
+                area_id: area_id,
                 save: bullet_trail.save()
             })
         );
 
-        weapon_fire_context.bullet_trails.push(
+        bullet_trails.push(
             bullet_trail
         );
-        
-        // match &self.shell_sprite {
-        //     Some(shell_sprite) => {
-        //         self.bullet_casings.insert(
-        //             BulletCasing::new(
-        //                 Vec2::new(shotgun_pos.x, shotgun_pos.y), 
-        //                 Vec2::new(5., 5.),
-        //                 shell_sprite.clone(), 
-        //                 space,
-        //                 *shotgun_velocity
-        //             )
-        //         );
-        //     },
-        //     None => {},
-        // }
+    }
 
+    pub fn get_bullet_vector_macroquad(&mut self, space: &Space, facing: Facing, innacuracy_factor: f32) {
+
+    }
+
+    pub fn get_bullet_vector_rapier(&mut self, space: &Space, facing: Facing) -> Vector2<f32> {
+        let weapon_body = space.rigid_body_set.get(self.rigid_body).unwrap().clone();
+
+        let weapon_angle = weapon_body.rotation().angle();
+
+        // we use the angle of the gun to get the direction of the bullet
+        let mut macroquad_angle_bullet_vector = Vec2 {
+            x:  weapon_angle.cos(),
+            y: weapon_angle.sin() * -1.,
+        };
         
-        
-        // from here on out needs to be cleaned up and put into seperate functions
-        let ray = Ray::new(point![shotgun_pos.x, shotgun_pos.y], vector![rapier_angle_bullet_vector.x, rapier_angle_bullet_vector.y]);
+        match facing {
+            Facing::Right => {},
+            Facing::Left => {
+                macroquad_angle_bullet_vector.x *= -1.;
+                macroquad_angle_bullet_vector.y *= -1.;
+            }
+        }
+
+        let rapier_angle_bullet_vector = Vector2::new(
+            macroquad_angle_bullet_vector.x,
+            macroquad_angle_bullet_vector.y * -1.
+        );
+
+        rapier_angle_bullet_vector
+    }
+    
+    pub fn get_impacts(&mut self, space: &mut Space, bullet_vector: Vector2<f32>) -> Vec<BulletImpactData> {
+
+        space.query_pipeline.update(&space.collider_set);
+
+        let weapon_pos = space.rigid_body_set.get(self.rigid_body).unwrap().position();
+
+        let ray = Ray::new(point![weapon_pos.translation.x, weapon_pos.translation.y], vector![bullet_vector.x, bullet_vector.y]);
         let max_toi = 5000.0;
         let solid = true;
         let filter = QueryFilter::default();
 
+        let mut impacts = Vec::new();
         
+        space.query_pipeline.intersections_with_ray(
+            &space.rigid_body_set, 
+            &space.collider_set, 
+            &ray, 
+            max_toi, 
+            solid, 
+            filter, 
+            |handle, _intersection| {
 
-        let weapon_position = weapon_fire_context.space.rigid_body_set.get(self.rigid_body).unwrap().translation().clone();
-
-        let mut hit_rigid_bodies: Vec<RigidBodyHandle> = Vec::new();
-        let mut intersections: Vec<ColliderHandle> = Vec::new();
-        
-        // get a vector with all the intersections
-        weapon_fire_context.space.query_pipeline.intersections_with_ray(&weapon_fire_context.space.rigid_body_set, &weapon_fire_context.space.collider_set, &ray, max_toi, solid, filter, 
-        |handle, _intersection| {
-
-            // dont want to intersect with the weapon itself
-            if self.collider == handle {
-                return true;
-            };
-
-            intersections.push(handle);
-
-            true
-
-        });
-
-        // everything from here on needs to be cleaned up we are iterating way too many times
-        // we probably need to invert these loops
-
-        
-        // PLAYERS
-        for player in &mut *weapon_fire_context.players {
-
-            if intersections.contains(&player.body.collider_handle) {
-                let bullet_impact_data = BulletImpactData{
-                    shooter_pos: shotgun_pos,
-                    impacted_collider: player.body.collider_handle
+                if self.collider == handle {
+                    return true;
                 };
 
-                player.handle_bullet_impact(weapon_fire_context.space, bullet_impact_data);
-
-            }
-
-            if intersections.contains(&player.head.collider_handle) {
-                let bullet_impact_data = BulletImpactData{ 
-                    shooter_pos: shotgun_pos, 
-                    impacted_collider: player.head.collider_handle
-                };
-
-                player.handle_bullet_impact(weapon_fire_context.space, bullet_impact_data);
-
-            }
-            
-        }
-
-        for prop in &mut *weapon_fire_context.props {
-            if !intersections.contains(&prop.collider_handle) {
-                continue;
-            }
-
-            prop.dissolve(ctx.textures, weapon_fire_context.space, weapon_fire_context.dissolved_pixels);
-
-            prop.despawn(weapon_fire_context.space);
-
-
-            // let rigid_body = weapon_fire_context.space.rigid_body_set.get_mut(prop.rigid_body_handle).unwrap();
-
-            // rigid_body.apply_impulse(
-            //     Vector::new(rapier_angle_bullet_vector.x * 5000., rapier_angle_bullet_vector.y * 5000.), 
-            //     true
-            // );
-
-
-            
-            // let mut new_velocity = rigid_body.linvel().clone();
-            
-            // new_velocity.x += rapier_angle_bullet_vector.x * 500.;
-            // new_velocity.y += rapier_angle_bullet_vector.y * 500.;
-        
-            // rigid_body.set_linvel(
-            //     new_velocity, 
-            //     true
-            // );
-
-            // manually create a prop velocity update if we dont own it (because if we do it just happens automatically)
-            // if prop.owner != Some(self.owner) {
-            //     ctx.network_io.send_network_packet(
-            //         crate::updates::NetworkPacket::PropVelocityUpdate(
-            //             PropVelocityUpdate {
-            //                 velocity: *rigid_body.vels(),
-            //                 id: prop.id,
-            //                 area_id: weapon_fire_context.area_id,
-            //             }
-            //         )
-            //     );
-            // }
-
-            
-        }
-
-        weapon_fire_context.space.query_pipeline.update(&weapon_fire_context.space.collider_set);
-        // we query again because we might create new physics objects when a prop explodes
-        weapon_fire_context.space.query_pipeline.intersections_with_ray(&weapon_fire_context.space.rigid_body_set, &weapon_fire_context.space.collider_set, &ray, max_toi, solid, filter, 
-        |handle, _intersection| {
-
-            // dont want to intersect with the weapon itself
-            if self.collider == handle {
-                return true;
-            };
-
-            // might want to check if the body is already in here
-            intersections.push(handle);
-
-            true
-
-        });
-
-
-        for dissolved_pixel in &mut *weapon_fire_context.dissolved_pixels {
-            if !intersections.contains(&dissolved_pixel.collider) {
-                continue;
-            }
-
-            // randomize the bullet vector a little bit for each pixel
-            let mut bullet_vector = rapier_angle_bullet_vector.clone();
-
-            bullet_vector.x *= RandomRange::gen_range(1.5, 0.5);
-            bullet_vector.y *= RandomRange::gen_range(1.5, 0.5);
-
-            
-
-            let body = weapon_fire_context.space.rigid_body_set.get_mut(dissolved_pixel.body).unwrap();
-                body.apply_impulse(
-                Vector::new(rapier_angle_bullet_vector.x * 5000., rapier_angle_bullet_vector.y * 5000.), 
-                true
+                impacts.push(
+                    BulletImpactData {
+                        shooter_pos: *weapon_pos,
+                        impacted_collider: handle,
+                        bullet_vector
+                    }
                 );
-            }
 
-        // for handle in intersections {
-        //     let collider = weapon_fire_context.space.collider_set.get(handle).unwrap();
-            
-        //     hit_rigid_bodies.push(collider.parent().unwrap());
+                true
 
-        // }
-        
-        
+        });
 
-        // apply knockback to any rigid body hit
-        //self.knockback_generic_rigid_bodies(&mut hit_rigid_bodies, weapon_fire_context.space, rapier_angle_bullet_vector);
-
-
-
+        impacts
     }
 
     pub fn shake_screen(&self, ctx: &mut ClientTickContext) {

@@ -1,11 +1,11 @@
 use std::{default, fs::read_to_string, path::PathBuf, time::Instant};
 
 use macroquad::{audio::play_sound_once, color::Color, input::is_mouse_button_released, math::Vec2, shapes::{draw_rectangle_ex, DrawRectangleParams}};
-use nalgebra::{Isometry2, Vector2};
+use nalgebra::{Isometry2, Vector, Vector2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, ColliderPair, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::AreaId, contains_point, draw_texture_onto_physics_body, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientId, ClientTickContext, ServerIO};
+use crate::{area::AreaId, contains_point, draw_texture_onto_physics_body, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::BulletImpactData, ClientId, ClientTickContext, ServerIO};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Default, Debug)]
 pub enum PropMaterial {
@@ -103,6 +103,51 @@ pub struct Prop {
 }
 
 impl Prop {
+
+    pub fn handle_bullet_impact(
+        &mut self, 
+        ctx: &mut ClientTickContext, 
+        impact: &BulletImpactData, 
+        space: &mut Space, 
+        area_id: AreaId,
+        dissolved_pixels: &mut Vec<DissolvedPixel>
+    ) {
+
+        if self.despawn {
+            return;
+        }
+
+        let rigid_body = space.rigid_body_set.get_mut(self.rigid_body_handle).unwrap();
+
+        rigid_body.apply_impulse(
+            Vector2::new(impact.bullet_vector.x * 5000., impact.bullet_vector.y * 5000.), 
+            true
+        );
+
+        //manually create a prop velocity update if we dont own it (because if we do it just happens automatically)
+
+        match self.owner {
+            Some(owner) => {
+                if *ctx.client_id != owner {
+                    ctx.network_io.send_network_packet(
+                        crate::updates::NetworkPacket::PropVelocityUpdate(
+                            PropVelocityUpdate {
+                                velocity: *rigid_body.vels(),
+                                id: self.id,
+                                area_id,
+                            }
+                        )
+                    );
+                }
+            },
+            None => {},
+        }
+
+
+        self.dissolve(ctx.textures, space, dissolved_pixels);
+
+        self.despawn(space);
+    }
     
     pub fn despawn(&mut self, space: &mut Space) {
         space.rigid_body_set.remove(self.rigid_body_handle, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
@@ -136,16 +181,11 @@ impl Prop {
 
         let x_scale = (half_extents.x * 2.) / texture.width() ;
 
-        dbg!(x_scale);
         let y_scale = (half_extents.y * 2.) / texture.height();
-
-        dbg!(y_scale);
 
         let texture_data = texture.get_texture_data();
 
         let total_pixel_count = texture.width() * texture.height();
-
-        dbg!(&total_pixel_count);
 
         for x in 0..texture.width() as u32 {
             for y in 0..texture.height() as u32 {
@@ -205,9 +245,7 @@ impl Prop {
 
         let current_velocity = *space.rigid_body_set.get(self.rigid_body_handle).unwrap().vels();
         
-        if contains_point(self.collider_handle, space, rapier_mouse_world_pos(&ctx.camera_rect)) && is_mouse_button_released(macroquad::input::MouseButton::Left) {
-            self.dissolve(ctx.textures, space, dissolved_pixels);
-        }
+
         if current_velocity != self.previous_velocity {
             //println!("sending pos update");
             ctx.network_io.send_network_packet (
