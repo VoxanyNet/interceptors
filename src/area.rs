@@ -106,7 +106,7 @@ impl Area {
 
         if is_key_released(KeyCode::E) {
             
-            let prefab_save: PropSave = serde_json::from_str(&ctx.prefabs.get_prefab_data("prefabs\\generic_physics_props\\box2.json")).unwrap();
+            let prefab_save: PropSave = serde_json::from_str(&ctx.prefabs.get_prefab_data("prefabs\\generic_physics_props\\stone1.json")).unwrap();
 
             let mut new_prop = Prop::from_save(prefab_save, &mut self.space);
 
@@ -153,6 +153,14 @@ impl Area {
                 props_to_delete.push(prop.id);
             }
         }
+
+        for dissolved_pixel in &mut self.dissolved_pixels {
+            dissolved_pixel.client_tick(&mut self.space);
+        }
+
+        self.dissolved_pixels.retain(|pixel| {pixel.despawn == false});
+
+        dbg!(self.dissolved_pixels.len());
 
         self.props.retain(|prop| {props_to_delete.contains(&prop.id) == false});
 

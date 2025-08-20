@@ -18,11 +18,45 @@ pub struct DissolvedPixel {
     pub body: RigidBodyHandle,
     pub collider: ColliderHandle,
     color: Color,
-    scale: f32
+    scale: f32,
+    spawned: Instant,
+    pub despawn: bool
 }
 
 
 impl DissolvedPixel {
+
+    pub fn client_tick(&mut self, space: &mut Space) {
+
+        if self.despawn {
+            return;
+        }
+
+        let elapsed = self.spawned.elapsed().as_secs_f32();
+        
+        if elapsed == 0. {
+            return;
+        }
+
+
+        self.color.a -= 0.01 * elapsed;
+
+        if self.color.a <= 0. {
+            self.despawn(space)
+        }
+
+    }
+
+    pub fn despawn(&mut self, space: &mut Space) {
+
+        if self.despawn {
+            return;
+        }
+
+        self.despawn = true;
+
+        space.rigid_body_set.remove(self.body, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
+    }
 
     pub fn new(
         pos: Isometry2<f32>, 
@@ -48,7 +82,7 @@ impl DissolvedPixel {
         let rigid_body = space.rigid_body_set.insert(
             RigidBodyBuilder::dynamic()
                 .position(pos)
-                .additional_mass(mass)
+                .additional_mass(0.0001)
                 .angvel(velocity.angvel)
                 .linvel(velocity.linvel)
         );
@@ -64,9 +98,15 @@ impl DissolvedPixel {
             collider,
             color,
             scale,
+            spawned: Instant::now(),
+            despawn: false
         }
     }
     pub fn draw(&self, space: &Space) {
+
+        if self.despawn {
+            return;
+        }
 
         let body = space.rigid_body_set.get(self.body).unwrap();
 
@@ -289,8 +329,8 @@ impl Prop {
         let body = space.rigid_body_set.insert(
             RigidBodyBuilder::dynamic()
                 .position(save.pos)
-                .ccd_enabled(true)
-                .soft_ccd_prediction(20.)
+                // .ccd_enabled(true)
+                // .soft_ccd_prediction(20.)
         );
 
 
