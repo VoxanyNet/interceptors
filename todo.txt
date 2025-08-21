@@ -9,3 +9,5 @@ buy guns from government
 buy structures from the goverment
 
 if too many enemies get through you get fired
+
+possibly have a gun shoot update so that props crumble more convincingly

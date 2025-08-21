@@ -5,7 +5,7 @@ use nalgebra::{Isometry2, Vector, Vector2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, ColliderPair, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::AreaId, contains_point, draw_texture_onto_physics_body, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::BulletImpactData, ClientId, ClientTickContext, ServerIO};
+use crate::{area::{Area, AreaId}, contains_point, draw_texture_onto_physics_body, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::BulletImpactData, ClientId, ClientTickContext, ServerIO};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Default, Debug)]
 pub enum PropMaterial {
@@ -20,13 +20,13 @@ pub struct DissolvedPixel {
     color: Color,
     scale: f32,
     spawned: Instant,
-    pub despawn: bool
+    pub despawn: bool,
 }
 
 
 impl DissolvedPixel {
 
-    pub fn client_tick(&mut self, space: &mut Space) {
+    pub fn client_tick(&mut self, space: &mut Space, ctx: &mut ClientTickContext) {
 
         if self.despawn {
             return;
@@ -42,12 +42,12 @@ impl DissolvedPixel {
         self.color.a -= 0.01 * elapsed;
 
         if self.color.a <= 0. {
-            self.despawn(space)
+            self.despawn(space, ctx)
         }
 
     }
 
-    pub fn despawn(&mut self, space: &mut Space) {
+    pub fn despawn(&mut self, space: &mut Space, ctx: &mut ClientTickContext) {
 
         if self.despawn {
             return;
@@ -139,7 +139,8 @@ pub struct Prop {
     pub id: PropId,
     pub owner: Option<ClientId>,
     last_sound_play: web_time::Instant,
-    pub despawn: bool 
+    pub despawn: bool,
+    last_pos_update: web_time::Instant
 }
 
 impl Prop {
@@ -184,15 +185,40 @@ impl Prop {
         }
 
 
-        self.dissolve(ctx.textures, space, dissolved_pixels);
+        // we must manually send a velocity update here because we are despawning the prop here and it wont get automically updated in the tick method
+        ctx.network_io.send_network_packet(
+            crate::updates::NetworkPacket::PropVelocityUpdate(
+                PropVelocityUpdate {
+                    velocity: *rigid_body.vels(),
+                    id: self.id,
+                    area_id,
+                }
+            )
+        );
+        
+        // if health < 0 {}
+        self.dissolve(ctx.textures, space, dissolved_pixels, Some(ctx), area_id);
 
-        self.despawn(space);
+        
+
+        self.despawn(space, area_id, Some(ctx));
     }
     
-    pub fn despawn(&mut self, space: &mut Space) {
+    pub fn despawn(&mut self, space: &mut Space, area_id: AreaId, ctx: Option<&mut ClientTickContext>) {
         space.rigid_body_set.remove(self.rigid_body_handle, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
 
         self.despawn = true;
+
+        // i dont know if this is a good pattern
+        if let Some(ctx) = ctx {
+            ctx.network_io.send_network_packet(NetworkPacket::RemovePropUpdate(
+            RemovePropUpdate {
+                prop_id: self.id,
+                area_id: area_id,
+            }
+        ));
+        }
+        
 
 
     }
@@ -208,7 +234,7 @@ impl Prop {
 
     }
 
-    pub fn dissolve(&mut self, textures: &TextureLoader, space: &mut Space, dissolved_pixels: &mut Vec<DissolvedPixel>) {
+    pub fn dissolve(&mut self, textures: &TextureLoader, space: &mut Space, dissolved_pixels: &mut Vec<DissolvedPixel>, ctx: Option<&mut ClientTickContext>, area_id: AreaId) {
 
         let collider = space.collider_set.get(self.collider_handle).unwrap().clone();
         let body = space.rigid_body_set.get(self.rigid_body_handle).unwrap().clone();
@@ -255,9 +281,13 @@ impl Prop {
             }
         }
 
-        self.despawn(space);
-
-        println!("dissolved");
+        if let Some(ctx) = ctx {
+            ctx.network_io.send_network_packet(
+                NetworkPacket::DissolveProp(
+                    DissolveProp { prop_id: self.id, area_id: area_id }
+                )
+            );
+        }
     }
 
 
@@ -284,6 +314,20 @@ impl Prop {
         self.play_impact_sound(space, ctx);
 
         let current_velocity = *space.rigid_body_set.get(self.rigid_body_handle).unwrap().vels();
+
+        let current_position = space.rigid_body_set.get(self.rigid_body_handle).unwrap().position();
+
+        if self.last_pos_update.elapsed().as_secs() > 5 {
+            ctx.network_io.send_network_packet(
+                NetworkPacket::PropPositionUpdate(
+                    PropPositionUpdate {
+                        area_id,
+                        pos: *current_position,
+                        prop_id: self.id,
+                    }
+                )
+            );
+        }
         
 
         if current_velocity != self.previous_velocity {
@@ -355,7 +399,8 @@ impl Prop {
             material: save.material,
             owner: save.owner,
             last_sound_play: web_time::Instant::now(),
-            despawn: false
+            despawn: false,
+            last_pos_update: web_time::Instant::now()
             
         }
     }
@@ -441,6 +486,25 @@ pub struct PropUpdateOwner {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NewProp {
     pub prop: PropSave,
+    pub area_id: AreaId
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PropPositionUpdate {
+    pub area_id: AreaId,
+    pub pos: Isometry2<f32>,
+    pub prop_id: PropId
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct RemovePropUpdate {
+    pub prop_id: PropId,
+    pub area_id: AreaId
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct DissolveProp {
+    pub prop_id: PropId,
     pub area_id: AreaId
 }
 

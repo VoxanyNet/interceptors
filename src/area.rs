@@ -2,10 +2,10 @@
 use std::time::Duration;
 
 use macroquad::{input::{is_key_down, is_key_released, KeyCode}, math::Rect};
-use nalgebra::{vector, Vector2};
+use nalgebra::{vector, Isometry, Isometry2, Vector2};
 use serde::{Deserialize, Serialize};
 
-use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, decoration::{Decoration, DecorationSave}, player::{NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, ServerIO, SwapIter};
+use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, decoration::{Decoration, DecorationSave}, enemy::{Enemy, EnemySave}, player::{NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, ServerIO, SwapIter};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -29,7 +29,8 @@ pub struct Area {
     pub props: Vec<Prop>,
     pub id: AreaId,
     pub bullet_trails: Vec<BulletTrail>,
-    pub dissolved_pixels: Vec<DissolvedPixel>
+    pub dissolved_pixels: Vec<DissolvedPixel>,
+    pub enemies: Vec<Enemy>
 }
 
 impl Area {
@@ -46,7 +47,8 @@ impl Area {
             props: Vec::new(),
             id: AreaId::new(),
             bullet_trails: Vec::new(),
-            dissolved_pixels: Vec::new()
+            dissolved_pixels: Vec::new(),
+            enemies: Vec::new()
         }
     }
 
@@ -66,6 +68,10 @@ impl Area {
 
         for player in &self.players {
             player.draw(&self.space, textures).await;
+        }
+
+        for enemy in &self.enemies {
+            enemy.draw(&self.space, textures).await;
         }
 
         for pixel in &self.dissolved_pixels {
@@ -106,7 +112,7 @@ impl Area {
 
         if is_key_released(KeyCode::E) {
             
-            let prefab_save: PropSave = serde_json::from_str(&ctx.prefabs.get_prefab_data("prefabs\\generic_physics_props\\stone1.json")).unwrap();
+            let prefab_save: PropSave = serde_json::from_str(&ctx.prefabs.get_prefab_data("prefabs\\generic_physics_props\\box2.json")).unwrap();
 
             let mut new_prop = Prop::from_save(prefab_save, &mut self.space);
 
@@ -131,9 +137,21 @@ impl Area {
         }
     }
 
+    pub fn spawn_enemy(&mut self, ctx: &mut ClientTickContext) {
+        let mouse_pos = rapier_mouse_world_pos(&ctx.camera_rect);
+        
+        let enemy = Enemy::new(Isometry2::new(mouse_pos, 0.), *ctx.client_id, &mut self.space);
+
+        self.enemies.push(enemy);
+    }
+
     pub fn client_tick(&mut self, ctx: &mut ClientTickContext) {
 
+        if is_key_released(KeyCode::T) {
+            self.spawn_enemy(ctx);
+        }
         self.spawn_prop(ctx);
+
 
         // if is_key_down(KeyCode::J) {
         //     self.space.step(Duration::from_secs_f32(1./60.));
@@ -141,28 +159,23 @@ impl Area {
 
         self.space.step(*ctx.last_tick_duration);
 
-        let mut props_to_delete: Vec<PropId> = Vec::new();
 
         for prop in &mut self.props {
             prop.client_tick(&mut self.space, self.id, ctx, &mut self.dissolved_pixels);
+        }
 
-            if prop.despawn == true {
+        self.props.retain(|prop| {prop.despawn == false});
 
-                prop.despawn(&mut self.space);
-                
-                props_to_delete.push(prop.id);
-            }
+        for enemy in &mut self.enemies {
+            enemy.client_tick(&mut self.space, ctx, &self.players);
         }
 
         for dissolved_pixel in &mut self.dissolved_pixels {
-            dissolved_pixel.client_tick(&mut self.space);
+            dissolved_pixel.client_tick(&mut self.space, ctx);
         }
 
         self.dissolved_pixels.retain(|pixel| {pixel.despawn == false});
 
-        dbg!(self.dissolved_pixels.len());
-
-        self.props.retain(|prop| {props_to_delete.contains(&prop.id) == false});
 
         for bullet_trail in &mut self.bullet_trails {
             bullet_trail.client_tick(ctx);
@@ -192,7 +205,8 @@ impl Area {
         let mut players: Vec<Player> = Vec::new();
         let mut backgrounds: Vec<Background> = Vec::new();
         let mut generic_physics_props: Vec<Prop> = Vec::new();
-
+        let mut enemies: Vec<Enemy> = Vec::new();
+        
         for decoration_save in save.decorations {
             decorations.push(
                 Decoration::from_save(decoration_save)
@@ -223,6 +237,13 @@ impl Area {
             );
         }
 
+        for enemy_save in save.enemies {
+            enemies.push(
+                Enemy::from_save(enemy_save, &mut space)
+            );
+        }
+
+
         // if we are loading the id from the server we need to use the provided id
         let id = match id {
             Some(id) => id,
@@ -240,6 +261,7 @@ impl Area {
             id,
             bullet_trails: Vec::new(), // we dont save bullet trails bsecause that'd be silly
             dissolved_pixels: Vec::new(), // same here
+            enemies
 
         }
     }
@@ -251,6 +273,7 @@ impl Area {
         let mut players: Vec<PlayerSave> = Vec::new();
         let mut backgrounds: Vec<BackgroundSave> = Vec::new();
         let mut generic_physics_props: Vec<PropSave> = Vec::new();
+        let mut enemies: Vec<EnemySave> = Vec::new();
 
         for decoration in &self.decorations {
             decorations.push(
@@ -282,13 +305,20 @@ impl Area {
             );
         }
 
+        for enemy in &self.enemies {
+            enemies.push(
+                enemy.save(&self.space)
+            );
+        }
+
         AreaSave {
             spawn_point: self.spawn_point,
             decorations,
             clips,
             players,
             backgrounds,
-            generic_physics_props
+            generic_physics_props,
+            enemies
         }
     }
 
@@ -304,5 +334,7 @@ pub struct AreaSave {
     #[serde(default)]
     backgrounds: Vec<BackgroundSave>,
     #[serde(default)]
-    generic_physics_props: Vec<PropSave>
+    generic_physics_props: Vec<PropSave>,
+    #[serde(default)]
+    enemies: Vec<EnemySave>
 }

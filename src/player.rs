@@ -522,3 +522,10 @@ pub struct PlayerFacingUpdate {
     pub id: PlayerId,
     pub facing: Facing
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PlayerPositionUpdate {
+    pub area_id: AreaId,
+    pub pos: Isometry2<f32>,
+    pub player_id: PlayerId
+}

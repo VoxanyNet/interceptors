@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::PathBuf, time::Instant};
 
-use interceptors_lib::{area::Area, bullet_trail::BulletTrail, player::Player, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
+use interceptors_lib::{area::Area, bullet_trail::BulletTrail, phone::Phone, player::Player, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
 use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::WHITE, input::{is_key_released, KeyCode}, math::{vec2, Rect}, prelude::{gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::{clear_background, next_frame, screen_height, screen_width}};
 
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
@@ -91,7 +91,8 @@ pub struct Client {
     screen_shake: ScreenShakeParameters,
     start: web_time::Instant,
     sounds: SoundLoader,
-    spawned: bool
+    spawned: bool,
+    phone: Phone
 }
 
 impl Client {
@@ -209,7 +210,8 @@ impl Client {
             screen_shake: ScreenShakeParameters::default(None, None),
             start: web_time::Instant::now(),
             sounds,
-            spawned: false
+            spawned: false,
+            phone: Phone::new()
 
         }
         
@@ -318,9 +320,54 @@ impl Client {
                 area.bullet_trails.push(
                     BulletTrail::from_save(update.save)
                 );
+            },
+            NetworkPacket::PlayerPositionUpdate(update) => {
+                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                let player = area.players.iter_mut().find(|player| {player.id == update.player_id}).unwrap();
+
+                let current_pos = area.space.rigid_body_set.get(player.body.body_handle).unwrap().position();
+
+                if (update.pos.translation.x - current_pos.translation.x).abs() > 20. {
+                    player.set_pos(update.pos, &mut area.space);
+                }
+
+                
+            },
+            NetworkPacket::PropPositionUpdate(update) => {
+                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                let prop = area.props.iter_mut().find(|prop| {prop.id} == update.prop_id).unwrap();
+
+                let current_pos = match area.space.rigid_body_set.get(prop.rigid_body_handle) {
+                    Some(body) => body.position(),
+                    None => {
+                        continue;
+                    },
+                };
+
+                if (update.pos.translation.x - current_pos.translation.x).abs() > 20. {
+                    prop.set_pos(update.pos, &mut area.space);
+                }
+
+            },
+            NetworkPacket::DissolveProp(update) => {
+
+                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                let prop = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}).unwrap();
+
+                prop.dissolve(&self.textures, &mut area.space, &mut area.dissolved_pixels,None, area.id);
             }
-            _ => {
-                println!("unhandled network packet")
+            NetworkPacket::RemovePropUpdate(update) => {
+                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                let prop = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}).unwrap();
+
+                prop.despawn(&mut area.space, area.id, None);
+
+
+                area.props.retain(|prop| {prop.id != update.prop_id});
             }
         }
         }
@@ -345,9 +392,16 @@ impl Client {
         self.camera_rect.h = screen_height();
     }
 
+    pub fn phone(&mut self) {
+        if is_key_released(KeyCode::L) {
+            self.phone.toggle();
+        }
+    }
     pub fn tick(&mut self) {
 
-    
+        self.phone();
+
+        self.phone.update_animation();
 
         //self.update_camera_to_match_screen_size();
 
@@ -444,9 +498,14 @@ impl Client {
 
         self.world.draw(&mut self.textures, &self.camera_rect).await;
 
+        self.phone.draw(&self.textures, &self.camera_rect);
+        
+
         set_default_camera();
 
         gl_use_material(&self.material);
+
+        
 
         draw_texture_ex(&self.render_target.texture, 0.0, 0., WHITE, DrawTextureParams {
             dest_size: Some(vec2(screen_width(), screen_height())),
@@ -454,6 +513,8 @@ impl Client {
         });
 
         gl_use_default_material();
+
+        
 
         next_frame().await;
 

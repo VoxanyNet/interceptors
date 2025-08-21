@@ -27,6 +27,9 @@ pub mod shotgun;
 pub mod bullet_trail;
 pub mod screen_shake;
 pub mod sound_loader;
+pub mod enemy;
+pub mod collider_groups;
+pub mod phone;
 
 pub struct SwapIter<'a, T> {
     vec: &'a mut Vec<T>,

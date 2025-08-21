@@ -206,9 +206,74 @@ impl Server {
                     );
 
                     self.network_io.send_all_except(network_packet, client_id);
+                },
+                NetworkPacket::PlayerPositionUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                    let player = area.players.iter_mut().find(|player| {player.id == update.player_id}).unwrap();
+
+                    let current_pos = area.space.rigid_body_set.get(player.body.body_handle).unwrap().position();
+
+                    if (update.pos.translation.x - current_pos.translation.x).abs() > 20. {
+                        player.set_pos(update.pos, &mut area.space);
+                    }
+
+                    self.network_io.send_all_except(network_packet, client_id);
+
+                
+                },
+                NetworkPacket::PropPositionUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                    let prop = match area.props.iter_mut().find(|prop| {prop.id} == update.prop_id) {
+                        Some(prop) => prop,
+                        None => {
+                            println!("received bad update for prop");
+                            continue;
+                        },
+                    };
+
+                    let current_pos = area.space.rigid_body_set.get(prop.rigid_body_handle).unwrap().position();
+
+                    if (update.pos.translation.x - current_pos.translation.x).abs() > 20. {
+                        prop.set_pos(update.pos, &mut area.space);
+                    }
+
+                    self.network_io.send_all_except(network_packet, client_id);
+
+                },
+                NetworkPacket::LoadArea(_update) => {
+                    panic!("server received client bound load area update");
+                },
+                NetworkPacket::PropUpdateOwner(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                    let prop = area.props.iter_mut().find(|prop| {prop.id} == update.id).unwrap();
+
+                    prop.owner = update.owner;
+
+                    self.network_io.send_all_except(network_packet, client_id);
+                },
+
+                NetworkPacket::DissolveProp(_update) => {
+                    
+                    // we can just pass this along to the other clients because the server doesnt really care about the physics of the dissolved props :)))
+
+                    self.network_io.send_all_except(network_packet, client_id);
                 }
-                _ => {}
-        }
+                NetworkPacket::RemovePropUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                    let prop = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}).unwrap();
+
+                    prop.despawn(&mut area.space, area.id, None);
+
+                    area.props.retain(|prop|{prop.id != update.prop_id});
+
+                    self.network_io.send_all_except(network_packet, client_id);
+                }
+                
+            }
         }
         
     }
