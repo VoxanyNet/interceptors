@@ -130,6 +130,10 @@ impl DissolvedPixel {
     }
 }
 
+pub trait PropTrait {
+    
+}
+
 pub struct Prop {
     pub rigid_body_handle: RigidBodyHandle,
     pub collider_handle: ColliderHandle,
@@ -216,7 +220,7 @@ impl Prop {
                 prop_id: self.id,
                 area_id: area_id,
             }
-        ));
+            ));
         }
         
 

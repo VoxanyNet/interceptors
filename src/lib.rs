@@ -30,6 +30,7 @@ pub mod sound_loader;
 pub mod enemy;
 pub mod collider_groups;
 pub mod phone;
+pub mod computer;
 
 pub struct SwapIter<'a, T> {
     vec: &'a mut Vec<T>,
