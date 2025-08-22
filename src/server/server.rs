@@ -1,10 +1,13 @@
 use std::fs::read_to_string;
 
-use interceptors_lib::{area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, player::Player, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket}, world::World, ClientId, ServerIO};
+use interceptors_lib::{area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, player::Player, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket}, world::World, ClientId, Prefabs, ServerIO};
 use tungstenite::Message;
+
+include!(concat!(env!("OUT_DIR"), "/prefabs.rs"));
 
 pub struct Server {
     world: World,
+    prefabs: Prefabs,
     last_tick: web_time::Instant,
     last_tick_duration: web_time::Duration,
     network_io: ServerIO,
@@ -18,8 +21,17 @@ impl Server {
         let mut world = World::empty();
 
         let lobby_save: AreaSave = serde_json::from_str(&read_to_string("areas/lobby.json").unwrap()).unwrap();
+        
+        let mut prefabs = Prefabs::new();
 
-        world.areas.push(Area::from_save(lobby_save, None));
+        for prefab_path in PREFAB_PATHS {
+            prefabs.load_prefab_data_block(prefab_path)
+        }
+
+        world.areas.push(Area::from_save(lobby_save, None, &prefabs));
+
+        
+
 
         Self {
             last_tick: web_time::Instant::now(),
@@ -27,7 +39,8 @@ impl Server {
             network_io: ServerIO::new(),
             world,
             total_bits_sent: 0,
-            previous_tick_connected_clients: Vec::new()
+            previous_tick_connected_clients: Vec::new(),
+            prefabs
         }
 
     }
@@ -69,7 +82,7 @@ impl Server {
         if self.network_io.clients.keys().len() == 0 {
 
             let lobby: AreaSave = serde_json::from_str(&read_to_string("areas/lobby.json").unwrap()).unwrap();
-            self.world.areas[0] = Area::from_save(lobby, Some(AreaId::new()))
+            self.world.areas[0] = Area::from_save(lobby, Some(AreaId::new()), &self.prefabs)
         }
     }
 
@@ -132,11 +145,22 @@ impl Server {
                         }
                     ).unwrap();
 
-                    let prop = area.props.iter_mut().find(|prop| {prop.id == update.id}).unwrap();
+                    let mut prop = area.props.iter_mut().find(|prop| {prop.id == update.id});
 
-                    prop.set_velocity(update.velocity, &mut area.space);
+                    if prop.is_none() {
+                        if let Some(computer) = &mut area.computer {
+                            if computer.prop.id == update.id {
+                                prop = Some(&mut computer.prop);
+                            }
+                        }
+                    }
 
-                    self.network_io.send_all_except(network_packet, client_id);
+                    if let Some(prop) = prop {
+                        prop.set_velocity(update.velocity, &mut area.space);
+
+                        self.network_io.send_all_except(network_packet, client_id);
+                    }
+                    
 
 
                 },

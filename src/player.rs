@@ -5,7 +5,7 @@ use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::AreaId, body_part::BodyPart, bullet_trail::{self, BulletTrail}, get_angle_between_rapier_points, prop::{DissolvedPixel, Prop}, rapier_mouse_world_pos, rapier_to_macroquad, shotgun::Shotgun, space::Space, updates::NetworkPacket, uuid_u64, weapon::{BulletImpactData, Weapon, WeaponFireContext, WeaponType}, ClientId, ClientTickContext};
+use crate::{area::AreaId, body_part::BodyPart, bullet_trail::{self, BulletTrail}, computer::Item, get_angle_between_rapier_points, prop::{DissolvedPixel, Prop}, rapier_mouse_world_pos, rapier_to_macroquad, shotgun::Shotgun, space::Space, updates::NetworkPacket, uuid_u64, weapon::{BulletImpactData, Weapon, WeaponFireContext, WeaponType}, ClientId, ClientTickContext};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -33,12 +33,14 @@ pub struct Player {
     pub head: BodyPart,
     pub body: BodyPart,
     max_speed: Vector2<f32>,
-    owner: ClientId,
+    pub owner: ClientId,
     previous_velocity: RigidBodyVelocity,
     head_joint_handle: Option<ImpulseJointHandle>,
     facing: Facing,
     cursor_pos_rapier: Vector2<f32>,
     previous_cursor_pos: Vector2<f32>,
+    selected_item: usize,
+    items: Vec<Item>
 
     
 }
@@ -165,8 +167,25 @@ impl Player {
                     Some(body_handle), 
                     Facing::Right
                 )
-            ))
+            )),
+            selected_item: 0,
+            items: Vec::new()
         }
+    }
+
+    pub fn use_item(&mut self) {
+        let selected_item = self.items.get_mut(self.selected_item);
+
+        if selected_item.is_none() {
+            return;
+        }
+
+        let selected_item = selected_item.unwrap();
+
+        match selected_item {
+            Item::Prop(prop) => todo!(),
+        }
+        
     }
 
     pub fn update_cursor_pos(&mut self, ctx: &mut ClientTickContext, area_id: AreaId) {

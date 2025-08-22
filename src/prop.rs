@@ -1,11 +1,11 @@
 use std::{default, fs::read_to_string, path::PathBuf, time::Instant};
 
-use macroquad::{audio::play_sound_once, color::Color, input::is_mouse_button_released, math::Vec2, shapes::{draw_rectangle_ex, DrawRectangleParams}};
-use nalgebra::{Isometry2, Vector, Vector2};
+use macroquad::{audio::play_sound_once, color::{Color, WHITE}, input::is_mouse_button_released, math::Vec2, shapes::{draw_rectangle_ex, DrawRectangleParams}, texture::{draw_texture, draw_texture_ex, DrawTextureParams}};
+use nalgebra::{base, Isometry2, Vector, Vector2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, ColliderPair, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::{Area, AreaId}, contains_point, draw_texture_onto_physics_body, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::BulletImpactData, ClientId, ClientTickContext, ServerIO};
+use crate::{area::{Area, AreaId}, computer::Computer, contains_point, draw_texture_onto_physics_body, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::BulletImpactData, ClientId, ClientTickContext, Prefabs, ServerIO};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Default, Debug)]
 pub enum PropMaterial {
@@ -130,10 +130,6 @@ impl DissolvedPixel {
     }
 }
 
-pub trait PropTrait {
-    
-}
-
 pub struct Prop {
     pub rigid_body_handle: RigidBodyHandle,
     pub collider_handle: ColliderHandle,
@@ -147,7 +143,49 @@ pub struct Prop {
     last_pos_update: web_time::Instant
 }
 
+pub struct PropItem {
+    pub prefab_path: PathBuf
+}
+
+impl PropItem {
+
+    pub fn draw_preview(&self, textures: &TextureLoader, draw_scale: f32, draw_pos: Vec2, prefabs: &Prefabs) {
+
+        let prop_save: PropSave = serde_json::from_str(&prefabs.get_prefab_data(&self.prefab_path.to_string_lossy())).unwrap();
+
+        let texture = textures.get(&prop_save.sprite_path);
+
+        let mut params = DrawTextureParams::default();
+
+        params.dest_size = Some(
+            Vec2 {
+                x: texture.width() * draw_scale,
+                y: texture.height() * draw_scale,
+            }
+        );
+
+        draw_texture_ex(
+            texture, 
+            draw_pos.x, 
+            draw_pos.y, 
+            WHITE,
+            params
+        );
+    }
+
+    // might want to change this to not use prefabs
+    pub fn to_prop(&self, pos: Isometry2<f32>, prefabs: &Prefabs, space: &mut Space) -> Prop {
+
+        let prop_save: PropSave = serde_json::from_str(&prefabs.get_prefab_data(&self.prefab_path.to_string_lossy())).unwrap();
+
+        Prop::from_save(prop_save, space)
+    }
+}
+
 impl Prop {
+
+
+    
 
     pub fn handle_bullet_impact(
         &mut self, 

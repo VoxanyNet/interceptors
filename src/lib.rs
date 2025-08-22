@@ -1,4 +1,4 @@
-use std::{collections::HashMap, net::{TcpListener, TcpStream}, path::PathBuf};
+use std::{collections::HashMap, fs::read_to_string, net::{TcpListener, TcpStream}, path::PathBuf};
 
 use ewebsock::{WsReceiver, WsSender};
 use macroquad::{camera::Camera2D, color::{Color, WHITE}, file::load_string, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}};
@@ -555,6 +555,13 @@ impl Prefabs {
     pub async fn load_prefab_data(&mut self, path: impl ToString) {
 
         let data = load_string(&path.to_string()).await.unwrap();
+
+        self.prefabs.insert(path.to_string(), data);
+    }
+
+    pub fn load_prefab_data_block(&mut self, path: impl ToString) {
+
+        let data = read_to_string(path.to_string()).unwrap();
 
         self.prefabs.insert(path.to_string(), data);
     }

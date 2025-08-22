@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}, time::Instant};
 
-use interceptors_lib::{area::{Area, AreaSave}, background::{Background, BackgroundSave}, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, prop::{Prop, PropSave}, is_key_released_exclusive, macroquad_to_rapier, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader};
+use interceptors_lib::{area::{Area, AreaSave}, background::{Background, BackgroundSave}, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, is_key_released_exclusive, macroquad_to_rapier, prop::{Prop, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, Prefabs};
 use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{GREEN, RED, WHITE}, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel, KeyCode, MouseButton}, math::{Rect, Vec2}, shapes::draw_rectangle, text::draw_text, window::{next_frame, screen_height, screen_width}};
 use nalgebra::{vector, Vector2};
 use rapier2d::prelude::{ColliderBuilder, RigidBodyBuilder};
@@ -293,7 +293,8 @@ pub struct AreaEditor {
     cursor: Vec2,
     clip_point_1: Option<Vec2>,
     clip_point_2: Option<Vec2>,
-    last_cursor_move: web_time::Instant
+    last_cursor_move: web_time::Instant,
+    prefab_data: Prefabs
 }
 
 fn round_to_nearest_50(n: f32) -> f32 {
@@ -302,6 +303,12 @@ fn round_to_nearest_50(n: f32) -> f32 {
 
 impl AreaEditor {
     pub async fn new() -> Self {
+
+        let mut prefabs = Prefabs::new();
+
+        for prefab_path in PREFAB_PATHS {
+            prefabs.load_prefab_data(prefab_path).await
+        }
 
         let mut textures = TextureLoader::new();
 
@@ -324,9 +331,8 @@ impl AreaEditor {
         let area_json = read_to_string("areas/lobby.json").unwrap();
         let area_save: AreaSave = serde_json::from_str(&area_json).unwrap();
 
-
         Self {
-            area: Area::from_save(area_save, None),
+            area: Area::from_save(area_save, None, &prefabs),
             textures,
             spawner,
             selected_mode: 0,
@@ -336,7 +342,8 @@ impl AreaEditor {
             clip_point_1: None,
             clip_point_2: None,
             previous_cursor: Vec2::ZERO,
-            last_cursor_move: web_time::Instant::now()
+            last_cursor_move: web_time::Instant::now(),
+            prefab_data: prefabs
         }
     }
 
@@ -573,7 +580,7 @@ impl AreaEditor {
 
         set_camera(&camera);
 
-        self.area.draw(&mut self.textures, &self.camera_rect).await;
+        self.area.draw(&mut self.textures, &self.camera_rect, &self.prefab_data).await;
 
         if self.current_mode() == Mode::PrefabPlacement {
 
@@ -633,6 +640,8 @@ impl AreaEditor {
                 self.create_clip();
             }
         }
+
+        
 
         self.move_delete();
 

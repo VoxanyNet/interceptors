@@ -92,7 +92,6 @@ pub struct Client {
     start: web_time::Instant,
     sounds: SoundLoader,
     spawned: bool,
-    phone: Phone
 }
 
 impl Client {
@@ -210,8 +209,7 @@ impl Client {
             screen_shake: ScreenShakeParameters::default(None, None),
             start: web_time::Instant::now(),
             sounds,
-            spawned: false,
-            phone: Phone::new()
+            spawned: false
 
         }
         
@@ -259,7 +257,7 @@ impl Client {
             },
             NetworkPacket::LoadArea(load_area) => {
 
-                self.world.areas.push(Area::from_save(load_area.area, Some(load_area.id)));
+                self.world.areas.push(Area::from_save(load_area.area, Some(load_area.id), &self.prefab_data));
             }
 
             NetworkPacket::PropVelocityUpdate(update) => {
@@ -393,15 +391,15 @@ impl Client {
     }
 
     pub fn phone(&mut self) {
-        if is_key_released(KeyCode::L) {
-            self.phone.toggle();
-        }
+        // if is_key_released(KeyCode::L) {
+        //     self.phone.toggle();
+        // }
     }
     pub fn tick(&mut self) {
 
         self.phone();
 
-        self.phone.update_animation();
+        //self.phone.update_animation();
 
         //self.update_camera_to_match_screen_size();
 
@@ -496,9 +494,9 @@ impl Client {
             &camera
         );            
 
-        self.world.draw(&mut self.textures, &self.camera_rect).await;
+        self.world.draw(&mut self.textures, &self.camera_rect, &self.prefab_data).await;
 
-        self.phone.draw(&self.textures, &self.camera_rect);
+        //self.phone.draw(&self.textures, &self.camera_rect);
         
 
         set_default_camera();

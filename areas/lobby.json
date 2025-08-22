@@ -1688,5 +1688,7 @@
     }
   ],
   "generic_physics_props": [
-  ]
+  ],
+  "enemies": [],
+  "computer_pos": null
 }

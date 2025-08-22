@@ -1,7 +1,7 @@
 {
   "size": [
-    84.0,
-    40.0
+    64.0,
+    52.0
   ],
   "pos": {
     "rotation": [
@@ -13,7 +13,7 @@
       0.0
     ]
   },
-  "mass": 500.0,
+  "mass": 500000.0,
   "sprite_path": "assets/screen.png",
   "material": "None",
   "id": null

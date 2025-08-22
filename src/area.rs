@@ -5,7 +5,7 @@ use macroquad::{input::{is_key_down, is_key_released, KeyCode}, math::Rect};
 use nalgebra::{vector, Isometry, Isometry2, Vector2};
 use serde::{Deserialize, Serialize};
 
-use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, decoration::{Decoration, DecorationSave}, enemy::{Enemy, EnemySave}, player::{NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, ServerIO, SwapIter};
+use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, enemy::{Enemy, EnemySave}, player::{NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, Prefabs, ServerIO, SwapIter};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -30,7 +30,8 @@ pub struct Area {
     pub id: AreaId,
     pub bullet_trails: Vec<BulletTrail>,
     pub dissolved_pixels: Vec<DissolvedPixel>,
-    pub enemies: Vec<Enemy>
+    pub enemies: Vec<Enemy>,
+    pub computer: Option<Computer>
 }
 
 impl Area {
@@ -48,11 +49,12 @@ impl Area {
             id: AreaId::new(),
             bullet_trails: Vec::new(),
             dissolved_pixels: Vec::new(),
-            enemies: Vec::new()
+            enemies: Vec::new(),
+            computer: None
         }
     }
 
-    pub async fn draw(&self, textures: &mut TextureLoader, camera_rect: &Rect) {
+    pub async fn draw(&self, textures: &mut TextureLoader, camera_rect: &Rect, prefabs: &Prefabs) {
 
         for background in &self.backgrounds {
             background.draw(textures, camera_rect).await
@@ -64,6 +66,10 @@ impl Area {
 
         for generic_physics_prop in &self.props {
             generic_physics_prop.draw(&self.space, textures).await;
+        }
+
+        if let Some(computer) = &self.computer {
+            computer.draw(textures, &self.space, prefabs).await;
         }
 
         for player in &self.players {
@@ -81,6 +87,7 @@ impl Area {
         for bullet_trail in &self.bullet_trails {
             bullet_trail.draw();
         }
+
 
     }
 
@@ -194,9 +201,27 @@ impl Area {
 
             players_iter.restore(player);
         }
+
+        if let Some(computer) = &mut self.computer {
+            computer.tick(ctx, &mut self.players, &self.space);
+        }
     }
 
-    pub fn from_save(save: AreaSave, id: Option<AreaId>) -> Self {
+    pub fn find_prop_mut(&mut self, id: PropId) -> Option<&mut Prop> {
+        if let Some(p) = self.props.iter_mut().find(|p| p.id == id) {
+            return Some(p);
+        }
+        if let Some(c) = &mut self.computer {
+
+            if c.prop.id == id {
+                return Some(&mut c.prop)
+            }
+            
+        }
+        None
+    }
+
+    pub fn from_save(save: AreaSave, id: Option<AreaId>, prefabs: &Prefabs) -> Self {
 
         let mut space = Space::new();
 
@@ -250,6 +275,13 @@ impl Area {
             None => AreaId::new(),
         };
 
+        let computer = match save.computer_pos {
+            Some(computer_pos) => {
+                Some(Computer::new(prefabs, &mut space, computer_pos))
+            },
+            None => Some(Computer::new(prefabs, &mut space, vector![650., 120.].into())),
+        };
+
         Self {
             spawn_point: save.spawn_point,
             space,
@@ -261,7 +293,8 @@ impl Area {
             id,
             bullet_trails: Vec::new(), // we dont save bullet trails bsecause that'd be silly
             dissolved_pixels: Vec::new(), // same here
-            enemies
+            enemies,
+            computer
 
         }
     }
@@ -311,6 +344,13 @@ impl Area {
             );
         }
 
+        let computer_pos = match &self.computer {
+            Some(computer) => {
+                Some(self.space.rigid_body_set.get(computer.prop.rigid_body_handle).unwrap().position().clone())
+            },
+            None => None,
+        };
+
         AreaSave {
             spawn_point: self.spawn_point,
             decorations,
@@ -318,7 +358,8 @@ impl Area {
             players,
             backgrounds,
             generic_physics_props,
-            enemies
+            enemies,
+            computer_pos
         }
     }
 
@@ -336,5 +377,7 @@ pub struct AreaSave {
     #[serde(default)]
     generic_physics_props: Vec<PropSave>,
     #[serde(default)]
-    enemies: Vec<EnemySave>
+    enemies: Vec<EnemySave>,
+    #[serde(default)]
+    computer_pos: Option<Isometry2<f32>>
 }

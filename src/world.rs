@@ -1,7 +1,7 @@
 
 use macroquad::math::Rect;
 
-use crate::{area::Area, texture_loader::TextureLoader, ClientTickContext, ServerIO};
+use crate::{area::Area, texture_loader::TextureLoader, ClientTickContext, Prefabs, ServerIO};
 
 pub struct World {
     pub areas: Vec<Area>
@@ -28,12 +28,12 @@ impl World {
     }
 
 
-    pub async fn draw(&self, textures: &mut TextureLoader, camera_rect: &Rect) {
+    pub async fn draw(&self, textures: &mut TextureLoader, camera_rect: &Rect, prefabs: &Prefabs) {
     
 
 
         for area in &self.areas {
-            area.draw(textures, camera_rect).await
+            area.draw(textures, camera_rect, prefabs).await
         }
     } 
 }
