@@ -1,11 +1,11 @@
 
 use std::time::Duration;
 
-use macroquad::{input::{is_key_down, is_key_released, KeyCode}, math::Rect};
+use macroquad::{camera::Camera2D, input::{is_key_down, is_key_released, KeyCode}, math::Rect};
 use nalgebra::{vector, Isometry, Isometry2, Vector2};
 use serde::{Deserialize, Serialize};
 
-use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, enemy::{Enemy, EnemySave}, player::{NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, Prefabs, ServerIO, SwapIter};
+use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, enemy::{Enemy, EnemySave}, font_loader::FontLoader, player::{NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, Prefabs, ServerIO, SwapIter};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -54,7 +54,7 @@ impl Area {
         }
     }
 
-    pub async fn draw(&self, textures: &mut TextureLoader, camera_rect: &Rect, prefabs: &Prefabs) {
+    pub async fn draw(&self, textures: &mut TextureLoader, camera_rect: &Rect, prefabs: &Prefabs, camera: &Camera2D, fonts: &FontLoader) {
 
         for background in &self.backgrounds {
             background.draw(textures, camera_rect).await
@@ -69,7 +69,7 @@ impl Area {
         }
 
         if let Some(computer) = &self.computer {
-            computer.draw(textures, &self.space, prefabs).await;
+            computer.draw(textures, &self.space, prefabs, camera, fonts).await;
         }
 
         for player in &self.players {

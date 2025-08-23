@@ -1,9 +1,9 @@
-use std::{path::PathBuf, str::FromStr, time::Instant};
+use std::{path::{Path, PathBuf}, str::FromStr, time::Instant};
 
-use macroquad::{camera::{pop_camera_state, push_camera_state}, color::BLACK, math::Vec2, shapes::draw_rectangle, texture::RenderTarget};
+use macroquad::{camera::{pop_camera_state, push_camera_state, set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, RED, WHITE}, math::{Rect, Vec2}, prelude::camera::mouse::Camera, shapes::draw_rectangle, text::{draw_text_ex, TextParams}, texture::{draw_texture, draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::clear_background};
 use nalgebra::Isometry2;
 
-use crate::{player::Player, prop::{Prop, PropItem, PropSave}, rapier_to_macroquad, texture_loader::TextureLoader, ClientTickContext, Prefabs};
+use crate::{font_loader::FontLoader, player::Player, prop::{Prop, PropItem, PropSave}, rapier_to_macroquad, texture_loader::TextureLoader, ClientTickContext, Prefabs};
 
 pub enum Item {
     Prop(PropItem)
@@ -34,6 +34,8 @@ pub struct Computer {
     pub selected_item: usize,
     pub prop: Prop,
     pub active: bool,
+    pub screen_pos: Vec2,
+    pub screen_size: Vec2
 }
 
 impl Computer {
@@ -79,7 +81,9 @@ impl Computer {
             prop,
             available_items,
             selected_item: 0,
-            active: false
+            active: false,
+            screen_pos: Vec2::ONE,
+            screen_size: Vec2::ONE
         }
     }
     
@@ -88,15 +92,15 @@ impl Computer {
 
         let computer_pos = space.rigid_body_set.get(self.prop.rigid_body_handle).unwrap();
 
-        
+        let mut macroquad_pos = rapier_to_macroquad(*computer_pos.translation());
 
+        
         if let Some(controlled_player) = controlled_player {
 
             let player_pos = space.rigid_body_set.get(controlled_player.body.body_handle).unwrap().position();
 
             let controlled_player_distance = computer_pos.translation() - player_pos.translation.vector;
 
-            dbg!(controlled_player_distance.magnitude());
             if controlled_player_distance.magnitude() > 200. {
 
                 self.active = false;
@@ -106,7 +110,7 @@ impl Computer {
             self.active = true;
         }
     }
-    pub async fn draw(&self, textures: &mut TextureLoader, space:&crate::space::Space, prefabs: &Prefabs) {
+    pub async fn draw(&self, textures: &mut TextureLoader, space:&crate::space::Space, prefabs: &Prefabs, default_camera: &Camera2D, fonts: &FontLoader) {
         self.prop.draw(space, textures).await;
 
         let prop_pos = space.rigid_body_set.get(self.prop.rigid_body_handle).unwrap().position();
@@ -124,17 +128,46 @@ impl Computer {
 
         color.a = 0.25;
 
-        draw_rectangle(macroquad_pos.x - 200., macroquad_pos.y - 300., 400., 250., color);
+        let render_target = render_target(320, 180);
 
+        let mut camera = Camera2D::from_display_rect(Rect::new(0., 0., 320., 180.));
+
+        camera.render_target = Some(render_target);
+
+        camera.zoom.y = -camera.zoom.y;
+
+        set_camera(&camera);
+
+    
+        clear_background(color);        
+
+        let font = fonts.get(PathBuf::from("assets/fonts/CutePixel.ttf"));
+
+        //draw_rectangle(0., 0., 20., 20., RED);
+
+        draw_text_ex("STORE", 0., 20., TextParams {
+            font: Some(&font),
+            font_size: 32,
+            color: WHITE,
+            ..Default::default()
+            
+        });
         
 
         let selected_item = self.available_items.get(self.selected_item);
 
-        macroquad_pos.y -= 60.;
-        macroquad_pos.x -= 15.;
+        // let preview_draw_pos = Vec2 {
+        //     x: macroquad_pos.x - 15.,
+        //     y: macroquad_pos.y - 60.,
+        // };
 
-        if let Some(selected_item) = selected_item {
-            selected_item.draw(textures, 1., macroquad_pos, prefabs);
-        }  
+        // if let Some(selected_item) = selected_item {
+        //     selected_item.draw(textures, 1., preview_draw_pos, prefabs);
+        // } 
+
+        // set the camera back
+        set_camera(default_camera);
+
+        draw_texture(&camera.render_target.unwrap().texture, macroquad_pos.x - 160., macroquad_pos.y - 180., WHITE);
     }
 }

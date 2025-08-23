@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}, time::Instant};
 
-use interceptors_lib::{area::{Area, AreaSave}, background::{Background, BackgroundSave}, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, is_key_released_exclusive, macroquad_to_rapier, prop::{Prop, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, Prefabs};
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{GREEN, RED, WHITE}, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel, KeyCode, MouseButton}, math::{Rect, Vec2}, shapes::draw_rectangle, text::draw_text, window::{next_frame, screen_height, screen_width}};
+use interceptors_lib::{area::{Area, AreaSave}, background::{Background, BackgroundSave}, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, prop::{Prop, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, Prefabs};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{GREEN, RED, WHITE}, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel, KeyCode, MouseButton}, math::{Rect, Vec2}, shapes::draw_rectangle, text::{draw_text, Font}, window::{next_frame, screen_height, screen_width}};
 use nalgebra::{vector, Vector2};
 use rapier2d::prelude::{ColliderBuilder, RigidBodyBuilder};
 use serde::{Deserialize, Serialize};
@@ -294,7 +294,8 @@ pub struct AreaEditor {
     clip_point_1: Option<Vec2>,
     clip_point_2: Option<Vec2>,
     last_cursor_move: web_time::Instant,
-    prefab_data: Prefabs
+    prefab_data: Prefabs,
+    fonts: FontLoader
 }
 
 fn round_to_nearest_50(n: f32) -> f32 {
@@ -312,10 +313,16 @@ impl AreaEditor {
 
         let mut textures = TextureLoader::new();
 
+        let mut fonts = FontLoader::new();
+
         for asset in ASSET_PATHS {
 
             if asset.ends_with(".png") {
                 textures.load(PathBuf::from(asset)).await;
+            }
+
+            if asset.ends_with(".ttf") {
+                fonts.load(PathBuf::from(asset)).await
             }
         }
 
@@ -343,7 +350,8 @@ impl AreaEditor {
             clip_point_2: None,
             previous_cursor: Vec2::ZERO,
             last_cursor_move: web_time::Instant::now(),
-            prefab_data: prefabs
+            prefab_data: prefabs,
+            fonts
         }
     }
 
@@ -580,7 +588,7 @@ impl AreaEditor {
 
         set_camera(&camera);
 
-        self.area.draw(&mut self.textures, &self.camera_rect, &self.prefab_data).await;
+        self.area.draw(&mut self.textures, &self.camera_rect, &self.prefab_data, &camera, &self.fonts).await;
 
         if self.current_mode() == Mode::PrefabPlacement {
 

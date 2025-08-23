@@ -1,7 +1,7 @@
-use std::{collections::HashMap, path::PathBuf, time::Instant};
+use std::{collections::HashMap, path::{Path, PathBuf}, time::Instant};
 
-use interceptors_lib::{area::Area, bullet_trail::BulletTrail, phone::Phone, player::Player, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::WHITE, input::{is_key_released, KeyCode}, math::{vec2, Rect}, prelude::{gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::{clear_background, next_frame, screen_height, screen_width}};
+use interceptors_lib::{area::Area, bullet_trail::BulletTrail, font_loader::FontLoader, phone::Phone, player::Player, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
+use macroquad::{camera::{pop_camera_state, push_camera_state, set_camera, set_default_camera, Camera2D}, color::WHITE, input::{is_key_released, KeyCode}, math::{vec2, Rect}, prelude::{camera::mouse::Camera, gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, text::Font, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::{clear_background, next_frame, screen_height, screen_width}};
 
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
 
@@ -91,7 +91,9 @@ pub struct Client {
     screen_shake: ScreenShakeParameters,
     start: web_time::Instant,
     sounds: SoundLoader,
+    camera: Camera2D,
     spawned: bool,
+    fonts: FontLoader
 }
 
 impl Client {
@@ -176,8 +178,19 @@ impl Client {
             h: 720.,
         };
 
+        let mut camera = Camera2D::from_display_rect(camera_rect);
+        camera.render_target = Some(render_target.clone());
+
+        camera.zoom.y = -camera.zoom.y;
+
+        set_camera(
+            &camera
+        );   
+
 
         let mut sounds = SoundLoader::new();
+
+        let mut fonts = FontLoader::new();
 
         for asset in ASSET_PATHS {
             if asset.ends_with(".wav") {
@@ -187,6 +200,11 @@ impl Client {
             if asset.ends_with(".png") {
                 textures.load(PathBuf::from(asset)).await;
             }
+
+            if asset.ends_with(".ttf") {
+                fonts.load(PathBuf::from(asset)).await;
+            }
+
         }
 
 
@@ -209,7 +227,9 @@ impl Client {
             screen_shake: ScreenShakeParameters::default(None, None),
             start: web_time::Instant::now(),
             sounds,
-            spawned: false
+            spawned: false,
+            camera,
+            fonts
 
         }
         
@@ -425,7 +445,8 @@ impl Client {
             prefabs: &self.prefab_data,
             screen_shake: &mut self.screen_shake,
             sounds: &self.sounds,
-            textures: &self.textures
+            textures: &self.textures,
+            camera: &self.camera
         };
 
         // if !self.spawned {
@@ -477,10 +498,13 @@ impl Client {
             h: self.camera_rect.h,
         }
     }
+
+    
     pub async fn draw(&mut self) { 
 
         let shaken_camera_rect = self.calculate_shaken_camera_rect();
 
+        // update the camera with new camera rect
         let mut camera = Camera2D::from_display_rect(shaken_camera_rect);
 
         self.apply_screen_shake_decays();
@@ -490,11 +514,14 @@ impl Client {
 
         camera.zoom.y = -camera.zoom.y;
 
-        set_camera(
-            &camera
-        );            
+        self.camera = camera;
 
-        self.world.draw(&mut self.textures, &self.camera_rect, &self.prefab_data).await;
+        set_camera(
+            &self.camera
+        );   
+
+
+        self.world.draw(&mut self.textures, &self.camera_rect, &self.prefab_data, &self.camera, &self.fonts).await;
 
         //self.phone.draw(&self.textures, &self.camera_rect);
         

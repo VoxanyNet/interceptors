@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fs::read_to_string, net::{TcpListener, TcpStream}, path::PathBuf};
 
 use ewebsock::{WsReceiver, WsSender};
-use macroquad::{camera::Camera2D, color::{Color, WHITE}, file::load_string, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}};
+use macroquad::{camera::Camera2D, color::{Color, WHITE}, file::load_string, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, prelude::camera::mouse::Camera, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}};
 use nalgebra::Vector2;
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, QueryFilter, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
@@ -31,6 +31,7 @@ pub mod enemy;
 pub mod collider_groups;
 pub mod phone;
 pub mod computer;
+pub mod font_loader;
 
 pub struct SwapIter<'a, T> {
     vec: &'a mut Vec<T>,
@@ -533,7 +534,8 @@ pub struct ClientTickContext<'a> {
     pub prefabs: &'a Prefabs,
     pub screen_shake: &'a mut ScreenShakeParameters,
     pub sounds: &'a SoundLoader,
-    pub textures: &'a TextureLoader
+    pub textures: &'a TextureLoader,
+    pub camera: &'a Camera2D
 }
 
 pub struct Prefabs {
