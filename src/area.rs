@@ -1,9 +1,10 @@
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use macroquad::{camera::Camera2D, input::{is_key_down, is_key_released, KeyCode}, math::Rect};
 use nalgebra::{vector, Isometry, Isometry2, Vector2};
 use serde::{Deserialize, Serialize};
+use web_sys::js_sys::WebAssembly::Instance;
 
 use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, enemy::{Enemy, EnemySave}, font_loader::FontLoader, player::{NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, Prefabs, ServerIO, SwapIter};
 
@@ -67,7 +68,6 @@ impl Area {
         for generic_physics_prop in &self.props {
             generic_physics_prop.draw(&self.space, textures).await;
         }
-
         if let Some(computer) = &self.computer {
             computer.draw(textures, &self.space, prefabs, camera, fonts).await;
         }
@@ -201,6 +201,7 @@ impl Area {
 
             players_iter.restore(player);
         }
+
 
         if let Some(computer) = &mut self.computer {
             computer.tick(ctx, &mut self.players, &self.space);

@@ -1,9 +1,9 @@
-use std::{path::{Path, PathBuf}, str::FromStr, time::Instant};
+use std::{path::{Path, PathBuf}, str::FromStr, time::{Duration, Instant}};
 
-use macroquad::{camera::{pop_camera_state, push_camera_state, set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, RED, WHITE}, math::{Rect, Vec2}, prelude::camera::mouse::Camera, shapes::draw_rectangle, text::{draw_text_ex, TextParams}, texture::{draw_texture, draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::clear_background};
+use macroquad::{camera::{pop_camera_state, push_camera_state, set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, RED, WHITE}, input::{mouse_position, mouse_position_local}, math::{clamp, Rect, Vec2}, prelude::camera::mouse::Camera, shapes::draw_rectangle, text::{draw_text_ex, TextParams}, texture::{draw_texture, draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::clear_background};
 use nalgebra::Isometry2;
 
-use crate::{font_loader::FontLoader, player::Player, prop::{Prop, PropItem, PropSave}, rapier_to_macroquad, texture_loader::TextureLoader, ClientTickContext, Prefabs};
+use crate::{font_loader::FontLoader, mouse_world_pos, player::Player, prop::{Prop, PropItem, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, texture_loader::TextureLoader, ClientTickContext, Prefabs};
 
 pub enum Item {
     Prop(PropItem)
@@ -35,7 +35,8 @@ pub struct Computer {
     pub prop: Prop,
     pub active: bool,
     pub screen_pos: Vec2,
-    pub screen_size: Vec2
+    pub screen_size: Vec2,
+    pub activated_time: web_time::Instant
 }
 
 impl Computer {
@@ -83,45 +84,101 @@ impl Computer {
             selected_item: 0,
             active: false,
             screen_pos: Vec2::ONE,
-            screen_size: Vec2::ONE
+            screen_size: Vec2::ONE,
+            activated_time: web_time::Instant::now() - web_time::Duration::from_secs(100)
         }
     }
+
     
     pub fn tick(&mut self, ctx: &mut ClientTickContext, players: &mut Vec<Player>, space:&crate::space::Space) {
         let controlled_player = players.iter().find(|player| {player.owner == *ctx.client_id});
 
-        let computer_pos = space.rigid_body_set.get(self.prop.rigid_body_handle).unwrap();
+        dbg!(self.get_mouse_pos(ctx.camera_rect));
 
-        let mut macroquad_pos = rapier_to_macroquad(*computer_pos.translation());
+        let computer_pos = space.rigid_body_set.get(self.prop.rigid_body_handle).unwrap().position();
 
-        
         if let Some(controlled_player) = controlled_player {
 
             let player_pos = space.rigid_body_set.get(controlled_player.body.body_handle).unwrap().position();
 
-            let controlled_player_distance = computer_pos.translation() - player_pos.translation.vector;
+            let controlled_player_distance = computer_pos.translation.vector - player_pos.translation.vector;
 
             if controlled_player_distance.magnitude() > 200. {
 
-                self.active = false;
-                return;
-            }
+                if self.active {
+                    self.activated_time = web_time::Instant::now()
+                }
 
-            self.active = true;
+                self.active = false;
+    
+            }  
+
+            else {
+                // only set this is we werent already active
+                if !self.active {
+                    self.activated_time = web_time::Instant::now();
+                }
+
+                self.active = true;
+            }     
+
+            
+
+            
         }
+
+        let macroquad_pos = rapier_to_macroquad(computer_pos.translation.vector);
+
+        if self.active {
+            self.screen_pos = Vec2 {
+                x: macroquad_pos.x - 160.,
+                y: (macroquad_pos.y - 150.) - 
+                    (
+                        90. * (self.activated_time.elapsed().as_secs_f32() / 0.15).clamp(0.001, 1.)
+                    ),
+            };
+
+            self.screen_size = Vec2 {
+                x: 320.,
+                y: 180. * (self.activated_time.elapsed().as_secs_f32() / 0.15).clamp(0.001, 1.),
+            };
+        }
+
+        if !self.active {
+            self.screen_pos = Vec2 {
+                x: macroquad_pos.x - 160.,
+                y: (macroquad_pos.y - 150.) -
+                    (
+                        (1. - ((self.activated_time.elapsed().as_secs_f32() / 0.15).clamp(0.001, 1.))) * 90.
+                    ),
+            };
+
+            self.screen_size = Vec2 {
+                x: 320.,
+                y: (1. - ((self.activated_time.elapsed().as_secs_f32() / 0.15).clamp(0.001, 1.))) * 180. ,
+            };
+        }
+        
+
+
+
+    }
+
+    pub fn get_mouse_pos(&self, camera_rect: &Rect) -> Vec2 {
+
+        let mouse_pos = mouse_world_pos(camera_rect);
+        
+        Vec2 {
+            x: mouse_pos.x - self.screen_pos.x,
+            y: mouse_pos.y - self.screen_pos.y,
+        }
+
+        // IN THE FUTURE IF THE RENDER TARGET DOES NOT MATCH THE DESTINATION SIZE THESE COORDS NEED TO MULTIPLIED BY THAT RATIO
     }
     pub async fn draw(&self, textures: &mut TextureLoader, space:&crate::space::Space, prefabs: &Prefabs, default_camera: &Camera2D, fonts: &FontLoader) {
         self.prop.draw(space, textures).await;
 
         let prop_pos = space.rigid_body_set.get(self.prop.rigid_body_handle).unwrap().position();
-
-        let mut macroquad_pos = rapier_to_macroquad(prop_pos.translation.vector);
-
-        
-
-        if !self.active {
-            return;
-        }  
 
 
         let mut color = BLACK;
@@ -130,7 +187,9 @@ impl Computer {
 
         let render_target = render_target(320, 180);
 
-        let mut camera = Camera2D::from_display_rect(Rect::new(0., 0., 320., 180.));
+        let camera_rect = Rect::new(0., 0., 320., 180.);
+
+        let mut camera = Camera2D::from_display_rect(camera_rect);
 
         camera.render_target = Some(render_target);
 
@@ -156,6 +215,28 @@ impl Computer {
 
         let selected_item = self.available_items.get(self.selected_item);
 
+        // draw_texture_ex(
+        //     textures.get(&PathBuf::from("assets/keys/left.png")),
+        //     10., 
+        //     100., 
+        //     WHITE,
+        //     DrawTextureParams {
+        //         dest_size: Some(Vec2::new(50., 50.)),
+        //         ..Default::default()
+        //     }
+        // );
+
+        // draw_texture_ex(
+        //     textures.get(&PathBuf::from("assets/keys/tab.png")),
+        //     10., 
+        //     20., 
+        //     WHITE,
+        //     DrawTextureParams {
+        //         dest_size: Some(Vec2::new(52.5, 30.)),
+        //         ..Default::default()
+        //     }
+        // );
+
         // let preview_draw_pos = Vec2 {
         //     x: macroquad_pos.x - 15.,
         //     y: macroquad_pos.y - 60.,
@@ -168,6 +249,15 @@ impl Computer {
         // set the camera back
         set_camera(default_camera);
 
-        draw_texture(&camera.render_target.unwrap().texture, macroquad_pos.x - 160., macroquad_pos.y - 180., WHITE);
+        draw_texture_ex(
+            &camera.render_target.unwrap().texture, 
+            self.screen_pos.x, 
+            self.screen_pos.y, 
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(self.screen_size),
+                ..Default::default()
+            }
+        );
     }
 }
