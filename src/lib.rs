@@ -32,6 +32,7 @@ pub mod collider_groups;
 pub mod phone;
 pub mod computer;
 pub mod font_loader;
+pub mod button;
 
 pub struct SwapIter<'a, T> {
     vec: &'a mut Vec<T>,

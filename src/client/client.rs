@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::{Path, PathBuf}, time::Instant};
 
-use interceptors_lib::{area::Area, bullet_trail::BulletTrail, font_loader::FontLoader, phone::Phone, player::Player, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
+use interceptors_lib::{area::Area, bullet_trail::BulletTrail, button::Button, font_loader::FontLoader, phone::Phone, player::Player, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
 use macroquad::{camera::{pop_camera_state, push_camera_state, set_camera, set_default_camera, Camera2D}, color::WHITE, input::{is_key_released, KeyCode}, math::{vec2, Rect}, prelude::{camera::mouse::Camera, gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, text::Font, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::{clear_background, next_frame, screen_height, screen_width}};
 
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
@@ -93,7 +93,8 @@ pub struct Client {
     sounds: SoundLoader,
     camera: Camera2D,
     spawned: bool,
-    fonts: FontLoader
+    fonts: FontLoader,
+    test_button: Button
 }
 
 impl Client {
@@ -208,6 +209,12 @@ impl Client {
         }
 
 
+        let test_button = Button::new(Rect {
+            x: 0.,
+            y: 0.,
+            w: 100.,
+            h: 100.,
+        });
 
 
         Self {
@@ -229,7 +236,8 @@ impl Client {
             sounds,
             spawned: false,
             camera,
-            fonts
+            fonts,
+            test_button
 
         }
         
@@ -418,6 +426,8 @@ impl Client {
     pub fn tick(&mut self) {
 
         self.phone();
+
+        //dbg!(self.test_button);
 
         //self.phone.update_animation();
 

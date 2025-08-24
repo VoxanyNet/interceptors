@@ -1,9 +1,9 @@
 use std::{path::{Path, PathBuf}, str::FromStr, time::{Duration, Instant}};
 
-use macroquad::{camera::{pop_camera_state, push_camera_state, set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, RED, WHITE}, input::{mouse_position, mouse_position_local}, math::{clamp, Rect, Vec2}, prelude::camera::mouse::Camera, shapes::draw_rectangle, text::{draw_text_ex, TextParams}, texture::{draw_texture, draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::clear_background};
+use macroquad::{camera::{pop_camera_state, push_camera_state, set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, RED, WHITE}, input::{mouse_position, mouse_position_local}, math::{clamp, Rect, Vec2}, prelude::camera::mouse::Camera, shapes::draw_rectangle, text::{draw_text_ex, Font, TextParams}, texture::{draw_texture, draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::clear_background};
 use nalgebra::Isometry2;
 
-use crate::{font_loader::FontLoader, mouse_world_pos, player::Player, prop::{Prop, PropItem, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, texture_loader::TextureLoader, ClientTickContext, Prefabs};
+use crate::{button::Button, font_loader::FontLoader, mouse_world_pos, player::Player, prop::{Prop, PropItem, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, texture_loader::TextureLoader, ClientTickContext, Prefabs};
 
 pub enum Item {
     Prop(PropItem)
@@ -29,6 +29,44 @@ impl StoreItem {
 
 }
 
+pub struct CategoryTab {
+    button: Button,
+    text: String,
+    font: PathBuf
+}
+
+impl CategoryTab {
+
+    pub fn new(text: impl ToString, rect: Rect, font: PathBuf) -> Self {
+        Self {
+            button: Button::new(rect),
+            text: text.to_string(),
+            font
+        }
+    }
+    pub fn update(&mut self, camera_rect: &Rect, offset: Vec2) {
+        self.button.update(camera_rect, offset);
+    }
+
+    pub fn draw(&self, fonts: &FontLoader) {
+
+        draw_rectangle(self.button.rect.x, self.button.rect.y, self.button.rect.w, self.button.rect.h, WHITE);
+
+        dbg!(self.button.hovered);
+        draw_text_ex(
+            &self.text, 
+            self.button.rect.x, 
+            self.button.rect.y + 20., 
+            TextParams {
+                font: Some(&fonts.get(self.font.clone())),
+                font_size: 32,
+                color: WHITE,
+                ..Default::default()
+            }
+        );
+    }
+}
+
 pub struct Computer {
     pub available_items: Vec<StoreItem>,
     pub selected_item: usize,
@@ -36,12 +74,13 @@ pub struct Computer {
     pub active: bool,
     pub screen_pos: Vec2,
     pub screen_size: Vec2,
-    pub activated_time: web_time::Instant
+    pub activated_time: web_time::Instant,
+    pub category_tabs: Vec<CategoryTab>
 }
 
 impl Computer {
 
-    pub fn new(prefabs: &Prefabs, space:&mut crate::space::Space, pos: Isometry2<f32> ) -> Self {
+    pub fn new(prefabs: &Prefabs, space:&mut crate::space::Space, pos: Isometry2<f32>) -> Self {
         
         let save: PropSave = serde_json::from_str(
             &prefabs.get_prefab_data("prefabs\\generic_physics_props\\computer.json")
@@ -78,6 +117,17 @@ impl Computer {
             }
         );
 
+        let mut category_tabs = Vec::new();
+
+        category_tabs.push(
+            CategoryTab::new(
+                "Structures", 
+                Rect::new(0., 0., 40., 20.), 
+                "assets/fonts/CutePixel.ttf".into()
+                
+            )
+        );
+
         Self {
             prop,
             available_items,
@@ -85,15 +135,19 @@ impl Computer {
             active: false,
             screen_pos: Vec2::ONE,
             screen_size: Vec2::ONE,
-            activated_time: web_time::Instant::now() - web_time::Duration::from_secs(100)
+            activated_time: web_time::Instant::now() - web_time::Duration::from_secs(100),
+            category_tabs
         }
     }
 
     
     pub fn tick(&mut self, ctx: &mut ClientTickContext, players: &mut Vec<Player>, space:&crate::space::Space) {
-        let controlled_player = players.iter().find(|player| {player.owner == *ctx.client_id});
 
-        dbg!(self.get_mouse_pos(ctx.camera_rect));
+        for tab in &mut self.category_tabs {
+            tab.update(&ctx.camera_rect, self.screen_pos);
+        }
+
+        let controlled_player = players.iter().find(|player| {player.owner == *ctx.client_id});
 
         let computer_pos = space.rigid_body_set.get(self.prop.rigid_body_handle).unwrap().position();
 
@@ -180,7 +234,6 @@ impl Computer {
 
         let prop_pos = space.rigid_body_set.get(self.prop.rigid_body_handle).unwrap().position();
 
-
         let mut color = BLACK;
 
         color.a = 0.25;
@@ -204,47 +257,20 @@ impl Computer {
 
         //draw_rectangle(0., 0., 20., 20., RED);
 
-        draw_text_ex("STORE", 0., 20., TextParams {
-            font: Some(&font),
-            font_size: 32,
-            color: WHITE,
-            ..Default::default()
+        // draw_text_ex("STORE", 0., 20., TextParams {
+        //     font: Some(&font),
+        //     font_size: 32,
+        //     color: WHITE,
+        //     ..Default::default()
             
-        });
+        // });
+
+        for category_tab in &self.category_tabs {
+            category_tab.draw(fonts);
+        }
         
 
         let selected_item = self.available_items.get(self.selected_item);
-
-        // draw_texture_ex(
-        //     textures.get(&PathBuf::from("assets/keys/left.png")),
-        //     10., 
-        //     100., 
-        //     WHITE,
-        //     DrawTextureParams {
-        //         dest_size: Some(Vec2::new(50., 50.)),
-        //         ..Default::default()
-        //     }
-        // );
-
-        // draw_texture_ex(
-        //     textures.get(&PathBuf::from("assets/keys/tab.png")),
-        //     10., 
-        //     20., 
-        //     WHITE,
-        //     DrawTextureParams {
-        //         dest_size: Some(Vec2::new(52.5, 30.)),
-        //         ..Default::default()
-        //     }
-        // );
-
-        // let preview_draw_pos = Vec2 {
-        //     x: macroquad_pos.x - 15.,
-        //     y: macroquad_pos.y - 60.,
-        // };
-
-        // if let Some(selected_item) = selected_item {
-        //     selected_item.draw(textures, 1., preview_draw_pos, prefabs);
-        // } 
 
         // set the camera back
         set_camera(default_camera);

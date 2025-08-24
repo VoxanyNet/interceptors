@@ -278,7 +278,7 @@ impl Area {
 
         let computer = match save.computer_pos {
             Some(computer_pos) => {
-                Some(Computer::new(prefabs, &mut space, computer_pos))
+                Some(Computer::new(prefabs, &mut space, computer_pos, ))
             },
             None => Some(Computer::new(prefabs, &mut space, vector![650., 120.].into())),
         };
