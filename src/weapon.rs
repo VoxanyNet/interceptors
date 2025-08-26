@@ -30,6 +30,8 @@ pub enum WeaponType {
     Shotgun(Shotgun)
 }
 
+
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum WeaponTypeSave {
     Shotgun(ShotgunSave)

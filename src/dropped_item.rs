@@ -192,6 +192,12 @@ pub struct NewDroppedItemUpdate {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+pub struct RemoveDroppedItemUpdate {
+    pub dropped_item_id: DroppedItemId,
+    pub area_id: AreaId
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct DroppedItemVelocityUpdate {
     pub area_id: AreaId,
     pub id: DroppedItemId,

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::{Path, PathBuf}, time::Instant};
 
-use interceptors_lib::{area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, font_loader::FontLoader, phone::Phone, player::Player, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
+use interceptors_lib::{area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, font_loader::FontLoader, phone::Phone, player::{ItemSlot, Player}, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
 use macroquad::{camera::{pop_camera_state, push_camera_state, set_camera, set_default_camera, Camera2D}, color::{BLACK, WHITE}, input::{is_key_released, KeyCode}, math::{vec2, Rect}, prelude::{camera::mouse::Camera, gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, text::Font, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::{clear_background, next_frame, screen_height, screen_width}};
 
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
@@ -408,6 +408,24 @@ impl Client {
                         DroppedItem::from_save(update.dropped_item, &mut area.space, &self.prefab_data)
                     );
                 },
+                NetworkPacket::RemoveDroppedItemUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    area.dropped_items.retain_mut(|dropped_item| {
+                        if dropped_item.id == update.dropped_item_id {
+
+                            dropped_item.despawn(&mut area.space);
+                            
+                            false
+                        } else {
+                            true
+                        }
+                    });
+                }
                 NetworkPacket::DroppedItemVelocityUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(
                         |area| {
@@ -419,6 +437,57 @@ impl Client {
 
                     dropped_item.set_velocity(&mut area.space, update.velocity);
                 },
+                NetworkPacket::ActiveItemSlotUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    let player = area.players.iter_mut().find(|player| {player.id == update.player_id}).unwrap();
+
+                    player.selected_item = update.active_item_slot as usize;
+
+                },
+                NetworkPacket::ItemSlotQuantityUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    let player = area.players.iter_mut().find(|player| {player.id == update.player_id}).unwrap();
+
+                    match &mut player.items[update.inventory_index] {
+                        Some(item_slot) => {
+                            item_slot.quantity = update.quantity;
+                        },
+                        None => {
+                            dbg!("received quantity update for invalid item index");
+
+                            continue;
+                        },
+                    }
+
+                },
+                NetworkPacket::ItemSlotUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    let player = area.players.iter_mut().find(|player| {player.id == update.player_id}).unwrap();
+
+                    player.items[update.inventory_index] = match update.item_slot {
+                        Some(item_slot_save) => {
+                            Some(
+                                ItemSlot::from_save(item_slot_save, &mut area.space)
+                            )
+                        },
+                        None => None,
+                    }
+                }
             }
         }
         

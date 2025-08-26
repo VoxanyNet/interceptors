@@ -6,7 +6,7 @@ use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::AreaId, body_part::BodyPart, bullet_trail::{self, BulletTrail}, computer::Item, dropped_item::DroppedItem, font_loader::FontLoader, get_angle_between_rapier_points, prop::{self, DissolvedPixel, Prop, PropItem}, rapier_mouse_world_pos, rapier_to_macroquad, shotgun::Shotgun, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::{BulletImpactData, Weapon, WeaponFireContext, WeaponSave, WeaponType}, ClientId, ClientTickContext, Prefabs};
+use crate::{area::{self, Area, AreaId}, body_part::BodyPart, bullet_trail::{self, BulletTrail}, computer::{Item, ItemSave}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, font_loader::FontLoader, get_angle_between_rapier_points, prop::{self, DissolvedPixel, Prop, PropItem}, rapier_mouse_world_pos, rapier_to_macroquad, shotgun::Shotgun, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::{BulletImpactData, Weapon, WeaponFireContext, WeaponSave, WeaponType}, ClientId, ClientTickContext, Prefabs};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -28,9 +28,32 @@ pub enum Facing {
 }
 
 pub struct ItemSlot {
-    quantity: u32,
-    item: Item
+    pub quantity: u32,
+    pub item: Item
 }
+
+impl ItemSlot {
+    pub fn save(&self, space: &Space) -> ItemSlotSave {
+        ItemSlotSave {
+            quantity: self.quantity,
+            item: self.item.save(space),
+        }
+    }
+
+    pub fn from_save(save: ItemSlotSave, space: &mut Space) -> ItemSlot {
+        ItemSlot {
+            quantity: save.quantity,
+            item: Item::from_save(save.item, space),
+        }
+    } 
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ItemSlotSave {
+    quantity: u32,
+    item: ItemSave
+}
+
 pub struct Player {
     pub id: PlayerId,
     pub weapon: Option<WeaponType>,
@@ -44,15 +67,14 @@ pub struct Player {
     facing: Facing,
     cursor_pos_rapier: Vector2<f32>,
     previous_cursor_pos: Vector2<f32>,
-    selected_item: usize,
-    items: [Option<ItemSlot>; 6],
+    pub selected_item: usize,
+    pub items: [Option<ItemSlot>; 6],
     junk: Vec<ItemSlot>, // you can hold unlimited junk
     last_changed_inventory_slot: web_time::Instant,
     last_dash: web_time::Instant
 }
 
 impl Player {
-
 
     pub fn dash(&mut self, space: &mut Space) {
         if !is_key_down(KeyCode::LeftShift) {
@@ -83,7 +105,13 @@ impl Player {
 
     }
 
-    pub fn pickup_item(&mut self, dropped_items: &mut Vec<DroppedItem>, space: &mut Space) {
+    pub fn pickup_item(
+        &mut self, 
+        dropped_items: &mut Vec<DroppedItem>, 
+        space: &mut Space, 
+        ctx: &mut ClientTickContext,
+        area_id: AreaId
+    ) {
 
         let player_pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation.vector.clone();
         
@@ -106,16 +134,36 @@ impl Player {
 
         for item in &mut picked_up_items {
             item.despawn(space);
+
+            ctx.network_io.send_network_packet(
+                NetworkPacket::RemoveDroppedItemUpdate(
+                    RemoveDroppedItemUpdate {
+                        dropped_item_id: item.id.clone(),
+                        area_id,
+                    }
+                )
+            );
         }
 
         'drop_item_loop: for dropped_item in picked_up_items {
-            for item_slot in &mut self.items {
+            for (item_slot_index, item_slot) in &mut self.items.iter_mut().enumerate() {
                 match item_slot {
                     Some(item_slot) => {
 
                         // matching item
                         if item_slot.item == dropped_item.item {
                             item_slot.quantity += 1;
+
+                            ctx.network_io.send_network_packet(
+                                NetworkPacket::ItemSlotQuantityUpdate(
+                                    ItemSlotQuantityUpdate {
+                                        area_id: area_id,
+                                        player_id: self.id,
+                                        inventory_index: item_slot_index,
+                                        quantity: item_slot.quantity, // we can only pick up one item at a time
+                                    }
+                                )
+                            );
                         }
 
                         continue 'drop_item_loop;
@@ -126,6 +174,22 @@ impl Player {
                                 quantity: 1,
                                 item: dropped_item.item,
                             }
+                        );
+
+                        let item_slot_save = match item_slot {
+                            Some(item_slot) => Some(item_slot.save(space)),
+                            None => None, // this shouldnt ever be None because we are picking up
+                        };
+
+                        ctx.network_io.send_network_packet(
+                            NetworkPacket::ItemSlotUpdate(
+                                ItemSlotUpdate {
+                                    area_id,
+                                    player_id: self.id,
+                                    inventory_index: item_slot_index,
+                                    item_slot: item_slot_save,
+                                }
+                            )
                         );
 
                         continue 'drop_item_loop;
@@ -362,7 +426,7 @@ impl Player {
         }
     }
 
-    pub fn change_active_inventory_slot(&mut self) {
+    pub fn change_active_inventory_slot(&mut self, ctx: &mut ClientTickContext, area_id: AreaId) {
 
         if mouse_wheel().1 < 0. {
 
@@ -373,6 +437,16 @@ impl Player {
             }
 
             self.selected_item += 1;
+
+            ctx.network_io.send_network_packet(
+                NetworkPacket::ActiveItemSlotUpdate(
+                    ActiveItemSlotUpdate {
+                        area_id,
+                        player_id: self.id,
+                        active_item_slot: self.selected_item as u32,
+                    }
+                )
+            );
             
         } else if mouse_wheel().1 > 0. {
             if self.selected_item == 0 {
@@ -382,6 +456,17 @@ impl Player {
             }
 
             self.selected_item -= 1;
+
+            ctx.network_io.send_network_packet(
+                NetworkPacket::ActiveItemSlotUpdate(
+                    ActiveItemSlotUpdate {
+                        area_id,
+                        player_id: self.id,
+                        active_item_slot: self.selected_item as u32,
+                    }
+                )
+            );
+
         }
 
 
@@ -405,6 +490,8 @@ impl Player {
 
         let item_slot = item_slot.as_mut().unwrap();
 
+        let previous_item_slot_quantity = item_slot.quantity.clone();
+
         match &mut item_slot.item {
             Item::Prop(prop_item) => {
                 prop_item.use_item(&mut item_slot.quantity, ctx, space, props);
@@ -423,6 +510,19 @@ impl Player {
 
                 weapon.fire(ctx, &mut weapon_fire_context);
             }
+        }
+
+        if previous_item_slot_quantity != item_slot.quantity {
+            ctx.network_io.send_network_packet(
+                NetworkPacket::ItemSlotQuantityUpdate(
+                    ItemSlotQuantityUpdate {
+                        area_id,
+                        player_id: self.id,
+                        inventory_index: self.selected_item, // this might be an issue if we can use items that arent in our selected slot
+                        quantity: item_slot.quantity,
+                    }
+                ) 
+            );
         }
         
     }
@@ -693,9 +793,9 @@ impl Player {
 
         self.dash(space);
 
-        self.pickup_item(dropped_items, space);
+        self.pickup_item(dropped_items, space, ctx, area_id);
 
-        self.change_active_inventory_slot();
+        self.change_active_inventory_slot(ctx, area_id);
 
 
         if let Some(weapon) = &mut self.weapon {
@@ -797,4 +897,27 @@ pub struct PlayerPositionUpdate {
     pub area_id: AreaId,
     pub pos: Isometry2<f32>,
     pub player_id: PlayerId
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ItemSlotQuantityUpdate {
+    pub area_id: AreaId,
+    pub player_id: PlayerId,
+    pub inventory_index: usize,
+    pub quantity: u32
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ActiveItemSlotUpdate {
+    pub area_id: AreaId,
+    pub player_id: PlayerId,
+    pub active_item_slot: u32
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ItemSlotUpdate {
+    pub area_id: AreaId,
+    pub player_id: PlayerId,
+    pub inventory_index: usize,
+    pub item_slot: Option<ItemSlotSave>
 }

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::{area::{AreaId, AreaSave}, bullet_trail::SpawnBulletTrail, dropped_item::{DroppedItemVelocityUpdate, NewDroppedItemUpdate}, player::{NewPlayer, PlayerCursorUpdate, PlayerFacingUpdate, PlayerPositionUpdate, PlayerVelocityUpdate}, prop::{DissolveProp, NewProp, PropPositionUpdate, PropUpdateOwner, PropVelocityUpdate, RemovePropUpdate}, uuid_u64};
+use crate::{area::{AreaId, AreaSave}, bullet_trail::SpawnBulletTrail, dropped_item::{DroppedItemVelocityUpdate, NewDroppedItemUpdate, RemoveDroppedItemUpdate}, player::{ActiveItemSlotUpdate, ItemSlotQuantityUpdate, ItemSlotUpdate, NewPlayer, PlayerCursorUpdate, PlayerFacingUpdate, PlayerPositionUpdate, PlayerVelocityUpdate}, prop::{DissolveProp, NewProp, PropPositionUpdate, PropUpdateOwner, PropVelocityUpdate, RemovePropUpdate}, uuid_u64};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub enum NetworkPacket {
@@ -18,7 +18,11 @@ pub enum NetworkPacket {
     RemovePropUpdate(RemovePropUpdate),
     DissolveProp(DissolveProp),
     DroppedItemVelocityUpdate(DroppedItemVelocityUpdate),
-    NewDroppedItemUpdate(NewDroppedItemUpdate)
+    NewDroppedItemUpdate(NewDroppedItemUpdate),
+    RemoveDroppedItemUpdate(RemoveDroppedItemUpdate),
+    ItemSlotQuantityUpdate(ItemSlotQuantityUpdate),
+    ActiveItemSlotUpdate(ActiveItemSlotUpdate),
+    ItemSlotUpdate(ItemSlotUpdate)
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
