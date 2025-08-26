@@ -16,5 +16,6 @@
   "mass": 10.0,
   "sprite_path": "assets/stone2.png",
   "material": "None",
-  "id": null
+  "id": null,
+  "name": "Stone 2"
 }

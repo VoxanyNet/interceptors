@@ -1,11 +1,11 @@
 use std::{collections::HashSet, path::{Path, PathBuf}, time::Instant};
 
-use macroquad::{audio::{load_sound, play_sound_once}, input::{is_key_released, KeyCode}, math::Vec2, rand::RandomRange};
+use macroquad::{audio::{load_sound, play_sound_once}, color::Color, input::{is_key_released, KeyCode}, math::Vec2, rand::RandomRange};
 use nalgebra::{point, vector, Isometry2, Vector2};
 use rapier2d::{math::{Translation, Vector}, parry::query::Ray, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::AreaId, bullet_trail::{self, BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_texture_onto_physics_body, player::{Facing, Player}, prop::{DissolvedPixel, Prop, PropVelocityUpdate}, shotgun::Shotgun, space::Space, texture_loader::TextureLoader, ClientId, ClientTickContext};
+use crate::{area::AreaId, bullet_trail::{self, BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, get_preview_resolution, player::{Facing, Player}, prop::{DissolvedPixel, Prop, PropVelocityUpdate}, shotgun::{Shotgun, ShotgunSave}, space::Space, texture_loader::TextureLoader, ClientId, ClientTickContext, Prefabs};
 
 pub struct WeaponFireContext<'a> {
     pub space: &'a mut Space,
@@ -25,11 +25,45 @@ pub struct BulletImpactData {
 } 
 
 
+#[derive(PartialEq, Clone)]
 pub enum WeaponType {
     Shotgun(Shotgun)
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum WeaponTypeSave {
+    Shotgun(ShotgunSave)
+}
+
 impl WeaponType {
+
+    pub fn name(&self) -> String {
+        match self {
+            WeaponType::Shotgun(shotgun) => shotgun.preview_name(),
+        }
+    }
+    pub fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32) {
+        match self {
+            WeaponType::Shotgun(shotgun) => shotgun.draw_preview(textures, size, draw_pos, color, rotation),
+        }
+    }
+
+    pub fn get_preview_resolution(&self, size: f32, textures: &TextureLoader) -> Vec2 {
+        match self {
+            WeaponType::Shotgun(shotgun) => shotgun.get_preview_resolution(size, textures),
+        }
+    }
+    pub fn save(&self, space: &Space) -> WeaponTypeSave {
+        return match self {
+            WeaponType::Shotgun(shotgun) => WeaponTypeSave::Shotgun(shotgun.save(space)),
+        }
+    }
+
+    pub fn from_save(space: &mut Space, save: WeaponTypeSave, player_rigid_body_handle:Option<RigidBodyHandle> ) -> Self {
+        return match save {
+            WeaponTypeSave::Shotgun(shotgun_save) => WeaponType::Shotgun(Shotgun::from_save(shotgun_save, space, player_rigid_body_handle)),
+        }
+    }
 
     pub fn player_joint_handle(&self) -> Option<ImpulseJointHandle> {
         match self {
@@ -62,6 +96,7 @@ impl WeaponType {
 
 }
 
+#[derive(PartialEq, Clone)]
 pub struct Weapon {
     pub player_rigid_body_handle: Option<RigidBodyHandle>,
     pub collider: ColliderHandle,
@@ -84,7 +119,90 @@ pub struct Weapon {
     reload_duration: web_time::Duration
 }
 
+// maybe this isnt the best idea to save all this info explicitly and just have the specific weapon types handle saving but idk this seems like it will save some time
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct WeaponSave {
+    pub pos: Isometry2<f32>,
+    pub mass: f32,
+    pub texture_size: Vec2,
+    pub sprite: PathBuf,
+    pub owner: ClientId,
+    pub scale: f32,
+    pub fire_sound_path: PathBuf,
+    pub x_screen_shake_frequency: f64,
+    pub x_screen_shake_intensity: f64,
+    pub y_screen_shake_frequency: f64,
+    pub y_screen_shake_intensity: f64,
+    pub shell_sprite: Option<String>,
+    pub rounds: u32,
+    pub capacity: u32,
+    pub reserve_capacity: u32,
+    pub reload_duration: f32 // reload duration time in seconds
+
+}
+
 impl Weapon {
+
+    pub fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32) {
+        draw_preview(textures, size, draw_pos, color, rotation, &self.sprite);
+    }
+
+    pub fn get_preview_resolution(&self, size: f32, textures: &TextureLoader) -> Vec2 {
+        get_preview_resolution(size, textures, &self.sprite)
+    }
+    pub fn from_save(save: WeaponSave, space: &mut Space, player_rigid_body_handle: Option<RigidBodyHandle>) -> Self {
+
+        Self::new(
+            space, 
+            save.pos.translation.vector, 
+            save.owner, 
+            player_rigid_body_handle, 
+            save.sprite, 
+            save.scale, 
+            None, 
+            Some(save.mass), 
+            save.fire_sound_path, 
+            save.x_screen_shake_frequency, 
+            save.x_screen_shake_intensity, 
+            save.y_screen_shake_frequency, 
+            save.y_screen_shake_intensity, 
+            save.shell_sprite, 
+            save.texture_size, 
+            Facing::Right, // this parameter doesnt do anything in new()
+            web_time::Duration::from_secs_f32(save.reload_duration), 
+            save.rounds, 
+            save.capacity, 
+            save.reserve_capacity
+        )
+    }
+
+    pub fn save(&self, space: &Space) -> WeaponSave {
+
+        let body = space.rigid_body_set.get(self.rigid_body).unwrap();
+        let collider = space.collider_set.get(self.collider).unwrap();
+
+        WeaponSave {
+            pos: *body.position(),
+            mass: body.mass(),
+            texture_size: Vec2 {
+                x: collider.shape().as_cuboid().unwrap().half_extents.x * 2.,
+                y: collider.shape().as_cuboid().unwrap().half_extents.y * 2.,
+            },
+            sprite: self.sprite.clone(),
+            owner: self.owner,
+            scale: self.scale,
+            fire_sound_path: self.fire_sound_path.clone(),
+            x_screen_shake_frequency: self.x_screen_shake_frequency,
+            x_screen_shake_intensity: self.x_screen_shake_intensity,
+            y_screen_shake_frequency: self.y_screen_shake_frequency,
+            y_screen_shake_intensity: self.y_screen_shake_intensity,
+            shell_sprite: self.shell_sprite.clone(),
+            rounds: self.rounds,
+            capacity: self.capacity,
+            reserve_capacity: self.reserve_capacity,
+            reload_duration: self.reload_duration.as_secs_f32(),
+        }
+    }
     pub fn new(
         space: &mut Space, 
         pos: Vector2<f32>, 

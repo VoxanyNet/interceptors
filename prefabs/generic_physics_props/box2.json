@@ -1,7 +1,7 @@
 {
   "size": [
-    100.0,
-    100.0
+    50.0,
+    50.0
   ],
   "pos": {
     "rotation": [
@@ -16,5 +16,6 @@
   "mass": 10000.0,
   "sprite_path": "assets/box2.png",
   "material": "Wood",
-  "id": null
+  "id": null,
+  "name": "Crate"
 }

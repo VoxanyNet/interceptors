@@ -1,6 +1,14 @@
-periodic position updates
+different enemy deaths
+    head falls off if headshot
+    dissolve if lots of damage
+    normal ragdoll by default
 
 lobby (with lobby music)
+    lobby maybe be in space like a spaceship
+
+physics particle when you hit a prop 
+
+SOUNDS
 
 figure how to go to other areas
 
@@ -16,3 +24,12 @@ velocity updates for each pixel thing
 
 larger dissolved pixels
     have props with more pixels have lower pixel density
+
+when you start the game you are instantly connected to the lobby with the title being rendered which fades away as you move
+tutorial 
+    wasd each key illuminates as you press it first time
+    when you launch the game for the first time you are put right into it like splatoon
+    encounter ledge that you must use box to mantle
+    encounter box that you must shoot to get through 
+    encounter enemy that you must kill
+    

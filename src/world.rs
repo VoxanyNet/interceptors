@@ -27,12 +27,17 @@ impl World {
         }
     }
 
+    pub fn draw_hud(&self, textures: &TextureLoader) {
+        for area in &self.areas {
+            area.draw_hud(textures);
+        }
+    }
 
-    pub async fn draw(&self, textures: &mut TextureLoader, camera_rect: &Rect, prefabs: &Prefabs, camera: &Camera2D, fonts: &FontLoader) {
+    pub async fn draw(&mut self, textures: &mut TextureLoader, camera_rect: &Rect, prefabs: &Prefabs, camera: &Camera2D, fonts: &FontLoader) {
     
 
 
-        for area in &self.areas {
+        for area in &mut self.areas {
             area.draw(textures, camera_rect, prefabs, camera, fonts).await
         }
     } 

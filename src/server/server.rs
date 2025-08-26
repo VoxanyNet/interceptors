@@ -1,6 +1,6 @@
 use std::fs::read_to_string;
 
-use interceptors_lib::{area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, player::Player, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket}, world::World, ClientId, Prefabs, ServerIO};
+use interceptors_lib::{area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, player::Player, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket}, world::World, ClientId, Prefabs, ServerIO};
 use tungstenite::Message;
 
 include!(concat!(env!("OUT_DIR"), "/prefabs.rs"));
@@ -176,6 +176,20 @@ impl Server {
                     self.network_io.send_all_except(network_packet, client_id);
 
                 },
+
+                NetworkPacket::NewDroppedItemUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    area.dropped_items.push(
+                        DroppedItem::from_save(update.dropped_item.clone(), &mut area.space, &self.prefabs)
+                    );
+
+                    self.network_io.send_all_except(network_packet, client_id);
+                }
                 NetworkPacket::NewPlayer(update) => {
                     let area = self.world.areas.iter_mut().find(
                         |area| {
@@ -197,6 +211,19 @@ impl Server {
                     let player = area.players.iter_mut().find(|player| {player.id == update.id}).unwrap();
 
                     player.set_velocity(update.velocity, &mut area.space);
+
+                    self.network_io.send_all_except(network_packet, client_id);
+                },
+                NetworkPacket::DroppedItemVelocityUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    let dropped_item = area.dropped_items.iter_mut().find(|dropped_item| {dropped_item.id == update.id}).unwrap();
+
+                    dropped_item.set_velocity(&mut area.space, update.velocity);
 
                     self.network_io.send_all_except(network_packet, client_id);
                 },
@@ -238,9 +265,7 @@ impl Server {
 
                     let current_pos = area.space.rigid_body_set.get(player.body.body_handle).unwrap().position();
 
-                    if (update.pos.translation.x - current_pos.translation.x).abs() > 20. {
-                        player.set_pos(update.pos, &mut area.space);
-                    }
+                    player.set_pos(update.pos, &mut area.space);
 
                     self.network_io.send_all_except(network_packet, client_id);
 

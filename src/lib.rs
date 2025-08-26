@@ -33,6 +33,7 @@ pub mod phone;
 pub mod computer;
 pub mod font_loader;
 pub mod button;
+pub mod dropped_item;
 
 pub struct SwapIter<'a, T> {
     vec: &'a mut Vec<T>,
@@ -322,6 +323,52 @@ impl ClientIO {
 
         packets
     }
+
+}
+
+pub fn draw_preview(textures: &TextureLoader, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32, texture_path: &PathBuf) { 
+    let color = color.unwrap_or(WHITE);
+
+    let dest_size = get_preview_resolution(size, textures, texture_path);
+
+    let texture = textures.get(&texture_path);
+
+    let mut params = DrawTextureParams::default();
+
+    params.dest_size = Some(
+        dest_size
+    );
+
+    params.rotation = rotation;
+
+
+    draw_texture_ex(
+        texture, 
+        draw_pos.x, 
+        draw_pos.y + (size - dest_size.x), // sit on the bottom if that makes sense 
+        color,
+        params
+    );
+}
+pub fn get_preview_resolution(size: f32, textures: &TextureLoader, texture_path: &PathBuf) -> Vec2 {
+    let texture = textures.get(texture_path);
+
+    // size represents the max size in pixels a pixel can be in either width or height BUT we dont want to change the aspect ratio so hence this magic
+    return match texture.width() > texture.height() {
+        true => {
+            // height conforms to width
+            let ratio = texture.height() / texture.width();
+
+            Vec2::new(size, size * ratio)
+
+        },
+        false => {
+            // width conforms to height
+            let ratio = texture.width() / texture.height();
+
+            Vec2::new(size * ratio, size)
+        },
+    };
 
 }
 

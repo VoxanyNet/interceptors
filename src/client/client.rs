@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::{Path, PathBuf}, time::Instant};
 
-use interceptors_lib::{area::Area, bullet_trail::BulletTrail, button::Button, font_loader::FontLoader, phone::Phone, player::Player, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
-use macroquad::{camera::{pop_camera_state, push_camera_state, set_camera, set_default_camera, Camera2D}, color::WHITE, input::{is_key_released, KeyCode}, math::{vec2, Rect}, prelude::{camera::mouse::Camera, gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, text::Font, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::{clear_background, next_frame, screen_height, screen_width}};
+use interceptors_lib::{area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, font_loader::FontLoader, phone::Phone, player::Player, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
+use macroquad::{camera::{pop_camera_state, push_camera_state, set_camera, set_default_camera, Camera2D}, color::{BLACK, WHITE}, input::{is_key_released, KeyCode}, math::{vec2, Rect}, prelude::{camera::mouse::Camera, gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, text::Font, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::{clear_background, next_frame, screen_height, screen_width}};
 
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
 
@@ -151,9 +151,9 @@ impl Client {
             )
         );
 
-        let render_target = render_target(1280, 720);
+        let world_render_target = render_target(1280, 720);
 
-        render_target.texture.set_filter(macroquad::texture::FilterMode::Nearest);
+        world_render_target.texture.set_filter(macroquad::texture::FilterMode::Nearest);
 
         let material = load_material(
             ShaderSource::Glsl {
@@ -171,7 +171,7 @@ impl Client {
 
         let mut textures = TextureLoader::new();
 
-
+        // create world camera
         let camera_rect = Rect {
             x: 0.,
             y: 0.,
@@ -180,7 +180,7 @@ impl Client {
         };
 
         let mut camera = Camera2D::from_display_rect(camera_rect);
-        camera.render_target = Some(render_target.clone());
+        camera.render_target = Some(world_render_target.clone());
 
         camera.zoom.y = -camera.zoom.y;
 
@@ -230,7 +230,7 @@ impl Client {
             last_ping_sample: web_time::Instant::now(),
             prefab_data,
             material,
-            render_target,
+            render_target: world_render_target,
             screen_shake: ScreenShakeParameters::default(None, None),
             start: web_time::Instant::now(),
             sounds,
@@ -279,123 +279,147 @@ impl Client {
 
         for packet in packets {
             match packet {
-            NetworkPacket::Ping(ping) => {
-                self.latency = self.pings.remove(&ping.id).unwrap().elapsed();
+                NetworkPacket::Ping(ping) => {
+                    self.latency = self.pings.remove(&ping.id).unwrap().elapsed();
 
-            },
-            NetworkPacket::LoadArea(load_area) => {
+                },
+                NetworkPacket::LoadArea(load_area) => {
 
-                self.world.areas.push(Area::from_save(load_area.area, Some(load_area.id), &self.prefab_data));
-            }
+                    self.world.areas.push(Area::from_save(load_area.area, Some(load_area.id), &self.prefab_data));
+                }
 
-            NetworkPacket::PropVelocityUpdate(update) => {
-                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id} ).unwrap();
+                NetworkPacket::PropVelocityUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id} ).unwrap();
 
-                let prop = area.props.iter_mut().find(|prop| {prop.id == update.id}).unwrap();
+                    let prop = area.props.iter_mut().find(|prop| {prop.id == update.id}).unwrap();
 
-                prop.set_velocity(update.velocity, &mut area.space);
-            },
-            NetworkPacket::PropUpdateOwner(update) => {
-                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+                    prop.set_velocity(update.velocity, &mut area.space);
+                },
+                NetworkPacket::PropUpdateOwner(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                let prop = area.props.iter_mut().find(|prop| {prop.id} == update.id).unwrap();
+                    let prop = area.props.iter_mut().find(|prop| {prop.id} == update.id).unwrap();
 
-                prop.owner = update.owner;
+                    prop.owner = update.owner;
 
-            },
-            NetworkPacket::NewProp(update) => {
-                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+                },
+                NetworkPacket::NewProp(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                area.props.push(Prop::from_save(update.prop, &mut area.space));
+                    area.props.push(Prop::from_save(update.prop, &mut area.space));
 
 
-            },
-            NetworkPacket::NewPlayer(update) => {
-                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+                },
+                NetworkPacket::NewPlayer(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                area.players.push(Player::from_save(update.player, &mut area.space));
-            },
-            NetworkPacket::PlayerVelocityUpdate(update) => {
-                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+                    area.players.push(Player::from_save(update.player, &mut area.space));
+                },
+                NetworkPacket::PlayerVelocityUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                let player = area.players.iter_mut().find(|player| {player.id == update.id}).unwrap();
+                    let player = area.players.iter_mut().find(|player| {player.id == update.id}).unwrap();
 
-                let player_body = area.space.rigid_body_set.get(player.body.body_handle).unwrap();
+                    let player_body = area.space.rigid_body_set.get(player.body.body_handle).unwrap();
 
-                let player_pos = player_body.position();
+                    let player_pos = player_body.position();
 
-                player.set_velocity(update.velocity, &mut area.space);
-            },
-            NetworkPacket::PlayerCursorUpdate(update) => {
-                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+                    player.set_velocity(update.velocity, &mut area.space);
+                },
+                NetworkPacket::PlayerCursorUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                let player = area.players.iter_mut().find(|player| {player.id == update.id}).unwrap();
+                    let player = area.players.iter_mut().find(|player| {player.id == update.id}).unwrap();
 
-                player.set_cursor_pos(update.pos);
-            },
-            NetworkPacket::PlayerFacingUpdate(update) => {
-                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+                    player.set_cursor_pos(update.pos);
+                },
+                NetworkPacket::PlayerFacingUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                let player = area.players.iter_mut().find(|player| {player.id == update.id}).unwrap();
+                    let player = area.players.iter_mut().find(|player| {player.id == update.id}).unwrap();
 
-                player.set_facing(update.facing);
-            },
-            NetworkPacket::SpawnBulletTrail(update) => {
-                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+                    player.set_facing(update.facing);
+                },
+                NetworkPacket::SpawnBulletTrail(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                area.bullet_trails.push(
-                    BulletTrail::from_save(update.save)
-                );
-            },
-            NetworkPacket::PlayerPositionUpdate(update) => {
-                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+                    area.bullet_trails.push(
+                        BulletTrail::from_save(update.save)
+                    );
+                },
+                NetworkPacket::PlayerPositionUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                let player = area.players.iter_mut().find(|player| {player.id == update.player_id}).unwrap();
+                    let player = area.players.iter_mut().find(|player| {player.id == update.player_id}).unwrap();
 
-                let current_pos = area.space.rigid_body_set.get(player.body.body_handle).unwrap().position();
+                    let current_pos = area.space.rigid_body_set.get(player.body.body_handle).unwrap().position();
 
-                if (update.pos.translation.x - current_pos.translation.x).abs() > 20. {
+                    dbg!("received pos update");
+                        
                     player.set_pos(update.pos, &mut area.space);
+
+
+
+                    
+                },
+                NetworkPacket::PropPositionUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                    let prop = area.props.iter_mut().find(|prop| {prop.id} == update.prop_id).unwrap();
+
+                    let current_pos = match area.space.rigid_body_set.get(prop.rigid_body_handle) {
+                        Some(body) => body.position(),
+                        None => {
+                            continue;
+                        },
+                    };
+
+                    if (update.pos.translation.x - current_pos.translation.x).abs() > 4. {
+                        prop.set_pos(update.pos, &mut area.space);
+                    }
+
+                },
+                NetworkPacket::DissolveProp(update) => {
+
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                    let prop = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}).unwrap();
+
+                    prop.dissolve(&self.textures, &mut area.space, &mut area.dissolved_pixels,None, area.id);
                 }
+                NetworkPacket::RemovePropUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                
-            },
-            NetworkPacket::PropPositionUpdate(update) => {
-                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+                    let prop = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}).unwrap();
 
-                let prop = area.props.iter_mut().find(|prop| {prop.id} == update.prop_id).unwrap();
+                    prop.despawn(&mut area.space, area.id, None);
 
-                let current_pos = match area.space.rigid_body_set.get(prop.rigid_body_handle) {
-                    Some(body) => body.position(),
-                    None => {
-                        continue;
-                    },
-                };
 
-                if (update.pos.translation.x - current_pos.translation.x).abs() > 20. {
-                    prop.set_pos(update.pos, &mut area.space);
-                }
+                    area.props.retain(|prop| {prop.id != update.prop_id});
+                },
+                NetworkPacket::NewDroppedItemUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
 
-            },
-            NetworkPacket::DissolveProp(update) => {
+                    area.dropped_items.push(
+                        DroppedItem::from_save(update.dropped_item, &mut area.space, &self.prefab_data)
+                    );
+                },
+                NetworkPacket::DroppedItemVelocityUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
 
-                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+                    let dropped_item = area.dropped_items.iter_mut().find(|dropped_item| {dropped_item.id == update.id}).unwrap();
 
-                let prop = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}).unwrap();
-
-                prop.dissolve(&self.textures, &mut area.space, &mut area.dissolved_pixels,None, area.id);
+                    dropped_item.set_velocity(&mut area.space, update.velocity);
+                },
             }
-            NetworkPacket::RemovePropUpdate(update) => {
-                let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
-
-                let prop = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}).unwrap();
-
-                prop.despawn(&mut area.space, area.id, None);
-
-
-                area.props.retain(|prop| {prop.id != update.prop_id});
-            }
-        }
         }
         
     }
@@ -417,6 +441,15 @@ impl Client {
         self.camera_rect.w = screen_width();
         self.camera_rect.h = screen_height();
     }
+    pub fn update_camera_to_match_screen_size_fixed(&mut self) {
+
+        // camera has a fixed width of 1920 pixels
+
+        let ratio = screen_height() / screen_width();
+        self.camera_rect.w = 1920.;
+        self.camera_rect.h = 1920. * ratio;
+
+    }
 
     pub fn phone(&mut self) {
         // if is_key_released(KeyCode::L) {
@@ -424,6 +457,8 @@ impl Client {
         // }
     }
     pub fn tick(&mut self) {
+
+        self.update_camera_to_match_screen_size();
 
         self.phone();
 
@@ -530,6 +565,8 @@ impl Client {
             &self.camera
         );   
 
+        clear_background(BLACK);
+
 
         self.world.draw(&mut self.textures, &self.camera_rect, &self.prefab_data, &self.camera, &self.fonts).await;
 
@@ -540,7 +577,7 @@ impl Client {
 
         gl_use_material(&self.material);
 
-        
+
 
         draw_texture_ex(&self.render_target.texture, 0.0, 0., WHITE, DrawTextureParams {
             dest_size: Some(vec2(screen_width(), screen_height())),
@@ -550,7 +587,7 @@ impl Client {
         gl_use_default_material();
 
         
-
+        
         next_frame().await;
 
 

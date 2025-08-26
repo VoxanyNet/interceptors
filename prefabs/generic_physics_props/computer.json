@@ -16,5 +16,6 @@
   "mass": 500000.0,
   "sprite_path": "assets/screen.png",
   "material": "None",
-  "id": null
+  "id": null,
+  "name": "Computer"
 }

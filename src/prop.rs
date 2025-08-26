@@ -1,11 +1,11 @@
-use std::{default, fs::read_to_string, path::PathBuf, time::Instant};
+use std::{default, fs::read_to_string, path::{Path, PathBuf}, time::Instant};
 
 use macroquad::{audio::play_sound_once, color::{Color, WHITE}, input::is_mouse_button_released, math::Vec2, shapes::{draw_rectangle_ex, DrawRectangleParams}, texture::{draw_texture, draw_texture_ex, DrawTextureParams}};
 use nalgebra::{base, Isometry2, Vector, Vector2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, ColliderPair, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::{Area, AreaId}, computer::Computer, contains_point, draw_texture_onto_physics_body, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::BulletImpactData, ClientId, ClientTickContext, Prefabs, ServerIO};
+use crate::{area::{Area, AreaId}, computer::Computer, contains_point, draw_preview, draw_texture_onto_physics_body, get_preview_resolution, prop, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::BulletImpactData, ClientId, ClientTickContext, Prefabs, ServerIO};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Default, Debug)]
 pub enum PropMaterial {
@@ -140,37 +140,59 @@ pub struct Prop {
     pub owner: Option<ClientId>,
     last_sound_play: web_time::Instant,
     pub despawn: bool,
-    last_pos_update: web_time::Instant
+    last_pos_update: web_time::Instant,
+    name: String
 }
 
+#[derive(PartialEq, Clone)]
 pub struct PropItem {
     pub prefab_path: PathBuf
 }
 
 impl PropItem {
 
-    pub fn draw_preview(&self, textures: &TextureLoader, draw_scale: f32, draw_pos: Vec2, prefabs: &Prefabs) {
+    pub fn from_save(save: PropItemSave) -> Self {
+        PropItem {
+            prefab_path: PathBuf::from(save.prefab_path),
+        }
+    }
 
+    pub fn save(&self) -> PropItemSave {
+        PropItemSave {
+            prefab_path: self.prefab_path.to_str().unwrap().to_string(),
+        }
+    }
+    pub fn name(&self, prefabs: &Prefabs) -> String {
+        let prop_json = prefabs.get_prefab_data(&self.prefab_path.to_str().unwrap());
+
+        let prop_save: PropSave = serde_json::from_str(&prop_json).unwrap();
+
+        prop_save.name
+    }
+
+    pub fn use_item(&mut self, quantity: &mut u32, ctx: &mut ClientTickContext, space: &mut Space, props: &mut Vec<Prop>) {
+        *quantity -= 1;
+
+        let mouse_pos = rapier_mouse_world_pos(&ctx.camera_rect);
+
+        let prop = self.to_prop(mouse_pos.into(), ctx.prefabs, space);
+
+        props.push(prop);
+    }
+
+    pub fn get_preview_resolution(&self, size: f32, prefabs: &Prefabs, textures: &TextureLoader) -> Vec2 {
+
+        
         let prop_save: PropSave = serde_json::from_str(&prefabs.get_prefab_data(&self.prefab_path.to_string_lossy())).unwrap();
 
-        let texture = textures.get(&prop_save.sprite_path);
+        get_preview_resolution(size, textures, &prop_save.sprite_path)
+    }
 
-        let mut params = DrawTextureParams::default();
+    pub fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
 
-        params.dest_size = Some(
-            Vec2 {
-                x: texture.width() * draw_scale,
-                y: texture.height() * draw_scale,
-            }
-        );
-
-        draw_texture_ex(
-            texture, 
-            draw_pos.x, 
-            draw_pos.y, 
-            WHITE,
-            params
-        );
+        let prop_save: PropSave = serde_json::from_str(&prefabs.get_prefab_data(&self.prefab_path.to_string_lossy())).unwrap();
+        
+        draw_preview(textures, size, draw_pos, color, rotation, &prop_save.sprite_path);
     }
 
     // might want to change this to not use prefabs
@@ -180,6 +202,11 @@ impl PropItem {
 
         Prop::from_save(prop_save, space)
     }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PropItemSave {
+    prefab_path: String
 }
 
 impl Prop {
@@ -359,7 +386,7 @@ impl Prop {
 
         let current_position = space.rigid_body_set.get(self.rigid_body_handle).unwrap().position();
 
-        if self.last_pos_update.elapsed().as_secs() > 5 {
+        if self.last_pos_update.elapsed().as_secs() > 3 {
             ctx.network_io.send_network_packet(
                 NetworkPacket::PropPositionUpdate(
                     PropPositionUpdate {
@@ -369,6 +396,8 @@ impl Prop {
                     }
                 )
             );
+
+            dbg!("sent");
         }
         
 
@@ -442,7 +471,8 @@ impl Prop {
             owner: save.owner,
             last_sound_play: web_time::Instant::now(),
             despawn: false,
-            last_pos_update: web_time::Instant::now()
+            last_pos_update: web_time::Instant::now(),
+            name: save.name
             
         }
     }
@@ -463,7 +493,8 @@ impl Prop {
             sprite_path: self.sprite_path.clone(),
             id: Some(self.id.clone()),
             owner: self.owner,
-            material: self.material
+            material: self.material,
+            name: self.name.clone()
         }
     }
 
@@ -495,7 +526,14 @@ pub struct PropSave {
     #[serde(default)]
     pub owner: Option<ClientId>,
     #[serde(default)]
-    pub material: PropMaterial
+    pub material: PropMaterial,
+    #[serde(default = "default_prop_name")]
+    name: String
+}
+
+
+fn default_prop_name() -> String {
+    "Unnamed Prop".to_string()
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default, Copy, PartialEq)]

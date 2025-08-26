@@ -1,17 +1,47 @@
 use std::path::{Path, PathBuf};
 
-use macroquad::math::Vec2;
+use macroquad::{color::Color, math::Vec2};
 use nalgebra::Vector2;
 use rapier2d::prelude::{ImpulseJointHandle, RigidBodyHandle};
+use serde::{Deserialize, Serialize};
 
-use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapon::{Weapon, WeaponFireContext}, ClientId, ClientTickContext};
+use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapon::{Weapon, WeaponFireContext, WeaponSave}, ClientId, ClientTickContext};
 
+
+#[derive(PartialEq, Clone)]
 pub struct Shotgun {
     weapon: Weapon
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ShotgunSave {
+    weapon: WeaponSave
+}
+
 impl Shotgun {
 
+    pub fn preview_name(&self) -> String {
+        "Shotgun".to_string()
+    }
+    
+    pub fn get_preview_resolution(&self, size: f32, textures: &TextureLoader) -> Vec2 {
+        self.weapon.get_preview_resolution(size, textures)
+    }
+
+    pub fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32) {
+        self.weapon.draw_preview(textures, size, draw_pos, color, rotation);
+    }
+    pub fn save(&self, space: &Space) -> ShotgunSave {
+        ShotgunSave {
+            weapon: self.weapon.save(space),
+        }
+    }
+
+    pub fn from_save(save: ShotgunSave, space: &mut Space, player_rigid_body_handle: Option<RigidBodyHandle>) -> Self {
+        Self {
+            weapon: Weapon::from_save(save.weapon, space, player_rigid_body_handle),
+        }
+    }
     pub fn fire(&mut self, ctx: &mut ClientTickContext, weapon_fire_context: &mut WeaponFireContext) {
         self.weapon.fire(ctx, weapon_fire_context, None, Some(1));
     }

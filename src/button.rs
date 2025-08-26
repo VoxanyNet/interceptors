@@ -20,18 +20,11 @@ impl Button {
             rect,
         }
     }
-    pub fn update(&mut self, camera_rect: &Rect, offset: Vec2) {
+    pub fn update(&mut self, mouse_pos: Vec2) {
 
-        // this makes me ANGRY!!!!!
-        let offset_rect = Rect {
-            x: camera_rect.x + offset.x,
-            y: camera_rect.y + offset.y,
-            w: camera_rect.w,
-            h: camera_rect.h,
-        };
-
-        if offset_rect.contains(
-            mouse_world_pos(camera_rect)
+        
+        if self.rect.contains(
+            mouse_pos
         ) {
             self.hovered = true;
 

@@ -1,12 +1,13 @@
 
-use std::time::{Duration, Instant};
+use std::{path::{Path, PathBuf}, time::{Duration, Instant}};
 
 use macroquad::{camera::Camera2D, input::{is_key_down, is_key_released, KeyCode}, math::Rect};
 use nalgebra::{vector, Isometry, Isometry2, Vector2};
+use rapier2d::prelude::RigidBodyVelocity;
 use serde::{Deserialize, Serialize};
 use web_sys::js_sys::WebAssembly::Instance;
 
-use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, enemy::{Enemy, EnemySave}, font_loader::FontLoader, player::{NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, Prefabs, ServerIO, SwapIter};
+use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave}, font_loader::FontLoader, player::{NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropItem, PropSave}, rapier_mouse_world_pos, shotgun::Shotgun, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, Prefabs, ServerIO, SwapIter};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -32,7 +33,8 @@ pub struct Area {
     pub bullet_trails: Vec<BulletTrail>,
     pub dissolved_pixels: Vec<DissolvedPixel>,
     pub enemies: Vec<Enemy>,
-    pub computer: Option<Computer>
+    pub computer: Option<Computer>,
+    pub dropped_items: Vec<DroppedItem>
 }
 
 impl Area {
@@ -51,11 +53,12 @@ impl Area {
             bullet_trails: Vec::new(),
             dissolved_pixels: Vec::new(),
             enemies: Vec::new(),
-            computer: None
+            computer: None,
+            dropped_items: Vec::new()
         }
     }
 
-    pub async fn draw(&self, textures: &mut TextureLoader, camera_rect: &Rect, prefabs: &Prefabs, camera: &Camera2D, fonts: &FontLoader) {
+    pub async fn draw(&mut self, textures: &mut TextureLoader, camera_rect: &Rect, prefabs: &Prefabs, camera: &Camera2D, fonts: &FontLoader) {
 
         for background in &self.backgrounds {
             background.draw(textures, camera_rect).await
@@ -68,12 +71,16 @@ impl Area {
         for generic_physics_prop in &self.props {
             generic_physics_prop.draw(&self.space, textures).await;
         }
-        if let Some(computer) = &self.computer {
+
+        for dropped_item in &self.dropped_items {
+            dropped_item.draw(&self.space, textures, prefabs);
+        }
+        if let Some(computer) = &mut self.computer {
             computer.draw(textures, &self.space, prefabs, camera, fonts).await;
         }
 
         for player in &self.players {
-            player.draw(&self.space, textures).await;
+            player.draw(&self.space, textures, prefabs, fonts).await;
         }
 
         for enemy in &self.enemies {
@@ -89,6 +96,12 @@ impl Area {
         }
 
 
+    }
+
+    pub fn draw_hud(&self, textures: &TextureLoader) {
+        for player in &self.players {
+            player.draw_hud(textures);
+        }
     }
 
 
@@ -154,6 +167,8 @@ impl Area {
 
     pub fn client_tick(&mut self, ctx: &mut ClientTickContext) {
 
+        self.spawn_dropped_item(ctx);
+
         if is_key_released(KeyCode::T) {
             self.spawn_enemy(ctx);
         }
@@ -197,7 +212,7 @@ impl Area {
         while players_iter.not_done() {
             let (players, mut player) = players_iter.next();
 
-            player.client_tick(ctx, &mut self.space, self.id, players, &mut self.props, &mut self.bullet_trails, &mut self.dissolved_pixels);
+            player.client_tick(ctx, &mut self.space, self.id, players, &mut self.props, &mut self.bullet_trails, &mut self.dissolved_pixels, &mut self.dropped_items);
 
             players_iter.restore(player);
         }
@@ -222,6 +237,49 @@ impl Area {
         None
     }
 
+    pub fn spawn_dropped_item(&mut self, ctx: &mut ClientTickContext) {
+        if is_key_released(KeyCode::K) {
+
+            
+            let mouse_pos = rapier_mouse_world_pos(&ctx.camera_rect);
+
+            let dropped_item = DroppedItem::new(
+                crate::computer::Item::Weapon(
+                    crate::weapon::WeaponType::Shotgun(
+                        Shotgun::new(
+                            &mut self.space, 
+                            mouse_pos, 
+                            *ctx.client_id, 
+                            None, 
+                            crate::player::Facing::Left
+                        )
+                    )
+                ),
+                mouse_pos.into(), 
+                RigidBodyVelocity::zero(), 
+                &mut self.space, 
+                ctx.textures, 
+                ctx.prefabs,
+                20.
+            );
+
+            self.dropped_items.push(
+                dropped_item.clone()
+            );
+
+            ctx.network_io.send_network_packet(
+            NetworkPacket::NewDroppedItemUpdate(
+                NewDroppedItemUpdate {
+                    dropped_item: dropped_item.save(&self.space),
+                    area_id: self.id,
+                }
+            )
+        );
+        }
+
+        
+    }
+
     pub fn from_save(save: AreaSave, id: Option<AreaId>, prefabs: &Prefabs) -> Self {
 
         let mut space = Space::new();
@@ -232,6 +290,7 @@ impl Area {
         let mut backgrounds: Vec<Background> = Vec::new();
         let mut generic_physics_props: Vec<Prop> = Vec::new();
         let mut enemies: Vec<Enemy> = Vec::new();
+        let mut dropped_items: Vec<DroppedItem> = Vec::new();
         
         for decoration_save in save.decorations {
             decorations.push(
@@ -269,6 +328,12 @@ impl Area {
             );
         }
 
+        for dropped_item_save in save.dropped_items {
+            dropped_items.push(
+                DroppedItem::from_save(dropped_item_save, &mut space, prefabs)
+            );
+        }
+
 
         // if we are loading the id from the server we need to use the provided id
         let id = match id {
@@ -295,7 +360,8 @@ impl Area {
             bullet_trails: Vec::new(), // we dont save bullet trails bsecause that'd be silly
             dissolved_pixels: Vec::new(), // same here
             enemies,
-            computer
+            computer,
+            dropped_items
 
         }
     }
@@ -308,6 +374,7 @@ impl Area {
         let mut backgrounds: Vec<BackgroundSave> = Vec::new();
         let mut generic_physics_props: Vec<PropSave> = Vec::new();
         let mut enemies: Vec<EnemySave> = Vec::new();
+        let mut dropped_items: Vec<DroppedItemSave> = Vec::new();
 
         for decoration in &self.decorations {
             decorations.push(
@@ -352,6 +419,10 @@ impl Area {
             None => None,
         };
 
+        for dropped_item in &self.dropped_items {
+            dropped_items.push(dropped_item.save(&self.space))
+        }
+
         AreaSave {
             spawn_point: self.spawn_point,
             decorations,
@@ -360,7 +431,8 @@ impl Area {
             backgrounds,
             generic_physics_props,
             enemies,
-            computer_pos
+            computer_pos,
+            dropped_items
         }
     }
 
@@ -380,5 +452,7 @@ pub struct AreaSave {
     #[serde(default)]
     enemies: Vec<EnemySave>,
     #[serde(default)]
-    computer_pos: Option<Isometry2<f32>>
+    computer_pos: Option<Isometry2<f32>>,
+    #[serde(default)]
+    dropped_items: Vec<DroppedItemSave>
 }

@@ -1,30 +1,73 @@
 use std::{path::{Path, PathBuf}, str::FromStr, time::{Duration, Instant}};
 
-use macroquad::{camera::{pop_camera_state, push_camera_state, set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, RED, WHITE}, input::{mouse_position, mouse_position_local}, math::{clamp, Rect, Vec2}, prelude::camera::mouse::Camera, shapes::draw_rectangle, text::{draw_text_ex, Font, TextParams}, texture::{draw_texture, draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::clear_background};
+use macroquad::{camera::{pop_camera_state, push_camera_state, set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, GRAY, LIGHTGRAY, RED, WHITE}, input::{mouse_position, mouse_position_local}, math::{clamp, Rect, Vec2}, prelude::camera::mouse::Camera, shapes::{draw_line, draw_rectangle}, text::{draw_text_ex, Font, TextParams}, texture::{draw_texture, draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::clear_background};
 use nalgebra::Isometry2;
+use serde::{Deserialize, Serialize};
 
-use crate::{button::Button, font_loader::FontLoader, mouse_world_pos, player::Player, prop::{Prop, PropItem, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, texture_loader::TextureLoader, ClientTickContext, Prefabs};
+use crate::{button::Button, font_loader::FontLoader, mouse_world_pos, player::Player, prop::{self, Prop, PropItem, PropItemSave, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, weapon::{Weapon, WeaponSave, WeaponType, WeaponTypeSave}, ClientTickContext, Prefabs};
 
+#[derive(PartialEq, Clone)]
 pub enum Item {
-    Prop(PropItem)
+    Prop(PropItem),
+    Weapon(WeaponType)
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum ItemSave {
+    Prop(PropItemSave),
+    Weapon(WeaponTypeSave)
+}
+
+
+
 impl Item {
-    pub fn draw_preview(&self, textures: &TextureLoader, draw_scale: f32, draw_pos: Vec2, prefabs: &Prefabs) {
+
+    pub fn save(&self, space: &Space) -> ItemSave {
         match self {
-            Item::Prop(prop) => prop.draw_preview(textures, draw_scale, draw_pos, prefabs),
+            Item::Prop(prop_item) => ItemSave::Prop(prop_item.save()),
+            Item::Weapon(weapon) => ItemSave::Weapon(weapon.save(space))
+        }
+    }
+
+    pub fn from_save(item_save: ItemSave, space: &mut Space) -> Item {
+        match item_save {
+            ItemSave::Prop(prop_item_save) => Item::Prop(PropItem::from_save(prop_item_save)),
+            ItemSave::Weapon(weapon_type_save) => Item::Weapon(WeaponType::from_save(space, weapon_type_save, None)) // pass None as player rigid body handle because its just an item
+        }
+    }
+    pub fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
+        match self {
+            Item::Prop(prop) => prop.draw_preview(textures, size, draw_pos, prefabs, color, rotation),
+            Item::Weapon(weapon) => weapon.draw_preview(textures, size, draw_pos, color, rotation),
+        }
+    }
+
+    pub fn get_preview_resolution(&self, textures: &TextureLoader, size: f32, prefabs: &Prefabs) -> Vec2 {
+        match self {
+            Item::Prop(prop_item) => prop_item.get_preview_resolution(size, prefabs, textures),
+            Item::Weapon(weapon) => weapon.get_preview_resolution(size, textures)
+            
+        }
+    }
+
+    pub fn name(&self, prefabs: &Prefabs) -> String {
+        match self {
+            Item::Prop(prop_item) => prop_item.name(prefabs),
+            Item::Weapon(weapon) => weapon.name()
+            
         }
     }
 }
 pub struct StoreItem {
     cost: u32,
-    item: Item
+    item: Item,
+    quantity: Option<u32>
 
 }
 
 impl StoreItem {
-    pub fn draw(&self, textures: &TextureLoader, draw_scale: f32, draw_pos: Vec2, prefabs: &Prefabs) {
-        self.item.draw_preview(textures, draw_scale, draw_pos, prefabs);
+    pub fn draw(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
+        self.item.draw_preview(textures, size, draw_pos, prefabs, color, rotation);
     }
 
 }
@@ -32,27 +75,58 @@ impl StoreItem {
 pub struct CategoryTab {
     button: Button,
     text: String,
-    font: PathBuf
+    font: PathBuf,
+    active: bool
 }
 
 impl CategoryTab {
 
-    pub fn new(text: impl ToString, rect: Rect, font: PathBuf) -> Self {
+    pub fn new(text: impl ToString, pos: Vec2, font: PathBuf) -> Self {
+
+        let text_length = text.to_string().len() as f32;
         Self {
-            button: Button::new(rect),
+            button: Button::new(
+                Rect {
+                    x: pos.x,
+                    y: pos.y,
+                    w: text_length * 13.,
+                    h: 20.,
+                }
+            ),
             text: text.to_string(),
-            font
+            font,
+            active: false
         }
     }
-    pub fn update(&mut self, camera_rect: &Rect, offset: Vec2) {
-        self.button.update(camera_rect, offset);
+    pub fn update(&mut self, mouse_pos: Vec2) {
+        self.button.update(mouse_pos);
     }
 
     pub fn draw(&self, fonts: &FontLoader) {
 
-        draw_rectangle(self.button.rect.x, self.button.rect.y, self.button.rect.w, self.button.rect.h, WHITE);
+        // draw_rectangle(self.button.rect.x, self.button.rect.y, self.button.rect.w, self.button.rect.h, Color {
+        //     r: 1.,
+        //     g: 1.,
+        //     b: 1.,
+        //     a: 0.75,
+        // });
 
-        dbg!(self.button.hovered);
+        let color = match self.button.hovered {
+            true => {
+                WHITE
+            },
+            false => {
+                match self.active {
+                    true => WHITE,
+                    false => GRAY,
+                }
+            },
+        };
+
+
+
+        let text_length = self.text.len() as f32;
+
         draw_text_ex(
             &self.text, 
             self.button.rect.x, 
@@ -60,13 +134,102 @@ impl CategoryTab {
             TextParams {
                 font: Some(&fonts.get(self.font.clone())),
                 font_size: 32,
-                color: WHITE,
+                color,
                 ..Default::default()
             }
         );
+
+        if self.active {
+            draw_line(self.button.rect.left(), self.button.rect.bottom() + 3., self.button.rect.left() + text_length * 13. + 3., self.button.rect.bottom() + 3., 2., color);
+        }
+        
     }
 }
 
+pub struct StoreCategory {
+    pub items: Vec<StoreItem>,
+    pub item_select_buttons: Vec<Button>,
+    pub pos: Vec2
+}
+
+impl StoreCategory {
+
+    pub fn new() -> Self {
+        Self {
+            items: Vec::new(),
+            item_select_buttons: Vec::new(),
+            pos: Vec2::new(10., 35.)
+        }
+    }
+
+    pub fn insert_item(&mut self, item: StoreItem) {
+
+        let pos = Vec2 {
+            x: (40. * (self.items.len() % 7) as f32) + self.pos.x,
+            y: (40. * (self.items.len() / 7) as f32) + self.pos.y,
+        };
+
+        self.items.push(item);
+
+        self.item_select_buttons.push(
+            Button::new(
+                Rect::new(
+                    pos.x, 
+                    pos.y, 
+                    40., 
+                    40.
+                )
+            )
+        );
+    }
+
+    pub fn tick(&mut self, mouse_pos: Vec2, ) {
+        for button in &mut self.item_select_buttons {
+            button.update(mouse_pos);
+        }
+    }
+
+    pub fn draw(&self, textures: &TextureLoader, prefabs: &Prefabs, fonts: &FontLoader) {
+
+        let hovered_button_color = Color::new(0.78, 0.78, 0.78, 0.5);
+
+        for (index, item) in self.items.iter().enumerate() {
+
+            let color = match self.item_select_buttons.get(index).unwrap().hovered {
+                true => WHITE,
+                false => Color::new(1.00, 1.00, 1.00, 0.8),
+            };
+
+            let draw_pos = Vec2 {
+                x: (40. * (index % 7) as f32) + self.pos.x,
+                y: (40. * (index / 7) as f32) + self.pos.y,
+            };
+
+            item.draw(
+                textures, 
+                36., 
+                draw_pos, 
+                prefabs,
+                Some(color),
+                0.
+            );
+
+            if let Some(quantity) = item.quantity {
+                draw_text_ex(
+                    &quantity.to_string(), 
+                    draw_pos.x, 
+                    draw_pos.y + 24., 
+                    TextParams {
+                        font: Some(&fonts.get(PathBuf::from("assets/fonts/CutePixel.ttf"))),
+                        font_size: 24,
+                        color: WHITE,
+                        ..Default::default()
+                    }
+                );
+            };
+        }
+    }
+}
 pub struct Computer {
     pub available_items: Vec<StoreItem>,
     pub selected_item: usize,
@@ -75,7 +238,10 @@ pub struct Computer {
     pub screen_pos: Vec2,
     pub screen_size: Vec2,
     pub activated_time: web_time::Instant,
-    pub category_tabs: Vec<CategoryTab>
+    pub category_tabs: Vec<CategoryTab>,
+    pub selected_category: usize,
+    pub item_categories: Vec<StoreCategory>,
+    pub render_target: Option<RenderTarget> // server cant initialize render targets 
 }
 
 impl Computer {
@@ -103,6 +269,7 @@ impl Computer {
                         prefab_path: PathBuf::from_str("prefabs\\generic_physics_props\\box2.json").unwrap(),
                     }
                 ),
+                quantity: None
             }
         );
 
@@ -114,6 +281,7 @@ impl Computer {
                         prefab_path: PathBuf::from_str("prefabs\\generic_physics_props\\anvil.json").unwrap(),
                     }
                 ),
+                quantity: None
             }
         );
 
@@ -121,12 +289,57 @@ impl Computer {
 
         category_tabs.push(
             CategoryTab::new(
-                "Structures", 
-                Rect::new(0., 0., 40., 20.), 
+                "STRU", 
+                Vec2::new(0., 0.), 
                 "assets/fonts/CutePixel.ttf".into()
                 
             )
         );
+
+        category_tabs.push(
+            CategoryTab::new(
+                "WEAP", 
+                Vec2::new(65., 0.), 
+                "assets/fonts/CutePixel.ttf".into()
+                
+            )
+        );
+
+        let mut item_categories: Vec<StoreCategory> = Vec::new();
+
+        let mut structures_category = StoreCategory::new();
+
+        for _ in 0..10 {
+            structures_category.insert_item(
+                StoreItem {
+                    cost: 20,
+                    item: Item::Prop(
+                        PropItem {
+                            prefab_path: PathBuf::from("prefabs\\generic_physics_props\\box2.json"),
+                        }
+                    ),
+                    quantity: None
+                }
+            );
+        }
+
+        for _ in 0..10 {
+            structures_category.insert_item(
+                StoreItem {
+                    cost: 20,
+                    item: Item::Prop(
+                        PropItem {
+                            prefab_path: PathBuf::from("prefabs\\generic_physics_props\\stone2.json"),
+                        }
+                    ),
+                    quantity: Some(1)
+                }
+            );
+        }
+
+        item_categories.push(structures_category);
+        
+        
 
         Self {
             prop,
@@ -136,16 +349,39 @@ impl Computer {
             screen_pos: Vec2::ONE,
             screen_size: Vec2::ONE,
             activated_time: web_time::Instant::now() - web_time::Duration::from_secs(100),
-            category_tabs
+            category_tabs,
+            selected_category: 0,
+            item_categories,
+            render_target: None
         }
     }
 
     
     pub fn tick(&mut self, ctx: &mut ClientTickContext, players: &mut Vec<Player>, space:&crate::space::Space) {
 
-        for tab in &mut self.category_tabs {
-            tab.update(&ctx.camera_rect, self.screen_pos);
+
+        let mouse_pos = self.get_mouse_pos(&ctx.camera_rect);
+
+        for (index, tab) in self.category_tabs.iter_mut().enumerate() {
+            tab.update(mouse_pos);
+
+            if tab.button.released {
+                self.selected_category = index;
+            }
         }
+
+        // need to inform the rest of the tabs that they are not active 
+        for (index, tab) in self.category_tabs.iter_mut().enumerate() {
+            if index != self.selected_category {
+                tab.active = false;
+            } else {
+                tab.active = true;
+            }
+        }
+
+        self.item_categories.get_mut(self.selected_category).unwrap().tick(mouse_pos);
+
+        
 
         let controlled_player = players.iter().find(|player| {player.owner == *ctx.client_id});
 
@@ -229,7 +465,7 @@ impl Computer {
 
         // IN THE FUTURE IF THE RENDER TARGET DOES NOT MATCH THE DESTINATION SIZE THESE COORDS NEED TO MULTIPLIED BY THAT RATIO
     }
-    pub async fn draw(&self, textures: &mut TextureLoader, space:&crate::space::Space, prefabs: &Prefabs, default_camera: &Camera2D, fonts: &FontLoader) {
+    pub async fn draw(&mut self, textures: &mut TextureLoader, space:&crate::space::Space, prefabs: &Prefabs, default_camera: &Camera2D, fonts: &FontLoader) {
         self.prop.draw(space, textures).await;
 
         let prop_pos = space.rigid_body_set.get(self.prop.rigid_body_handle).unwrap().position();
@@ -238,13 +474,19 @@ impl Computer {
 
         color.a = 0.25;
 
-        let render_target = render_target(320, 180);
+        let render_target = match &self.render_target {
+            Some(render_target) => render_target.clone(),
+            None => {
+                self.render_target = Some(render_target(320, 180));
+                self.render_target.clone().unwrap()
+            },
+        };
 
         let camera_rect = Rect::new(0., 0., 320., 180.);
 
         let mut camera = Camera2D::from_display_rect(camera_rect);
 
-        camera.render_target = Some(render_target);
+        camera.render_target = Some(render_target.clone());
 
         camera.zoom.y = -camera.zoom.y;
 
@@ -268,9 +510,11 @@ impl Computer {
         for category_tab in &self.category_tabs {
             category_tab.draw(fonts);
         }
-        
 
-        let selected_item = self.available_items.get(self.selected_item);
+        let selected_item_category = self.item_categories.get(self.selected_category).unwrap();
+
+        selected_item_category.draw(textures, prefabs, fonts);
+        
 
         // set the camera back
         set_camera(default_camera);

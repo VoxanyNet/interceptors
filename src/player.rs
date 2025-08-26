@@ -1,11 +1,12 @@
-use std::{f32::consts::PI, path::PathBuf, str::FromStr};
+use std::{f32::consts::PI, path::PathBuf, str::FromStr, time::Instant};
 
-use macroquad::{input::{is_key_down, is_key_released, is_mouse_button_released, KeyCode}, math::{vec2, Rect, Vec2}};
+use cs_utils::drain_filter;
+use macroquad::{color::{BLACK, LIGHTGRAY, WHITE}, input::{is_key_down, is_key_released, is_mouse_button_released, mouse_wheel, KeyCode}, math::{vec2, Rect, Vec2}, shapes::draw_rectangle, text::{draw_text_ex, TextParams}, window::{screen_height, screen_width}};
 use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::AreaId, body_part::BodyPart, bullet_trail::{self, BulletTrail}, computer::Item, get_angle_between_rapier_points, prop::{DissolvedPixel, Prop}, rapier_mouse_world_pos, rapier_to_macroquad, shotgun::Shotgun, space::Space, updates::NetworkPacket, uuid_u64, weapon::{BulletImpactData, Weapon, WeaponFireContext, WeaponType}, ClientId, ClientTickContext};
+use crate::{area::AreaId, body_part::BodyPart, bullet_trail::{self, BulletTrail}, computer::Item, dropped_item::DroppedItem, font_loader::FontLoader, get_angle_between_rapier_points, prop::{self, DissolvedPixel, Prop, PropItem}, rapier_mouse_world_pos, rapier_to_macroquad, shotgun::Shotgun, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::{BulletImpactData, Weapon, WeaponFireContext, WeaponSave, WeaponType}, ClientId, ClientTickContext, Prefabs};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -26,6 +27,10 @@ pub enum Facing {
     Left
 }
 
+pub struct ItemSlot {
+    quantity: u32,
+    item: Item
+}
 pub struct Player {
     pub id: PlayerId,
     pub weapon: Option<WeaponType>,
@@ -40,12 +45,174 @@ pub struct Player {
     cursor_pos_rapier: Vector2<f32>,
     previous_cursor_pos: Vector2<f32>,
     selected_item: usize,
-    items: Vec<Item>
-
-    
+    items: [Option<ItemSlot>; 6],
+    junk: Vec<ItemSlot>, // you can hold unlimited junk
+    last_changed_inventory_slot: web_time::Instant,
+    last_dash: web_time::Instant
 }
 
 impl Player {
+
+
+    pub fn dash(&mut self, space: &mut Space) {
+        if !is_key_down(KeyCode::LeftShift) {
+            return
+        }
+
+        if !(self.last_dash.elapsed().as_secs_f32() > 1.) {
+            return;
+        }
+
+        let body = space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
+
+        if is_key_down(KeyCode::A) {
+            body.apply_impulse(vector![-1000000. * 0.4, 0.].into(), true);
+
+            dbg!("ye");
+
+            self.last_dash = web_time::Instant::now();
+        }
+
+        if is_key_down(KeyCode::D) {
+            body.apply_impulse(vector![1000000. * 0.4, 0.], true);
+
+            self.last_dash = web_time::Instant::now();
+        }
+
+
+
+    }
+
+    pub fn pickup_item(&mut self, dropped_items: &mut Vec<DroppedItem>, space: &mut Space) {
+
+        let player_pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation.vector.clone();
+        
+        let mut picked_up_items = drain_filter(
+            dropped_items, 
+            |dropped_item| {
+                let item_pos = space.rigid_body_set.get(dropped_item.body).unwrap().position().translation.vector;
+
+                let distance = item_pos - player_pos;
+
+                if distance.magnitude() < 50. {
+                    
+                    return true
+                }
+
+                false
+                
+            }
+        );
+
+        for item in &mut picked_up_items {
+            item.despawn(space);
+        }
+
+        'drop_item_loop: for dropped_item in picked_up_items {
+            for item_slot in &mut self.items {
+                match item_slot {
+                    Some(item_slot) => {
+
+                        // matching item
+                        if item_slot.item == dropped_item.item {
+                            item_slot.quantity += 1;
+                        }
+
+                        continue 'drop_item_loop;
+                    },
+                    None => {
+                        *item_slot = Some(
+                            ItemSlot {
+                                quantity: 1,
+                                item: dropped_item.item,
+                            }
+                        );
+
+                        continue 'drop_item_loop;
+                    },
+                }
+            }
+        };
+        
+
+
+    }
+    pub fn draw_hud(&self, textures: &TextureLoader) {
+        
+    }
+
+    pub fn draw_inventory(&self, textures: &TextureLoader, space: &Space, prefabs: &Prefabs, fonts: &FontLoader) {
+
+        let pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation.vector;
+
+        let mpos = rapier_to_macroquad(pos);
+
+        for (index, item) in self.items.iter().enumerate() {
+
+            let (slot_color, item_color) = match self.selected_item == index{
+                true => {
+                    let mut slot_color = BLACK;
+                    let mut item_color = WHITE;
+                    slot_color.a = 0.7;
+                    item_color.a = 1.0;
+
+                    (slot_color, item_color)
+                },
+                false => {
+                    let mut slot_color = BLACK;
+                    let mut item_color = WHITE;
+                    slot_color.a = 0.2;
+                    item_color.a = 0.7;
+
+                    (slot_color, item_color)
+                },
+            };
+            
+            let slot_pos = Vec2 {
+                x: (mpos.x + (index as f32 * 50.)) - ((50. * self.items.len() as f32) / 2. ),
+                y: mpos.y - 80.
+            };
+
+            draw_rectangle(
+                slot_pos.x, 
+                slot_pos.y, 
+                40., 
+                40.,
+                slot_color
+            );
+
+            // slightly offset the item to be more centered
+            let item_preview_pos = Vec2 {
+                x: slot_pos.x + 5.,
+                y: slot_pos.y + 5.,
+            };
+
+            match item {
+                Some(item_slot) => {
+                    item_slot.item.draw_preview(textures, 30., item_preview_pos, prefabs, Some(item_color), 0.);
+                    
+                    if item_slot.quantity > 1 {
+                        draw_text_ex(
+                            &item_slot.quantity.to_string(), 
+                            item_preview_pos.x, 
+                            item_preview_pos.y + 24., 
+                            TextParams {
+                                font: Some(&fonts.get(PathBuf::from("assets/fonts/CutePixel.ttf"))),
+                                font_size: 24,
+                                color: WHITE,
+                                ..Default::default()
+                            }
+                        );
+                    }
+                },
+                None => {
+                    
+                },
+            }
+
+            
+        }
+    }
 
     pub fn set_facing(&mut self, facing: Facing) {
         self.facing = facing
@@ -125,9 +292,9 @@ impl Player {
     }
 
     pub fn new(pos: Isometry2<f32>, space: &mut Space, owner: ClientId) -> Self {
-        let head = BodyPart::new(PathBuf::from_str("assets/cat/head.png").unwrap(), 2, 10., pos, space, owner, Vec2::new(30., 28.));
+        let head = BodyPart::new(PathBuf::from_str("assets/cat/head.png").unwrap(), 2, 100., pos, space, owner, Vec2::new(30., 28.));
 
-        let body = BodyPart::new(PathBuf::from_str("assets/cat/body.png").unwrap(), 2, 100., pos, space, owner, Vec2::new(22., 19.));
+        let body = BodyPart::new(PathBuf::from_str("assets/cat/body.png").unwrap(), 2, 1000., pos, space, owner, Vec2::new(22., 19.));
 
         // lock the rotation of the body
         space.rigid_body_set.get_mut(body.body_handle).unwrap().lock_rotations(true, true);
@@ -146,6 +313,25 @@ impl Player {
         );
 
         let body_handle = body.body_handle.clone();
+
+        let mut items: [Option<ItemSlot>; 6] = Default::default();
+
+        // items[0] = Some(ItemSlot {
+        //     quantity: 1,
+        //     item: Item::Prop(
+        //         PropItem {
+        //             prefab_path: PathBuf::from("prefabs\\generic_physics_props\\box2.json"),
+        //         }
+        //     ),
+        // });
+        // items[3] = Some(ItemSlot {
+        //     quantity: 1,
+        //     item: Item::Prop(
+        //         PropItem {
+        //             prefab_path: PathBuf::from("prefabs\\generic_physics_props\\box2.json"),
+        //         }
+        //     ),
+        // });
 
         Self {
             id: PlayerId::new(),
@@ -169,21 +355,74 @@ impl Player {
                 )
             )),
             selected_item: 0,
-            items: Vec::new()
+            items,
+            last_changed_inventory_slot: Instant::now(),
+            junk: Vec::new(),
+            last_dash: web_time::Instant::now()
         }
     }
 
-    pub fn use_item(&mut self) {
-        let selected_item = self.items.get_mut(self.selected_item);
+    pub fn change_active_inventory_slot(&mut self) {
 
-        if selected_item.is_none() {
+        if mouse_wheel().1 < 0. {
+
+            if self.selected_item == 5 {
+                self.selected_item = 0;
+
+                return;
+            }
+
+            self.selected_item += 1;
+            
+        } else if mouse_wheel().1 > 0. {
+            if self.selected_item == 0 {
+                self.selected_item = 5;
+                
+                return;
+            }
+
+            self.selected_item -= 1;
+        }
+
+
+    }
+    pub fn use_item(
+        &mut self, 
+        ctx: &mut ClientTickContext, 
+        space: &mut Space, 
+        props: &mut Vec<Prop>, 
+        players: &mut Vec<Player>, 
+        bullet_trails: &mut Vec<BulletTrail>,
+        facing: Facing,
+        area_id: AreaId,
+        dissolved_pixels: &mut Vec<DissolvedPixel>
+    ) {
+        let item_slot = self.items.get_mut(self.selected_item).unwrap();
+
+        if item_slot.is_none() {
             return;
         }
 
-        let selected_item = selected_item.unwrap();
+        let item_slot = item_slot.as_mut().unwrap();
 
-        match selected_item {
-            Item::Prop(prop) => todo!(),
+        match &mut item_slot.item {
+            Item::Prop(prop_item) => {
+                prop_item.use_item(&mut item_slot.quantity, ctx, space, props);
+            },
+            Item::Weapon(weapon) => {
+
+                let mut weapon_fire_context = WeaponFireContext {
+                    space,
+                    players,
+                    props,
+                    bullet_trails,
+                    facing,
+                    area_id,
+                    dissolved_pixels,
+                };
+
+                weapon.fire(ctx, &mut weapon_fire_context);
+            }
         }
         
     }
@@ -256,7 +495,8 @@ impl Player {
         players: &mut Vec<Player>,
         props: &mut Vec<Prop>,
         bullet_trails: &mut Vec<BulletTrail>,
-        dissolved_pixels: &mut Vec<DissolvedPixel>
+        dissolved_pixels: &mut Vec<DissolvedPixel>,
+        dropped_items: &mut Vec<DroppedItem>
 
     ) {
 
@@ -267,7 +507,7 @@ impl Player {
         self.angle_head_to_mouse(space);
 
         if self.owner == *ctx.client_id {
-            self.owner_tick(space, ctx, area_id, players, props, bullet_trails, dissolved_pixels);
+            self.owner_tick(space, ctx, area_id, players, props, bullet_trails, dissolved_pixels, dropped_items);
         }
 
         self.previous_velocity = current_velocity;
@@ -306,7 +546,7 @@ impl Player {
 
     }
 
-    pub async fn draw(&self, space: &Space, textures:&mut crate::texture_loader::TextureLoader ) {
+    pub async fn draw(&self, space: &Space, textures:&mut crate::texture_loader::TextureLoader, prefabs: &Prefabs, fonts: &FontLoader) {
         
         let flip_x = match self.facing {
             Facing::Right => false,
@@ -319,6 +559,8 @@ impl Player {
         if let Some(weapon) = &self.weapon {
             weapon.draw(space, textures, self.facing).await
         }
+
+        self.draw_inventory(textures, space, prefabs, fonts);
         
         
     }
@@ -443,10 +685,18 @@ impl Player {
         players: &mut Vec<Player>,
         props: &mut Vec<Prop>,
         bullet_trails: &mut Vec<BulletTrail>,
-        dissolved_pixels: &mut Vec<DissolvedPixel>
+        dissolved_pixels: &mut Vec<DissolvedPixel>,
+        dropped_items: &mut Vec<DroppedItem>
     ) {
         
         self.update_cursor_pos(ctx, area_id);
+
+        self.dash(space);
+
+        self.pickup_item(dropped_items, space);
+
+        self.change_active_inventory_slot();
+
 
         if let Some(weapon) = &mut self.weapon {
             if is_mouse_button_released(macroquad::input::MouseButton::Left) {
@@ -512,7 +762,7 @@ impl Player {
 pub struct PlayerSave {
     pos: Isometry2<f32>,
     owner: ClientId,
-    id: PlayerId // we arent storing the player as a prefab so the player will always have an id
+    id: PlayerId, // we arent storing the player as a prefab so the player will always have an id
 }
 
 #[derive(Serialize, Deserialize, Clone)]
