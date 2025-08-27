@@ -7,7 +7,7 @@ use rapier2d::prelude::RigidBodyVelocity;
 use serde::{Deserialize, Serialize};
 use web_sys::js_sys::WebAssembly::Instance;
 
-use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave}, font_loader::FontLoader, player::{NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropItem, PropSave}, rapier_mouse_world_pos, shotgun::Shotgun, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, Prefabs, ServerIO, SwapIter};
+use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave}, font_loader::FontLoader, player::{NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropItem, PropSave}, rapier_mouse_world_pos, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, Prefabs, ServerIO, SwapIter};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -245,14 +245,8 @@ impl Area {
 
             let dropped_item = DroppedItem::new(
                 crate::computer::Item::Weapon(
-                    crate::weapon::WeaponType::Shotgun(
-                        Shotgun::new(
-                            &mut self.space, 
-                            mouse_pos, 
-                            *ctx.client_id, 
-                            None, 
-                            crate::player::Facing::Left
-                        )
+                    crate::weapon::WeaponTypeItem::Shotgun(
+                        ShotgunItem::new()
                     )
                 ),
                 mouse_pos.into(), 

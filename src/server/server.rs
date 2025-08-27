@@ -1,6 +1,6 @@
 use std::fs::read_to_string;
 
-use interceptors_lib::{area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket}, world::World, ClientId, Prefabs, ServerIO};
+use interceptors_lib::{area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket}, weapon::WeaponType, world::World, ClientId, Prefabs, ServerIO};
 use tungstenite::Message;
 
 include!(concat!(env!("OUT_DIR"), "/prefabs.rs"));
@@ -355,7 +355,7 @@ impl Server {
 
                     let player = area.players.iter_mut().find(|player| {player.id == update.player_id}).unwrap();
 
-                    match &mut player.items[update.inventory_index] {
+                    match &mut player.inventory.items[update.inventory_index] {
                         Some(item_slot) => {
                             item_slot.quantity = update.quantity;
                         },
@@ -377,7 +377,7 @@ impl Server {
 
                     let player = area.players.iter_mut().find(|player| {player.id == update.player_id}).unwrap();
 
-                    player.items[update.inventory_index] = match &update.item_slot {
+                    player.inventory.items[update.inventory_index] = match &update.item_slot {
                         Some(item_slot_save) => {
                             Some(
                                 ItemSlot::from_save(item_slot_save.clone(), &mut area.space)
@@ -386,6 +386,24 @@ impl Server {
                         None => None,
                     };
 
+                    self.network_io.send_all_except(network_packet, client_id);
+                },
+                NetworkPacket::ActiveWeaponUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    let player = area.players.iter_mut().find(|player| {player.id == update.player_id}).unwrap();
+
+                    player.weapon = match &update.weapon {
+                        Some(weapon) => {
+                            Some(WeaponType::from_save(&mut area.space, weapon.clone(), Some(player.body.body_handle)))
+                        },
+                        None => None,
+                    };
+                    
                     self.network_io.send_all_except(network_packet, client_id);
                 }
                 

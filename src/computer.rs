@@ -4,23 +4,30 @@ use macroquad::{camera::{pop_camera_state, push_camera_state, set_camera, set_de
 use nalgebra::Isometry2;
 use serde::{Deserialize, Serialize};
 
-use crate::{button::Button, font_loader::FontLoader, mouse_world_pos, player::Player, prop::{self, Prop, PropItem, PropItemSave, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, weapon::{Weapon, WeaponSave, WeaponType, WeaponTypeSave}, ClientTickContext, Prefabs};
+use crate::{button::Button, font_loader::FontLoader, mouse_world_pos, player::Player, prop::{self, Prop, PropItem, PropItemSave, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, weapon::{Weapon, WeaponSave, WeaponType, WeaponTypeItem, WeaponTypeItemSave, WeaponTypeSave}, ClientTickContext, Prefabs};
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum Item {
     Prop(PropItem),
-    Weapon(WeaponType)
+    Weapon(WeaponTypeItem)
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ItemSave {
     Prop(PropItemSave),
-    Weapon(WeaponTypeSave)
+    Weapon(WeaponTypeItemSave)
 }
 
 
 
 impl Item {
+
+    pub fn stackable(&self) -> bool {
+        match self {
+            Item::Prop(prop_item) => prop_item.stackable(),
+            Item::Weapon(weapon_type_item) => weapon_type_item.stackable(),
+        }
+    }
 
     pub fn save(&self, space: &Space) -> ItemSave {
         match self {
@@ -32,7 +39,7 @@ impl Item {
     pub fn from_save(item_save: ItemSave, space: &mut Space) -> Item {
         match item_save {
             ItemSave::Prop(prop_item_save) => Item::Prop(PropItem::from_save(prop_item_save)),
-            ItemSave::Weapon(weapon_type_save) => Item::Weapon(WeaponType::from_save(space, weapon_type_save, None)) // pass None as player rigid body handle because its just an item
+            ItemSave::Weapon(weapon_type_save) => Item::Weapon(WeaponTypeItem::from_save(weapon_type_save)) // pass None as player rigid body handle because its just an item
         }
     }
     pub fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {

@@ -144,12 +144,16 @@ pub struct Prop {
     name: String
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct PropItem {
     pub prefab_path: PathBuf
 }
 
 impl PropItem {
+
+    pub fn stackable(&self) -> bool {
+        true
+    }
 
     pub fn from_save(save: PropItemSave) -> Self {
         PropItem {
@@ -397,7 +401,6 @@ impl Prop {
                 )
             );
 
-            dbg!("sent");
         }
         
 

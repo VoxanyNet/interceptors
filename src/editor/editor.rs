@@ -226,6 +226,7 @@ impl Spawner {
             
             SpawnerCategory::Decoration => {
 
+                dbg!("spawning");
                 let decoration_save: DecorationSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
 
                 let mut decoration: Decoration = Decoration::from_save(decoration_save);
@@ -415,8 +416,6 @@ impl AreaEditor {
 
             if !is_key_down(KeyCode::LeftAlt) {
                 self.cursor.x = round_to_nearest_50(self.cursor.x);
-
-                dbg!("rounding");
             }
             
 

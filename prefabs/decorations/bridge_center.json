@@ -1,0 +1,12 @@
+{
+    "pos": [
+        0.0,
+        0.0
+    ],
+
+    "sprite_path": "assets/bridge_center.png",
+    "size":  [
+        122.0,
+        88.0
+    ]
+}

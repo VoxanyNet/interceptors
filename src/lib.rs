@@ -34,6 +34,7 @@ pub mod computer;
 pub mod font_loader;
 pub mod button;
 pub mod dropped_item;
+pub mod inventory;
 
 pub struct SwapIter<'a, T> {
     vec: &'a mut Vec<T>,

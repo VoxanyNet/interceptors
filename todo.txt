@@ -1,3 +1,5 @@
+BATTLESHOP
+
 different enemy deaths
     head falls off if headshot
     dissolve if lots of damage

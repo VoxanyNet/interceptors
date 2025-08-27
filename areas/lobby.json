@@ -1631,6 +1631,94 @@
         50.0
       ],
       "sprite_path": "assets/grass_middlemiddle.png"
+    },
+    {
+      "pos": [
+        2350.0,
+        650.0
+      ],
+      "size": [
+        74.0,
+        56.0
+      ],
+      "sprite_path": "assets/bridge_left.png"
+    },
+    {
+      "pos": [
+        2424.0,
+        650.0
+      ],
+      "size": [
+        122.0,
+        88.0
+      ],
+      "sprite_path": "assets/bridge_center.png"
+    },
+    {
+      "pos": [
+        2546.0,
+        650.0
+      ],
+      "size": [
+        122.0,
+        88.0
+      ],
+      "sprite_path": "assets/bridge_center.png"
+    },
+    {
+      "pos": [
+        2668.0,
+        650.0
+      ],
+      "size": [
+        122.0,
+        88.0
+      ],
+      "sprite_path": "assets/bridge_center.png"
+    },
+    {
+      "pos": [
+        2790.0,
+        650.0
+      ],
+      "size": [
+        122.0,
+        88.0
+      ],
+      "sprite_path": "assets/bridge_center.png"
+    },
+    {
+      "pos": [
+        2912.0,
+        650.0
+      ],
+      "size": [
+        122.0,
+        88.0
+      ],
+      "sprite_path": "assets/bridge_center.png"
+    },
+    {
+      "pos": [
+        3034.0,
+        650.0
+      ],
+      "size": [
+        122.0,
+        88.0
+      ],
+      "sprite_path": "assets/bridge_center.png"
+    },
+    {
+      "pos": [
+        3156.0,
+        650.0
+      ],
+      "size": [
+        122.0,
+        88.0
+      ],
+      "sprite_path": "assets/bridge_center.png"
     }
   ],
   "clips": [
@@ -1687,8 +1775,17 @@
       "parallax": 0.25
     }
   ],
-  "generic_physics_props": [
-  ],
+  "generic_physics_props": [],
   "enemies": [],
-  "computer_pos": null
+  "computer_pos": {
+    "rotation": [
+      1.0,
+      0.0
+    ],
+    "translation": [
+      650.0,
+      95.970856
+    ]
+  },
+  "dropped_items": []
 }
