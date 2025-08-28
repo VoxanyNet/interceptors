@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}, time::Instant};
 
-use interceptors_lib::{area::{Area, AreaSave}, background::{Background, BackgroundSave}, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, prop::{Prop, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, Prefabs};
+use interceptors_lib::{area::{Area, AreaSave}, background::{Background, BackgroundSave}, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, Prefabs};
 use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{GREEN, RED, WHITE}, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel, KeyCode, MouseButton}, math::{Rect, Vec2}, shapes::draw_rectangle, text::{draw_text, Font}, window::{next_frame, screen_height, screen_width}};
 use nalgebra::{vector, Vector2};
 use rapier2d::prelude::{ColliderBuilder, RigidBodyBuilder};
@@ -304,6 +304,13 @@ fn round_to_nearest_50(n: f32) -> f32 {
 }
 
 impl AreaEditor {
+
+    pub fn highlight_selected_decoration(&mut self, textures: ) {
+        for decoration in &self.area.decorations {
+            if decoration.
+        }
+    }
+
     pub async fn new() -> Self {
 
         let mut prefabs = Prefabs::new();
@@ -386,37 +393,50 @@ impl AreaEditor {
         
     }
 
-
+    pub fn update_cursor_mouse(&mut self) {
+        if is_mouse_button_released(MouseButton::Left) {
+            self.cursor = mouse_world_pos(&self.camera_rect)
+        }
+    }
     pub fn update_cursor(&mut self) {
+
+        if is_key_down(KeyCode::Tab) {
+            return;
+        }
 
         self.previous_cursor = self.cursor.clone();
         
-
-        let cursor_move_amount = match is_key_down(KeyCode::LeftAlt) {
-            true =>  {
-                if self.last_cursor_move.elapsed().as_secs_f32() < 0.1 {
-                    return;
-                } else {
-                    1.
-                }
-            },
-            false => {
-                if self.last_cursor_move.elapsed().as_secs_f32() < 0.1 {
-                    return;
-                } else {
-                    50.
-                }
-            },
+        let cursor_move_amount = match is_key_down(KeyCode::LeftShift) {
+            true => 10.,
+            false => 1.,
         };
+
+        if self.last_cursor_move.elapsed().as_secs_f32() < 0.1 {
+            return;
+        }
+        
+
+        // let cursor_move_amount = match is_key_down(KeyCode::LeftAlt) {
+        //     true =>  {
+        //         if self.last_cursor_move.elapsed().as_secs_f32() < 0.1 {
+        //             return;
+        //         } else {
+        //             1.
+        //         }
+        //     },
+        //     false => {
+        //         if self.last_cursor_move.elapsed().as_secs_f32() < 0.1 {
+        //             return;
+        //         } else {
+        //             50.
+        //         }
+        //     },
+        // };
 
         self.last_cursor_move = web_time::Instant::now();
 
 
         if is_key_down(KeyCode::Left) {
-
-            if !is_key_down(KeyCode::LeftAlt) {
-                self.cursor.x = round_to_nearest_50(self.cursor.x);
-            }
             
 
             self.cursor.x -= cursor_move_amount;
@@ -424,30 +444,16 @@ impl AreaEditor {
 
         if is_key_down(KeyCode::Right) {
 
-            if !is_key_down(KeyCode::LeftAlt) {
-                self.cursor.x = round_to_nearest_50(self.cursor.x);
-                dbg!("rounding");
-            }
-
             self.cursor.x += cursor_move_amount;
         }
 
         if is_key_down(KeyCode::Up) {
 
-            if !is_key_down(KeyCode::LeftAlt) {
-                self.cursor.y = round_to_nearest_50(self.cursor.y);
-                dbg!("rounding");
-            }
 
             self.cursor.y -= cursor_move_amount;
         }
 
         if is_key_down(KeyCode::Down) {
-
-            if !is_key_down(KeyCode::LeftAlt) {
-                self.cursor.y = round_to_nearest_50(self.cursor.y);
-                dbg!("rounding");
-            }
 
             self.cursor.y += cursor_move_amount;
         }
@@ -648,7 +654,7 @@ impl AreaEditor {
             }
         }
 
-        
+        self.update_cursor_mouse();
 
         self.move_delete();
 
