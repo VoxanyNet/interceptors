@@ -106,7 +106,7 @@ impl Client {
             prefab_data.load_prefab_data(prefab_path).await
         }
 
-        let url = "ws://127.0.0.1:5560";
+        let url = "ws://voxany.net:5560";
 
         let (mut server_send, server_receive) = match ewebsock::connect(url, ewebsock::Options::default()) {
             Ok(result) => result,
@@ -351,8 +351,6 @@ impl Client {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
                     let player = area.players.iter_mut().find(|player| {player.id == update.player_id}).unwrap();
-
-                    let current_pos = area.space.rigid_body_set.get(player.body.body_handle).unwrap().position();
 
                     dbg!("received pos update");
                         

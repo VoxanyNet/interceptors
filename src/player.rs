@@ -73,7 +73,9 @@ pub struct Player {
     pub inventory: Inventory,
     junk: Vec<ItemSlot>, // you can hold unlimited junk
     last_changed_inventory_slot: web_time::Instant,
-    last_dash: web_time::Instant
+    last_dash: web_time::Instant,
+    previous_pos: Isometry2<f32>,
+    last_position_update: web_time::Instant
 }
 
 impl Player {
@@ -436,7 +438,9 @@ impl Player {
             inventory: inventory,
             last_changed_inventory_slot: Instant::now(),
             junk: Vec::new(),
-            last_dash: web_time::Instant::now()
+            last_dash: web_time::Instant::now(),
+            previous_pos: Isometry2::default(),
+            last_position_update: web_time::Instant::now()
         }
     }
 
@@ -806,6 +810,25 @@ impl Player {
         dissolved_pixels: &mut Vec<DissolvedPixel>,
         dropped_items: &mut Vec<DroppedItem>,
     ) {
+
+        let pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position();
+
+        if (self.last_position_update.elapsed().as_secs_f32() > 3.) && *pos != self.previous_pos {
+
+
+            ctx.network_io.send_network_packet(
+                NetworkPacket::PlayerPositionUpdate(
+                    PlayerPositionUpdate {
+                        area_id,
+                        pos: *pos,
+                        player_id: self.id,
+                    }
+                )
+            );
+
+            self.last_position_update = web_time::Instant::now();
+        }
+
 
         if is_mouse_button_released(macroquad::input::MouseButton::Left) {
             self.use_item(ctx, space, props, players, bullet_trails, self.facing, area_id, dissolved_pixels, dropped_items);
