@@ -4,7 +4,7 @@ use interceptors_lib::{area::{Area, AreaSave}, background::{Background, Backgrou
 use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{GREEN, RED, WHITE}, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel, KeyCode, MouseButton}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::{draw_text, Font}, window::{next_frame, screen_height, screen_width}};
 use nalgebra::{vector, Vector2};
 use rapier2d::prelude::{ColliderBuilder, RigidBodyBuilder};
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
 include!(concat!(env!("OUT_DIR"), "/prefabs.rs"));
@@ -312,7 +312,7 @@ impl AreaEditor {
 
             let rect = Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y);
 
-            if rect.contains(mouse_world_pos(&self.camera_rect)) {
+            if rect.contains(mouse_world_pos(&self.camera_rect)) || rect.contains(self.cursor) {
                 draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 3., WHITE);
             }
         }
@@ -384,10 +384,14 @@ impl AreaEditor {
 
                 if is_key_down(KeyCode::Q) && self.cursor != self.previous_cursor {
                     decoration.pos = self.cursor;
+
+                    break;
                 }
 
                 if is_key_released(KeyCode::Delete) {
                     decorations_remove.push(decoration.clone());
+
+                    break;
                 }
                 
             }
@@ -402,7 +406,16 @@ impl AreaEditor {
 
     pub fn update_cursor_mouse(&mut self) {
         if is_mouse_button_released(MouseButton::Left) {
-            self.cursor = mouse_world_pos(&self.camera_rect)
+            self.cursor = mouse_world_pos(&self.camera_rect);
+
+            // snap cursor to top left of decoration if the cursor is there
+            for decoration in &self.area.decorations {
+                if Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y).contains(mouse_world_pos(&self.camera_rect)) {
+                    self.cursor = decoration.pos;
+
+                    
+                } 
+            }
         }
     }
     pub fn update_cursor(&mut self) {
