@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}, time::Instant};
 
 use interceptors_lib::{area::{Area, AreaSave}, background::{Background, BackgroundSave}, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, Prefabs};
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{GREEN, RED, WHITE}, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel, KeyCode, MouseButton}, math::{Rect, Vec2}, shapes::draw_rectangle, text::{draw_text, Font}, window::{next_frame, screen_height, screen_width}};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{GREEN, RED, WHITE}, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel, KeyCode, MouseButton}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::{draw_text, Font}, window::{next_frame, screen_height, screen_width}};
 use nalgebra::{vector, Vector2};
 use rapier2d::prelude::{ColliderBuilder, RigidBodyBuilder};
 use serde::{Deserialize, Serialize};
@@ -305,9 +305,16 @@ fn round_to_nearest_50(n: f32) -> f32 {
 
 impl AreaEditor {
 
-    pub fn highlight_selected_decoration(&mut self, textures: ) {
+    pub fn highlight_selected_decoration(&mut self) {
+
+
         for decoration in &self.area.decorations {
-            if decoration.
+
+            let rect = Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y);
+
+            if rect.contains(mouse_world_pos(&self.camera_rect)) {
+                draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 3., WHITE);
+            }
         }
     }
 
@@ -608,8 +615,12 @@ impl AreaEditor {
         self.draw_clip_points();
 
         self.draw_clips();
+
+        self.highlight_selected_decoration();
         
         set_default_camera();
+
+        
 
         if self.current_mode() == Mode::PrefabPlacement {
             self.spawner.draw_menu(&self.camera_rect, &mut self.textures, self.cursor).await;
