@@ -106,7 +106,7 @@ impl Client {
             prefab_data.load_prefab_data(prefab_path).await
         }
 
-        let url = "ws://voxany.net:5560";
+        let url = "ws://127.0.0.1:5560";
 
         let (mut server_send, server_receive) = match ewebsock::connect(url, ewebsock::Options::default()) {
             Ok(result) => result,

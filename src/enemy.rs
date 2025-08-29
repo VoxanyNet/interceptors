@@ -1,11 +1,11 @@
-use std::{f64::consts::E, path::PathBuf, time::Instant};
+use std::{f32::consts::PI, f64::consts::E, path::PathBuf, time::Instant};
 
 use macroquad::math::Vec2;
-use nalgebra::{vector, Isometry2, Vector2};
+use nalgebra::{vector, Isometry2, Vector, Vector2};
 use rapier2d::{parry::query::Ray, prelude::{ColliderHandle, Group, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder}};
 use serde::{Deserialize, Serialize};
 
-use crate::{angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, player::{Facing, Player, PlayerId}, prop::{DissolvedPixel, Prop}, space::Space, texture_loader::TextureLoader, uuid_u64, weapon::{self, BulletImpactData, WeaponFireContext, WeaponType, WeaponTypeItem, WeaponTypeSave}, ClientId, ClientTickContext};
+use crate::{angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, get_angle_between_rapier_points, player::{self, Facing, Player, PlayerId}, prop::{DissolvedPixel, Prop}, space::Space, texture_loader::TextureLoader, uuid_u64, weapon::{self, BulletImpactData, WeaponFireContext, WeaponType, WeaponTypeItem, WeaponTypeSave}, ClientId, ClientTickContext};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct EnemyId {
@@ -23,6 +23,7 @@ impl EnemyId {
 #[derive(Debug)]
 pub enum Task {
     BreakingProps,
+    AttackPlayer,
     ChasePlayer
 }
 pub struct Enemy {
@@ -43,6 +44,47 @@ pub struct Enemy {
 }
 
 impl Enemy {
+
+    pub fn angle_head_to_target(&mut self, space: &mut Space, players: &Vec<Player>) {
+
+        let target_player = match self.player_target {
+            Some(target_player_id) => players.iter().find(|player|{player.id == target_player_id}).unwrap(),
+            None => return,
+        };
+
+        let target_player_pos = space.rigid_body_set.get(target_player.body.body_handle).unwrap().position().translation.vector;
+
+
+        let head_joint_handle = match self.head_body_joint {
+            Some(head_joint_handle) => head_joint_handle,
+            None => return,
+        };
+
+        let head_body = space.rigid_body_set.get_mut(self.head.body_handle).unwrap();
+
+        head_body.wake_up(true);
+
+        let angle_to_mouse = get_angle_between_rapier_points(head_body.position().translation.vector, target_player_pos);
+
+        let head_joint = space.impulse_joint_set.get_mut(head_joint_handle, true).unwrap();
+
+        let target_angle = match self.facing {
+            Facing::Right => {
+                -angle_to_mouse + (PI / 2.)
+            },
+            Facing::Left => {
+                (angle_to_mouse + (PI / 2.)) * -1.
+            },
+        };
+
+        if target_angle.abs() > 0.399 {
+            // dont try to set the angle if we know its beyond the limit
+            return;
+        }
+
+        head_joint.data.as_revolute_mut().unwrap().set_motor_position(target_angle, 300., 0.);
+
+    }
 
     pub fn get_colliders_between_enemy_and_target(&mut self, space: &Space, players: &Vec<Player>) -> Vec<ColliderHandle> {
 
@@ -171,25 +213,21 @@ impl Enemy {
 
         // we could maybe make it so that the enemy explicity points at the prop it wants to destroy but for now we just blindly fire the weapon if we know a prop is in the way
 
-        weapon.fire(
-            ctx, 
-            &mut WeaponFireContext {
-                space,
-                players,
-                props,
-                bullet_trails,
-                facing: self.facing,
-                area_id,
-                dissolved_pixels,
-                enemies,
-            }
-        );
+        self.fire_weapon(props, space, ctx, players, bullet_trails, area_id, dissolved_pixels, enemies);    
 
-        self.last_fired_weapon = web_time::Instant::now();
 
 
 
        
+    }
+
+    pub fn distance_to_target(&self, space: &Space, players: &Vec<Player>) -> Option<Vector2<f32>> {
+        let target = match self.player_target {
+            Some(player_id) => players.iter().find(|player|{player.id == player_id}).unwrap(),
+            None => return None,
+        };
+
+        Some(space.rigid_body_set.get(target.body.body_handle).unwrap().position().translation.vector - space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation.vector)
     }
 
 
@@ -210,6 +248,18 @@ impl Enemy {
                 return;
             }
         }   
+
+        if let Some(distance) = self.distance_to_target(space, players) {
+
+            dbg!(distance.magnitude());
+            if distance.magnitude() < 1000. {
+                self.task = Task::AttackPlayer;
+
+                return;
+            }
+        }
+
+        
 
         // default task is to chase player
         self.task = Task::ChasePlayer;
@@ -337,6 +387,32 @@ impl Enemy {
 
     }
 
+    pub fn fire_weapon(&mut self, props: &mut Vec<Prop>, space: &mut Space, ctx: &mut ClientTickContext, players: &mut Vec<Player>, bullet_trails: &mut Vec<BulletTrail>, area_id: AreaId, dissolved_pixels: &mut Vec<DissolvedPixel>, enemies: &mut Vec<Enemy>) {
+
+        if let Some(weapon) = &mut self.weapon {
+
+            match weapon {
+                WeaponType::Shotgun(shotgun) => if self.last_fired_weapon.elapsed().as_secs_f32() < 1. {
+                    return;
+                },
+            }
+            weapon.fire(ctx, &mut WeaponFireContext {
+                space,
+                players,
+                props,
+                bullet_trails,
+                facing: self.facing,
+                area_id,
+                dissolved_pixels,
+                enemies,
+            });
+
+            self.last_fired_weapon = web_time::Instant::now();
+        }
+
+
+    }
+
     pub fn owner_tick(&mut self, props: &mut Vec<Prop>, space: &mut Space, ctx: &mut ClientTickContext, players: &mut Vec<Player>, bullet_trails: &mut Vec<BulletTrail>, area_id: AreaId, dissolved_pixels: &mut Vec<DissolvedPixel>, enemies: &mut Vec<Enemy>) {
         
         self.set_task(space, players, props);
@@ -349,6 +425,14 @@ impl Enemy {
             Task::ChasePlayer => {
                 self.follow_target(space, players);
             },
+            Task::AttackPlayer => {
+
+                self.fire_weapon(props, space, ctx, players, bullet_trails, area_id, dissolved_pixels, enemies);
+
+                self.follow_target(space, players);
+
+            
+            }
         }
     }
 
@@ -367,6 +451,8 @@ impl Enemy {
         if self.despawn {
             return;
         }
+
+        self.angle_head_to_target(space, players);
 
         self.face_target(space, players);
 

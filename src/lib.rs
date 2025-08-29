@@ -449,7 +449,7 @@ pub struct ServerIO {
 impl ServerIO {
 
     pub fn new() -> Self {
-        let listener = match TcpListener::bind("0.0.0.0:5560") {
+        let listener = match TcpListener::bind("127.0.0.1:5560") {
             Ok(listener) => listener,
             Err(error) => panic!("failed to bind listener: {}", error),
         };

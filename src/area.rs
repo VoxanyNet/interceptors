@@ -7,7 +7,7 @@ use rapier2d::prelude::RigidBodyVelocity;
 use serde::{Deserialize, Serialize};
 use web_sys::js_sys::WebAssembly::Instance;
 
-use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave}, font_loader::FontLoader, player::{self, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropItem, PropSave}, rapier_mouse_world_pos, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::WeaponTypeItem, ClientTickContext, Prefabs, ServerIO, SwapIter};
+use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave}, font_loader::FontLoader, player::{self, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropItem, PropSave}, rapier_mouse_world_pos, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::WeaponTypeItem, ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -38,7 +38,8 @@ pub struct Area {
     pub max_camera_y: f32,
     pub minimum_camera_width: f32,
     pub minimum_camera_height: f32,
-    pub despawn_y: f32
+    pub despawn_y: f32,
+    pub master: Option<ClientId>
 }
 
 impl Area {
@@ -62,7 +63,8 @@ impl Area {
             max_camera_y: 0.,
             minimum_camera_width: 1920.,
             minimum_camera_height: 1080.,
-            despawn_y: 0.
+            despawn_y: 0.,
+            master: None
         }
     }
 
@@ -115,6 +117,16 @@ impl Area {
 
     pub fn server_tick(&mut self, io: &mut ServerIO, dt: web_time::Duration) {
         self.space.step(dt);
+
+        self.designate_master();
+    }
+
+    pub fn designate_master(&mut self) {
+        if self.master == None {
+            if let Some(player) = self.players.get(0) {
+                self.master = Some(player.owner)
+            }
+        }
     }
 
     pub fn spawn_player(&mut self, ctx: &mut ClientTickContext) {
@@ -280,7 +292,6 @@ impl Area {
            
         }
 
-        dbg!(then.elapsed());
 
         //dbg!(then.elapsed());
 
@@ -472,8 +483,8 @@ impl Area {
             minimum_camera_width: save.minimum_camera_width,
             minimum_camera_height: save.minimum_camera_height,
             max_camera_y: save.max_camera_y,
-            despawn_y: save.despawn_y
-    
+            despawn_y: save.despawn_y,
+            master: save.master
 
         }
     }
@@ -548,7 +559,8 @@ impl Area {
             max_camera_y: self.max_camera_y,
             minimum_camera_width: self.minimum_camera_width,
             minimum_camera_height: self.minimum_camera_height,
-            despawn_y: self.despawn_y
+            despawn_y: self.despawn_y,
+            master: self.master
         }
     }
 
@@ -574,5 +586,7 @@ pub struct AreaSave {
     max_camera_y: f32,
     minimum_camera_width: f32,
     minimum_camera_height: f32,
-    despawn_y: f32
+    despawn_y: f32,
+    #[serde(default)]
+    master: Option<ClientId>
 }

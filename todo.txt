@@ -1,3 +1,18 @@
+1. Enemy AI
+2. Enemy networking
+3. Wave logic
+4. More props
+5. Fallback logic
+6. New weapons
+7. Sound networking 
+8. Lotsa sounds 
+9. Sound falloff at distance
+10. Lobby
+11. Optimize prop dissolve 
+
+
+
+
 BATTLESHOP
 
 optimize animated decoration saves
