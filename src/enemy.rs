@@ -2,10 +2,10 @@ use std::{f64::consts::E, path::PathBuf, time::Instant};
 
 use macroquad::math::Vec2;
 use nalgebra::{vector, Isometry2, Vector2};
-use rapier2d::prelude::{Group, ImpulseJointHandle, InteractionGroups, RevoluteJointBuilder};
+use rapier2d::{parry::query::Ray, prelude::{ColliderHandle, Group, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder}};
 use serde::{Deserialize, Serialize};
 
-use crate::{angle_weapon_to_mouse, body_part::BodyPart, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, player::{Facing, Player, PlayerId}, space::Space, texture_loader::TextureLoader, uuid_u64, weapon::{self, BulletImpactData, WeaponType, WeaponTypeItem, WeaponTypeSave}, ClientId, ClientTickContext};
+use crate::{angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, player::{Facing, Player, PlayerId}, prop::{DissolvedPixel, Prop}, space::Space, texture_loader::TextureLoader, uuid_u64, weapon::{self, BulletImpactData, WeaponFireContext, WeaponType, WeaponTypeItem, WeaponTypeSave}, ClientId, ClientTickContext};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct EnemyId {
@@ -19,6 +19,12 @@ impl EnemyId {
         }
     }
 }
+
+#[derive(Debug)]
+pub enum Task {
+    BreakingProps,
+    ChasePlayer
+}
 pub struct Enemy {
     pub head: BodyPart,
     pub body: BodyPart,
@@ -31,16 +37,191 @@ pub struct Enemy {
     id: EnemyId,
     pub despawn: bool,
     pub weapon: Option<WeaponType>,
+    pub task: Task,
+    pub last_fired_weapon: web_time::Instant,
+    pub last_task_change: web_time::Instant
 }
 
 impl Enemy {
+
+    pub fn get_colliders_between_enemy_and_target(&mut self, space: &Space, players: &Vec<Player>) -> Vec<ColliderHandle> {
+
+
+        let player_target = match self.player_target {
+            Some(player_target) => player_target,
+            None => return Vec::new(),
+        };
+
+        let enemy_body = space.rigid_body_set.get(self.body.body_handle).unwrap();
+
+        let player = players.iter().find(|player|{player.id == player_target}).unwrap();
+        let player_body = space.rigid_body_set.get(
+            player.body.body_handle
+        ).unwrap();
+
+        let line = player_body.position().translation.vector - enemy_body.position().translation.vector;
+        
+        let mut collisions = Vec::new();
+        space.query_pipeline.intersections_with_ray(
+            &space.rigid_body_set, 
+            &space.collider_set, 
+            &Ray::new(enemy_body.position().translation.vector.into(), line.into()), 
+            line.magnitude(), 
+            true, 
+            QueryFilter::default(),
+            |collider_handle, _| {
+
+                if collider_handle == self.body.collider_handle || collider_handle == self.head.collider_handle {
+                    return true
+                }
+
+                if collider_handle == player.body.collider_handle || collider_handle == player.head.collider_handle {
+                    return true
+                }
+
+                if let Some(weapon) = &self.weapon {
+                    if collider_handle == weapon.collider_handle() {
+                        return true;
+                    }
+                }
+
+                if let Some(weapon) = &player.weapon {
+                    if collider_handle == weapon.collider_handle() {
+                        return true
+                    }
+                }
+
+                let collider_pos = space.collider_set.get(collider_handle).unwrap().position();
+
+                collisions.push(collider_handle);
+
+                true
+            }
+        );
+
+
+        collisions
+    }
+
+    pub fn face_target(&mut self, space: &Space, players: &Vec<Player>) {
+
+        let player_target = match self.player_target {
+            Some(player_target) => player_target,
+            None => return,
+        };
+
+        let target_pos = space.rigid_body_set.get(players.iter().find(|player|{player.id == player_target}).unwrap().body.body_handle).unwrap().position().translation;
+
+        let our_pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation;
+
+        if target_pos.x < our_pos.x {
+            self.facing = Facing::Left
+        } else {
+            self.facing = Facing::Right
+        }
+    }
+    pub fn break_obstacles(
+        &mut self, 
+        props: &mut Vec<Prop>, 
+        space: &mut Space, 
+        ctx: &mut ClientTickContext, 
+        players: &mut Vec<Player>, 
+        bullet_trails: &mut Vec<BulletTrail>,
+        area_id: AreaId,
+        dissolved_pixels: &mut Vec<DissolvedPixel>,
+        enemies: &mut Vec<Enemy>
+    ) {
+
+        if let Some(weapon) = &mut self.weapon {
+            match weapon {
+                WeaponType::Shotgun(_) => {
+                    if self.last_fired_weapon.elapsed().as_secs_f32() < 1. {
+                        return;
+                    }
+                },
+            }
+        } else {
+            return;
+        };
+
+    
+        let blocking_colliders = self.get_colliders_between_enemy_and_target(space, players);
+        
+
+        let weapon = if let Some(weapon) = &mut self.weapon {
+            weapon
+        } else {
+            return;
+        };
+
+        // identify the prop that is blocking our way
+        let mut blocking_prop_collider = None;
+
+        for prop in &mut *props {
+            if blocking_colliders.contains(&prop.collider_handle) {
+                blocking_prop_collider = Some(prop.collider_handle);
+
+                break;
+            }
+        };
+        
+        if blocking_prop_collider.is_none() {
+            return;
+        }
+
+        // we could maybe make it so that the enemy explicity points at the prop it wants to destroy but for now we just blindly fire the weapon if we know a prop is in the way
+
+        weapon.fire(
+            ctx, 
+            &mut WeaponFireContext {
+                space,
+                players,
+                props,
+                bullet_trails,
+                facing: self.facing,
+                area_id,
+                dissolved_pixels,
+                enemies,
+            }
+        );
+
+        self.last_fired_weapon = web_time::Instant::now();
+
+
+
+       
+    }
+
+
+    pub fn set_task(&mut self, space: &Space, players: &Vec<Player>, props: &Vec<Prop>) {
+        
+        if self.last_task_change.elapsed().as_secs_f32() < 0.5 {
+            return;
+        }
+
+        let colliders = self.get_colliders_between_enemy_and_target(space, players);
+
+        for prop in props {
+            if colliders.contains(&prop.collider_handle) {
+                self.task = Task::BreakingProps;
+
+                self.last_task_change = web_time::Instant::now();
+
+                return;
+            }
+        }   
+
+        // default task is to chase player
+        self.task = Task::ChasePlayer;
+    }
+
 
     pub fn new(position: Isometry2<f32>, owner: ClientId, space: &mut Space, weapon: Option<WeaponTypeItem>) -> Self {
 
         let head = BodyPart::new(
             PathBuf::from("assets/cat/head.png"), 
             2, 
-            10.,
+            100.,
             position, 
             space, 
             owner.clone(),
@@ -50,7 +231,7 @@ impl Enemy {
         let body = BodyPart::new(
             PathBuf::from("assets/cat/body.png"), 
             2, 
-            100.,
+            1000.,
             position, 
             space, 
             owner.clone(),
@@ -87,7 +268,10 @@ impl Enemy {
             player_target: None,
             id: EnemyId::new(),
             despawn: false,
-            weapon
+            weapon,
+            task: Task::ChasePlayer,
+            last_fired_weapon: web_time::Instant::now(),
+            last_task_change: web_time::Instant::now()
         }
     }
 
@@ -153,19 +337,49 @@ impl Enemy {
 
     }
 
-    pub fn client_tick(&mut self, space: &mut Space, ctx: &mut ClientTickContext, players: &Vec<Player>, despawn_y: f32) {
+    pub fn owner_tick(&mut self, props: &mut Vec<Prop>, space: &mut Space, ctx: &mut ClientTickContext, players: &mut Vec<Player>, bullet_trails: &mut Vec<BulletTrail>, area_id: AreaId, dissolved_pixels: &mut Vec<DissolvedPixel>, enemies: &mut Vec<Enemy>) {
+        
+        self.set_task(space, players, props);
+
+
+        match self.task {
+            Task::BreakingProps => {
+                self.break_obstacles(props, space, ctx, players, bullet_trails, area_id, dissolved_pixels, enemies);
+            },
+            Task::ChasePlayer => {
+                self.follow_target(space, players);
+            },
+        }
+    }
+
+    pub fn client_tick(
+        &mut self, 
+        space: &mut Space, 
+        ctx: &mut ClientTickContext, 
+        players: &mut Vec<Player>, 
+        despawn_y: f32,
+        props: &mut Vec<Prop>,
+        bullet_trails: &mut Vec<BulletTrail>,
+        area_id: AreaId,
+        dissolved_pixels: &mut Vec<DissolvedPixel>, enemies: &mut Vec<Enemy>,
+    ) {
+
+        if self.despawn {
+            return;
+        }
+
+        self.face_target(space, players);
 
         if self.health > 0 {
             self.upright(space, ctx);
 
             self.target_player(players, space);
 
-            self.follow_target(space, players);
-
             
         }
 
         self.angle_weapon_to_mouse(space, players);
+
         self.head.tick(space, ctx);
 
         self.body.tick(space, ctx);
@@ -174,7 +388,13 @@ impl Enemy {
 
         self.detach_head_if_dead(space);
 
+        if *ctx.client_id == self.owner {
+            self.owner_tick(props, space, ctx, players, bullet_trails, area_id, dissolved_pixels, enemies);
+        }
+
         self.despawn_if_below_level(space, despawn_y);
+
+        
 
     }
     

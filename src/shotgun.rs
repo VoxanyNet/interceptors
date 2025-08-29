@@ -10,7 +10,7 @@ use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapon:
 
 #[derive(PartialEq, Clone)]
 pub struct Shotgun {
-    weapon: Weapon
+    pub weapon: Weapon
 }
 
 

@@ -179,6 +179,12 @@ impl WeaponType {
         }
     }
 
+    pub fn collider_handle(&self) -> ColliderHandle {
+        match self {
+            WeaponType::Shotgun(shotgun) => shotgun.weapon.collider,
+        }
+    }
+
     pub fn despawn(&mut self, space: &mut Space) {
         match self {
             WeaponType::Shotgun(shotgun) => shotgun.despawn(space),

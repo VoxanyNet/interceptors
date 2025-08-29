@@ -250,9 +250,42 @@ impl Area {
 
         self.props.retain(|prop| {prop.despawn == false});
 
-        for enemy in &mut self.enemies {
-            enemy.client_tick(&mut self.space, ctx, &self.players, self.despawn_y);
+        let mut enemy_iter = SwapIter::new(&mut self.enemies);
+
+        let then = Instant::now();
+
+        while enemy_iter.not_done() {
+            let (enemies, mut enemy) = enemy_iter.next();
+
+            
+
+            
+
+            enemy.client_tick(
+                &mut self.space, 
+                ctx, 
+                &mut self.players, 
+                self.despawn_y,
+                &mut self.props,
+                &mut self.bullet_trails,
+                self.id,
+                &mut self.dissolved_pixels,
+                enemies
+            );
+
+            enemy_iter.restore(enemy);
+
+            
+
+           
         }
+
+        dbg!(then.elapsed());
+
+        //dbg!(then.elapsed());
+
+        
+
 
         self.enemies.retain(|enemy| {enemy.despawn == false});
 

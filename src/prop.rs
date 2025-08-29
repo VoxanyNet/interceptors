@@ -270,7 +270,7 @@ impl Prop {
         );
         
         // if health < 0 {}
-        self.dissolve(ctx.textures, space, dissolved_pixels, Some(ctx), area_id);
+        //self.dissolve(ctx.textures, space, dissolved_pixels, Some(ctx), area_id);
 
         
 
