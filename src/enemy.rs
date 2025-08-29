@@ -112,6 +112,8 @@ impl Enemy {
 
             self.health -= damage;
 
+            //space.rigid_body_set.get(self.body.body_handle).unwrap().position()
+
         }
         // head shot
         else if bullet_impact.impacted_collider == self.head.collider_handle {
@@ -199,7 +201,7 @@ impl Enemy {
 
         enemy_body.set_linvel(
             vector![
-                (enemy_body.linvel().x) + (15. * target_vector.x), 
+                (enemy_body.linvel().x) + (10. * target_vector.x), 
                 enemy_body.linvel().y
             ], 
             true

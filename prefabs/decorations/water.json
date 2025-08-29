@@ -4,9 +4,15 @@
         0.0
     ],
 
-    "sprite_path": "assets/water.png",
+    "animated_sprite_paths": [
+        "assets\\water\\water1.png",
+        "assets\\water\\water2.png",
+        "assets\\water\\water3.png",
+        "assets\\water\\water4.png"
+    ],
     "size":  [
         50.0,
         50.0
-    ]
+    ],
+    "frame_duration": 0.2
 }

@@ -178,7 +178,7 @@ impl Spawner {
         }   
     }
 
-    pub async fn draw_preview_spawn(&self, camera_rect: &Rect, textures: &mut TextureLoader, cursor: Vec2, space: &mut Space, rapier_cursor: Vec2) {
+    pub async fn draw_preview_spawn(&self, camera_rect: &Rect, textures: &mut TextureLoader, cursor: Vec2, space: &mut Space, rapier_cursor: Vec2, elapsed: web_time::Duration) {
 
         match self.current_category() {
             
@@ -190,7 +190,7 @@ impl Spawner {
 
                 decoration.pos = cursor;
 
-                decoration.draw(textures).await
+                decoration.draw(textures, elapsed).await
                 
             },
             SpawnerCategory::Background => {
@@ -296,7 +296,8 @@ pub struct AreaEditor {
     clip_point_2: Option<Vec2>,
     last_cursor_move: web_time::Instant,
     prefab_data: Prefabs,
-    fonts: FontLoader
+    fonts: FontLoader,
+    start: web_time::Instant
 }
 
 fn round_to_nearest_50(n: f32) -> f32 {
@@ -366,7 +367,8 @@ impl AreaEditor {
             previous_cursor: Vec2::ZERO,
             last_cursor_move: web_time::Instant::now(),
             prefab_data: prefabs,
-            fonts
+            fonts,
+            start: web_time::Instant::now()
         }
     }
 
@@ -613,13 +615,13 @@ impl AreaEditor {
 
         set_camera(&camera);
 
-        self.area.draw(&mut self.textures, &self.camera_rect, &self.prefab_data, &camera, &self.fonts).await;
+        self.area.draw(&mut self.textures, &self.camera_rect, &self.prefab_data, &camera, &self.fonts, self.start.elapsed()).await;
 
         if self.current_mode() == Mode::PrefabPlacement {
 
             let rapier_cursor = self.rapier_cursor();
             
-            self.spawner.draw_preview_spawn(&self.camera_rect, &mut self.textures, self.cursor, &mut self.area.space, rapier_cursor).await;
+            self.spawner.draw_preview_spawn(&self.camera_rect, &mut self.textures, self.cursor, &mut self.area.space, rapier_cursor, self.start.elapsed()).await;
         }
         
         

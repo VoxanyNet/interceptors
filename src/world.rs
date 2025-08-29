@@ -33,12 +33,12 @@ impl World {
         }
     }
 
-    pub async fn draw(&mut self, textures: &mut TextureLoader, camera_rect: &Rect, prefabs: &Prefabs, camera: &Camera2D, fonts: &FontLoader) {
+    pub async fn draw(&mut self, textures: &mut TextureLoader, camera_rect: &Rect, prefabs: &Prefabs, camera: &Camera2D, fonts: &FontLoader, elapsed: web_time::Duration) {
     
 
 
         for area in &mut self.areas {
-            area.draw(textures, camera_rect, prefabs, camera, fonts).await
+            area.draw(textures, camera_rect, prefabs, camera, fonts, elapsed).await
         }
     } 
 }

@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::{Path, PathBuf}, time::Instant};
 
 use interceptors_lib::{area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, font_loader::FontLoader, phone::Phone, player::{ItemSlot, Player}, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, weapon::{self, WeaponType}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
-use macroquad::{camera::{pop_camera_state, push_camera_state, set_camera, set_default_camera, Camera2D}, color::{BLACK, WHITE}, input::{is_key_released, KeyCode}, math::{vec2, Rect}, prelude::{camera::mouse::Camera, gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, text::Font, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::{clear_background, next_frame, screen_height, screen_width}};
+use macroquad::{camera::{pop_camera_state, push_camera_state, set_camera, set_default_camera, Camera2D}, color::{BLACK, WHITE}, input::{is_key_released, KeyCode}, math::{vec2, Rect}, prelude::{camera::mouse::Camera, gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, text::Font, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::{clear_background, next_frame, request_new_screen_size, screen_height, screen_width}};
 
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
 
@@ -520,19 +520,12 @@ impl Client {
         }
     }
 
+
     pub fn update_camera_to_match_screen_size(&mut self) {
         self.camera_rect.w = screen_width();
         self.camera_rect.h = screen_height();
     }
-    pub fn update_camera_to_match_screen_size_fixed(&mut self) {
-
-        // camera has a fixed width of 1920 pixels
-
-        let ratio = screen_height() / screen_width();
-        self.camera_rect.w = 1920.;
-        self.camera_rect.h = 1920. * ratio;
-
-    }
+    
 
     pub fn phone(&mut self) {
         // if is_key_released(KeyCode::L) {
@@ -540,8 +533,6 @@ impl Client {
         // }
     }
     pub fn tick(&mut self) {
-
-        self.update_camera_to_match_screen_size();
 
         self.phone();
 
@@ -651,7 +642,7 @@ impl Client {
         clear_background(BLACK);
 
 
-        self.world.draw(&mut self.textures, &self.camera_rect, &self.prefab_data, &self.camera, &self.fonts).await;
+        self.world.draw(&mut self.textures, &self.camera_rect, &self.prefab_data, &self.camera, &self.fonts, self.start.elapsed()).await;
 
         //self.phone.draw(&self.textures, &self.camera_rect);
         

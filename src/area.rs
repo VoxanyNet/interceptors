@@ -1,13 +1,13 @@
 
 use std::{path::{Path, PathBuf}, time::{Duration, Instant}};
 
-use macroquad::{camera::Camera2D, input::{is_key_down, is_key_released, KeyCode}, math::Rect};
+use macroquad::{camera::Camera2D, input::{is_key_down, is_key_released, KeyCode}, math::Rect, window::{screen_height, screen_width}};
 use nalgebra::{vector, Isometry, Isometry2, Vector2};
 use rapier2d::prelude::RigidBodyVelocity;
 use serde::{Deserialize, Serialize};
 use web_sys::js_sys::WebAssembly::Instance;
 
-use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave}, font_loader::FontLoader, player::{NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropItem, PropSave}, rapier_mouse_world_pos, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, Prefabs, ServerIO, SwapIter};
+use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave}, font_loader::FontLoader, player::{self, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropItem, PropSave}, rapier_mouse_world_pos, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, Prefabs, ServerIO, SwapIter};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -34,7 +34,10 @@ pub struct Area {
     pub dissolved_pixels: Vec<DissolvedPixel>,
     pub enemies: Vec<Enemy>,
     pub computer: Option<Computer>,
-    pub dropped_items: Vec<DroppedItem>
+    pub dropped_items: Vec<DroppedItem>,
+    pub max_camera_y: f32,
+    pub minimum_camera_width: f32,
+    pub minimum_camera_height: f32
 }
 
 impl Area {
@@ -54,18 +57,21 @@ impl Area {
             dissolved_pixels: Vec::new(),
             enemies: Vec::new(),
             computer: None,
-            dropped_items: Vec::new()
+            dropped_items: Vec::new(),
+            max_camera_y: 0.,
+            minimum_camera_width: 1920.,
+            minimum_camera_height: 1080.,
         }
     }
 
-    pub async fn draw(&mut self, textures: &mut TextureLoader, camera_rect: &Rect, prefabs: &Prefabs, camera: &Camera2D, fonts: &FontLoader) {
+    pub async fn draw(&mut self, textures: &mut TextureLoader, camera_rect: &Rect, prefabs: &Prefabs, camera: &Camera2D, fonts: &FontLoader, elapsed: web_time::Duration) {
 
         for background in &self.backgrounds {
             background.draw(textures, camera_rect).await
         }
 
         for decoration in &self.decorations {
-            decoration.draw(textures).await
+            decoration.draw(textures, elapsed).await
         }
 
         for generic_physics_prop in &self.props {
@@ -165,7 +171,61 @@ impl Area {
         self.enemies.push(enemy);
     }
 
+    pub fn average_enemy_pos(&self, space: &Space) -> Option<Vector2<f32>> {
+
+        if self.enemies.len() == 0 {
+            return None
+        }
+
+        let mut cumulative_x = 0.;
+        let mut cumulative_y = 0.;
+
+        for enemy in &self.enemies {
+            let enemy_pos = space.rigid_body_set.get(enemy.body.body_handle).unwrap().position().translation;
+
+            cumulative_x += enemy_pos.x;
+            cumulative_y += enemy_pos.y;
+        }   
+
+        Some(
+            Vector2::new(
+                cumulative_x / self.enemies.len() as f32,
+                cumulative_y / self.enemies.len() as f32
+            )
+        )
+
+    }
+
+    // the player should be spawned by the server - this is temporary
+    pub fn spawn_player_if_not_in_game(&mut self, ctx: &mut ClientTickContext) {
+
+        match self.players.iter().find(|player| player.owner == *ctx.client_id) {
+            Some(_) => return,
+            None => {
+
+                let player = Player::new(self.spawn_point.into(), &mut self.space, *ctx.client_id);
+
+                ctx.network_io.send_network_packet(
+                    NetworkPacket::NewPlayer(
+                        NewPlayer {
+                            player: player.save(&self.space),
+                            area_id: self.id,
+                        }
+                    )
+                );
+
+                self.players.push(
+                    player
+                );
+
+                
+            },
+        }
+    }
+
     pub fn client_tick(&mut self, ctx: &mut ClientTickContext) {
+
+        self.spawn_player_if_not_in_game(ctx);
 
         self.spawn_dropped_item(ctx);
 
@@ -205,14 +265,16 @@ impl Area {
 
         if is_key_released(KeyCode::F) {
             self.spawn_player(ctx);
-        }
+        }   
+
+        let average_enemy_pos = self.average_enemy_pos(&self.space); 
 
         let mut players_iter = SwapIter::new(&mut self.players);
-
+        
         while players_iter.not_done() {
             let (players, mut player) = players_iter.next();
 
-            player.client_tick(ctx, &mut self.space, self.id, players, &mut self.props, &mut self.bullet_trails, &mut self.dissolved_pixels, &mut self.dropped_items);
+            player.client_tick(ctx, &mut self.space, self.id, players, &mut self.props, &mut self.bullet_trails, &mut self.dissolved_pixels, &mut self.dropped_items, self.max_camera_y, average_enemy_pos, self.minimum_camera_width, self.minimum_camera_height);
 
             players_iter.restore(player);
         }
@@ -355,7 +417,11 @@ impl Area {
             dissolved_pixels: Vec::new(), // same here
             enemies,
             computer,
-            dropped_items
+            dropped_items,
+            minimum_camera_width: save.minimum_camera_width,
+            minimum_camera_height: save.minimum_camera_height,
+            max_camera_y: save.max_camera_y,
+    
 
         }
     }
@@ -426,7 +492,10 @@ impl Area {
             generic_physics_props,
             enemies,
             computer_pos,
-            dropped_items
+            dropped_items,
+            max_camera_y: self.max_camera_y,
+            minimum_camera_width: self.minimum_camera_width,
+            minimum_camera_height: self.minimum_camera_height
         }
     }
 
@@ -448,5 +517,8 @@ pub struct AreaSave {
     #[serde(default)]
     computer_pos: Option<Isometry2<f32>>,
     #[serde(default)]
-    dropped_items: Vec<DroppedItemSave>
+    dropped_items: Vec<DroppedItemSave>,
+    max_camera_y: f32,
+    minimum_camera_width: f32,
+    minimum_camera_height: f32
 }

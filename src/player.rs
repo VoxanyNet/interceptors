@@ -1,7 +1,7 @@
-use std::{f32::consts::PI, mem::take, path::PathBuf, str::FromStr, time::Instant};
+use std::{cmp::min, f32::consts::PI, mem::take, path::PathBuf, str::FromStr, time::Instant};
 
 use cs_utils::drain_filter;
-use macroquad::{color::{BLACK, LIGHTGRAY, WHITE}, input::{is_key_down, is_key_released, is_mouse_button_released, mouse_wheel, KeyCode}, math::{vec2, Rect, Vec2}, shapes::draw_rectangle, text::{draw_text_ex, TextParams}, window::{screen_height, screen_width}};
+use macroquad::{audio::{play_sound, set_sound_volume}, color::{BLACK, LIGHTGRAY, WHITE}, input::{is_key_down, is_key_released, is_mouse_button_released, mouse_wheel, KeyCode}, math::{vec2, Rect, Vec2}, shapes::draw_rectangle, text::{draw_text_ex, TextParams}, window::{screen_height, screen_width}};
 use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
@@ -284,36 +284,75 @@ impl Player {
         self.facing = facing
     } 
 
-    pub fn move_camera(&mut self, camera_rect: &mut Rect, space: &Space) {
-        let position = space.rigid_body_set.get(self.body.body_handle).unwrap().translation();
+    pub fn move_camera_enemies(&mut self, ctx: &mut ClientTickContext, minimum_camera_width: f32, minimum_camera_height: f32, space: &Space, average_enemy_pos: Vector2<f32>, max_camera_y: f32) {
 
-        let macroquad_position = rapier_to_macroquad(*position);
 
-        // if self.rect.right() > camera_rect.right() - 100.{
-            
-        //     camera_rect.x = (self.rect.right() - camera_rect.w) + 100.;
-        // }
+        let our_player_pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position();
+
+        let distance_x = (our_player_pos.translation.x - average_enemy_pos.x).abs();
+        let distance_y = (our_player_pos.translation.y - average_enemy_pos.y).abs();
+
         
-        if macroquad_position.x > camera_rect.right() - 200. {
-            camera_rect.x = (macroquad_position.x - camera_rect.w) + 200.;
-        }
+        let camera_x = our_player_pos.translation.x.min(average_enemy_pos.x) - 200.; // add some padding
+        let camera_y = our_player_pos.translation.y.max(average_enemy_pos.y) + 200.;
 
-        if macroquad_position.x < camera_rect.left() + 200. {
-            
-            camera_rect.x = macroquad_position.x - 200.
-        }
-
-        if macroquad_position.y > camera_rect.bottom() - 100. {
-           
-
-            camera_rect.y = (macroquad_position.y - camera_rect.h) + 100.;
-        }
-
-        if macroquad_position.y < camera_rect.top() + 100. {
         
+        let ratio = screen_height() / screen_width();
 
-            camera_rect.y = macroquad_position.y - 100.
+
+        ctx.camera_rect.x = camera_x;
+        ctx.camera_rect.y = camera_y;
+        ctx.camera_rect.w = (distance_x + 400.).max(minimum_camera_width);
+        ctx.camera_rect.h = (ctx.camera_rect.w) * ratio;
+
+        // clamp max camera y pos so we dont go below the level
+        let max_camera_y = max_camera_y - ctx.camera_rect.h;
+        ctx.camera_rect.y = ctx.camera_rect.y.min(max_camera_y);
+
+
+    }
+
+    pub fn move_camera(&mut self, space: &Space, max_camera_y: f32, average_enemy_pos: Option<Vector2<f32>>, ctx: &mut ClientTickContext, minimum_camera_width: f32, minimum_camera_height: f32) {
+
+        // there are two modes for the camera. One where there are enemies and one where there are none
+        match average_enemy_pos {
+            Some(average_enemy_pos) => {
+                self.move_camera_enemies(ctx, minimum_camera_width, minimum_camera_height, space, average_enemy_pos, max_camera_y);
+            },
+            None => {
+
+                let position = space.rigid_body_set.get(self.body.body_handle).unwrap().translation();
+
+                let macroquad_position = rapier_to_macroquad(*position);
+
+                
+                if macroquad_position.x > ctx.camera_rect.right() - 200. {
+                    ctx.camera_rect.x = (macroquad_position.x - ctx.camera_rect.w) + 200.;
+                }
+
+                if macroquad_position.x < ctx.camera_rect.left() + 200. {
+                    
+                    ctx.camera_rect.x = macroquad_position.x - 200.
+                }
+
+                if macroquad_position.y > ctx.camera_rect.bottom() - 100. {
+                
+
+                    ctx.camera_rect.y = (macroquad_position.y - ctx.camera_rect.h) + 100.;
+                }
+
+                if macroquad_position.y < ctx.camera_rect.top() + 100. {
+                
+
+                    ctx.camera_rect.y = macroquad_position.y - 100.
+                }
+
+                let max_camera_y = max_camera_y - ctx.camera_rect.h;
+
+                ctx.camera_rect.y = ctx.camera_rect.y.min(max_camera_y);                
+            },
         }
+        
 
 
     }
@@ -615,6 +654,10 @@ impl Player {
         bullet_trails: &mut Vec<BulletTrail>,
         dissolved_pixels: &mut Vec<DissolvedPixel>,
         dropped_items: &mut Vec<DroppedItem>,
+        max_camera_y: f32,
+        average_enemy_pos: Option<Vector2<f32>>,
+        minimum_camera_width: f32,
+        minimum_camera_height: f32
 
     ) {
 
@@ -625,7 +668,7 @@ impl Player {
         self.angle_head_to_mouse(space);
 
         if self.owner == *ctx.client_id {
-            self.owner_tick(space, ctx, area_id, players, props, bullet_trails, dissolved_pixels, dropped_items);
+            self.owner_tick(space, ctx, area_id, players, props, bullet_trails, dissolved_pixels, dropped_items, max_camera_y, average_enemy_pos, minimum_camera_width, minimum_camera_height);
         }
 
         self.previous_velocity = current_velocity;
@@ -809,6 +852,10 @@ impl Player {
         bullet_trails: &mut Vec<BulletTrail>,
         dissolved_pixels: &mut Vec<DissolvedPixel>,
         dropped_items: &mut Vec<DroppedItem>,
+        max_camera_y: f32,
+        average_enemy_pos: Option<Vector2<f32>>,
+        minimum_camera_width: f32,
+        minimum_camera_height: f32
     ) {
 
         let pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position();
@@ -863,7 +910,7 @@ impl Player {
 
         let current_velocity = space.rigid_body_set.get(self.body.body_handle).unwrap().vels();
 
-        self.move_camera(ctx.camera_rect, space);
+        self.move_camera(space, max_camera_y, average_enemy_pos, ctx, minimum_camera_width, minimum_camera_height);
         
         if self.previous_velocity != *current_velocity {
             ctx.network_io.send_network_packet(
