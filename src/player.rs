@@ -6,7 +6,7 @@ use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::{self, Area, AreaId}, body_part::BodyPart, bullet_trail::{self, BulletTrail}, computer::{Item, ItemSave}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, prop::{self, DissolvedPixel, Prop, PropItem}, rapier_mouse_world_pos, rapier_to_macroquad, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::{self, BulletImpactData, Weapon, WeaponFireContext, WeaponSave, WeaponType, WeaponTypeItem, WeaponTypeSave}, ClientId, ClientTickContext, Prefabs};
+use crate::{angle_weapon_to_mouse, area::{self, Area, AreaId}, body_part::BodyPart, bullet_trail::{self, BulletTrail}, computer::{Item, ItemSave}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, prop::{self, DissolvedPixel, Prop, PropItem}, rapier_mouse_world_pos, rapier_to_macroquad, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::{self, BulletImpactData, Weapon, WeaponFireContext, WeaponSave, WeaponType, WeaponTypeItem, WeaponTypeSave}, ClientId, ClientTickContext, Prefabs};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -360,28 +360,6 @@ impl Player {
     pub fn handle_bullet_impact(&mut self, space: &Space, bullet_impact: BulletImpactData) {
         
 
-        let our_pos = space.collider_set.get(bullet_impact.impacted_collider).unwrap().position();
-
-        let distance = our_pos.translation.vector - bullet_impact.shooter_pos.translation.vector;
-
-        let fall_off_multiplier = (-0.01 * distance.norm()).exp();
-
-        if bullet_impact.impacted_collider == self.body.collider_handle {
-
-            let damage = (50.0 * fall_off_multiplier).round() as u32;
-
-            self.health = self.health.saturating_sub(damage);
-
-            return;
-        }
-
-        // headshot
-        if bullet_impact.impacted_collider == self.head.collider_handle {
-
-            let damage = (100.0 * fall_off_multiplier).round() as u32;
-
-            self.health = self.health.saturating_sub(damage);
-        }
     }
 
     pub fn set_velocity(&mut self, velocity: RigidBodyVelocity , space: &mut Space) {
@@ -650,6 +628,7 @@ impl Player {
         space: &mut Space, 
         area_id: AreaId,
         players: &mut Vec<Player>,
+        enemies: &mut Vec<Enemy>,
         props: &mut Vec<Prop>,
         bullet_trails: &mut Vec<BulletTrail>,
         dissolved_pixels: &mut Vec<DissolvedPixel>,
@@ -668,7 +647,7 @@ impl Player {
         self.angle_head_to_mouse(space);
 
         if self.owner == *ctx.client_id {
-            self.owner_tick(space, ctx, area_id, players, props, bullet_trails, dissolved_pixels, dropped_items, max_camera_y, average_enemy_pos, minimum_camera_width, minimum_camera_height);
+            self.owner_tick(space, ctx, area_id, players, enemies, props, bullet_trails, dissolved_pixels, dropped_items, max_camera_y, average_enemy_pos, minimum_camera_width, minimum_camera_height);
         }
 
         self.previous_velocity = current_velocity;
@@ -770,54 +749,7 @@ impl Player {
 
     pub fn angle_weapon_to_mouse(&mut self, space: &mut Space, camera_rect: &Rect) {
 
-        if self.weapon.is_none() {
-            return;
-        }
-
-        let shotgun_joint_handle = match self.weapon.as_ref().unwrap().player_joint_handle() {
-            Some(shotgun_joint_handle) => shotgun_joint_handle,
-            None => return,
-        };
-
-        // lol
-        let body_body = space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
-
-        let body_body_pos = Vec2::new(body_body.translation().x, body_body.translation().y);
-
-        let weapon_pos = space.rigid_body_set.get(self.weapon.as_ref().unwrap().rigid_body_handle()).unwrap().translation();
-
-        let angle_to_mouse = get_angle_between_rapier_points(Vector2::new(weapon_pos.x, weapon_pos.y), self.cursor_pos_rapier);
-
-        let shotgun_joint = space.impulse_joint_set.get_mut(shotgun_joint_handle, true).unwrap();
-
-        let shotgun_joint_data = shotgun_joint.data.as_revolute_mut().unwrap();
-
-        // anchor the shotgun in a different position if its supposed to be on our right side
-        let shotgun_anchor_pos = match self.facing {
-            Facing::Right => vector![-30., 0.].into(),
-            Facing::Left => vector![30., 0.].into(),
-        };
-
-        shotgun_joint_data.set_local_anchor2(shotgun_anchor_pos);
-
-        let target_angle = match self.facing {
-            Facing::Right => {
-                -angle_to_mouse + (PI / 2.)
-            },
-            Facing::Left => {
-                (angle_to_mouse + (PI / 2.)) * -1.
-            },
-        };
-
-
-        if target_angle.abs() > 0.799 {
-            // dont try to set the angle if we know its beyond the limit
-            return;
-        }
-
-        shotgun_joint_data.set_motor_position(target_angle, 3000., 50.);
-
-        return;
+        angle_weapon_to_mouse(space, self.weapon.as_mut(), self.body.body_handle, self.cursor_pos_rapier, self.facing);
     }
 
     pub fn jump(&mut self, body: &mut RigidBody) {
@@ -848,6 +780,7 @@ impl Player {
         ctx: &mut ClientTickContext, 
         area_id: AreaId,
         players: &mut Vec<Player>,
+        enemies: &mut Vec<Enemy>,
         props: &mut Vec<Prop>,
         bullet_trails: &mut Vec<BulletTrail>,
         dissolved_pixels: &mut Vec<DissolvedPixel>,
@@ -899,7 +832,8 @@ impl Player {
                     bullet_trails,
                     facing: self.facing,
                     area_id,
-                    dissolved_pixels
+                    dissolved_pixels,
+                    enemies
                 });
             }
         }

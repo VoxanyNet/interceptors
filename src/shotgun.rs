@@ -44,6 +44,8 @@ impl ShotgunItem {
                 capacity: 2,
                 reserve_capacity: 24,
                 reload_duration: 0.7,
+                base_damage: 100.,
+                knockback: 100000.
             },
         }
     }
@@ -163,8 +165,9 @@ impl Shotgun {
                 web_time::Duration::from_millis(700),
                 2,
                 2,
-                24
-
+                24,
+                100.,
+                100000.
             ),
         }
         

@@ -370,7 +370,7 @@ impl Prop {
                 // dbg!(&contact_pair.manifolds);
                 // dbg!(&contact_pair.total_impulse());
 
-                if contact_pair.total_impulse_magnitude() > 2500. && self.last_sound_play.elapsed().as_secs() > 1 {
+                if contact_pair.total_impulse_magnitude() > 25000. && self.last_sound_play.elapsed().as_secs() > 1 {
 
                     
                     

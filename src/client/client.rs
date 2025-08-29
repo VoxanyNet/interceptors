@@ -563,7 +563,7 @@ impl Client {
             camera_rect: &mut self.camera_rect,
             prefabs: &self.prefab_data,
             screen_shake: &mut self.screen_shake,
-            sounds: &self.sounds,
+            sounds: &mut self.sounds,
             textures: &self.textures,
             camera: &self.camera
         };

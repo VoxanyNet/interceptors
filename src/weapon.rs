@@ -1,11 +1,11 @@
 use std::{collections::HashSet, path::{Path, PathBuf}, time::Instant};
 
-use macroquad::{audio::{load_sound, play_sound_once}, color::Color, input::{is_key_released, KeyCode}, math::Vec2, rand::RandomRange};
+use macroquad::{audio::{load_sound, load_sound_from_bytes, play_sound, play_sound_once, PlaySoundParams}, color::Color, input::{is_key_released, KeyCode}, math::Vec2, rand::RandomRange};
 use nalgebra::{point, vector, Isometry2, Vector2};
 use rapier2d::{math::{Translation, Vector}, parry::query::Ray, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::AreaId, bullet_trail::{self, BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, dropped_item::{DroppedItem, NewDroppedItemUpdate}, get_preview_resolution, inventory::Inventory, player::{ActiveWeaponUpdate, Facing, Player}, prop::{DissolvedPixel, Prop, PropVelocityUpdate}, shotgun::{Shotgun, ShotgunItem, ShotgunItemSave, ShotgunSave}, space::Space, texture_loader::TextureLoader, ClientId, ClientTickContext, Prefabs};
+use crate::{area::AreaId, bullet_trail::{self, BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, dropped_item::{DroppedItem, NewDroppedItemUpdate}, enemy::Enemy, get_preview_resolution, inventory::Inventory, player::{ActiveWeaponUpdate, Facing, Player}, prop::{DissolvedPixel, Prop, PropVelocityUpdate}, shotgun::{Shotgun, ShotgunItem, ShotgunItemSave, ShotgunSave}, space::Space, texture_loader::TextureLoader, ClientId, ClientTickContext, Prefabs};
 
 pub struct WeaponFireContext<'a> {
     pub space: &'a mut Space,
@@ -14,14 +14,17 @@ pub struct WeaponFireContext<'a> {
     pub bullet_trails: &'a mut Vec<BulletTrail>,
     pub facing: Facing,
     pub area_id: AreaId,
-    pub dissolved_pixels: &'a mut Vec<DissolvedPixel>
+    pub dissolved_pixels: &'a mut Vec<DissolvedPixel>,
+    pub enemies: &'a mut Vec<Enemy>
 }
 
 #[derive(Clone)]
 pub struct BulletImpactData {
     pub shooter_pos: Isometry2<f32>,
     pub impacted_collider: ColliderHandle,
-    pub bullet_vector: Vector2<f32>
+    pub bullet_vector: Vector2<f32>,
+    pub damage: f32,
+    pub knockback: f32
 } 
 
 
@@ -263,7 +266,9 @@ pub struct Weapon {
     capacity: u32,
     reserve_capacity: u32,
     reload_duration: web_time::Duration,
-    despawn: bool
+    despawn: bool,
+    base_damage: f32,
+    knockback: f32
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -281,7 +286,9 @@ pub struct WeaponItem {
     pub rounds: u32,
     pub capacity: u32,
     pub reserve_capacity: u32,
-    pub reload_duration: f32 
+    pub reload_duration: f32,
+    pub base_damage: f32,
+    pub knockback: f32
 }
 
 
@@ -300,7 +307,9 @@ pub struct WeaponItemSave {
     pub rounds: u32,
     pub capacity: u32,
     pub reserve_capacity: u32,
-    pub reload_duration: f32 
+    pub reload_duration: f32,
+    pub base_damage: f32,
+    pub knockback: f32
 }
 
 
@@ -332,6 +341,8 @@ impl WeaponItem {
             capacity: save.capacity,
             reserve_capacity: save.reserve_capacity,
             reload_duration: save.reload_duration,
+            base_damage: save.base_damage,
+            knockback: save.knockback
         }
     }
 
@@ -351,6 +362,8 @@ impl WeaponItem {
             capacity: self.capacity,
             reserve_capacity: self.reserve_capacity,
             reload_duration: self.reload_duration,
+            base_damage: self.base_damage,
+            knockback: self.knockback
         }
     }
     pub fn into_weapon(
@@ -380,7 +393,9 @@ impl WeaponItem {
             web_time::Duration::from_secs_f32(self.reload_duration),
             self.rounds,
             self.capacity,
-            self.reserve_capacity
+            self.reserve_capacity,
+            self.base_damage,
+            self.knockback
         )
     }
 }
@@ -404,6 +419,8 @@ pub struct WeaponSave {
     pub capacity: u32,
     pub reserve_capacity: u32,
     pub reload_duration: f32, // reload duration time in seconds
+    pub base_damage: f32,
+    pub knockback: f32
 
 }
 
@@ -439,6 +456,8 @@ impl Weapon {
             capacity: self.capacity,
             reserve_capacity: self.reserve_capacity,
             reload_duration: self.reload_duration.as_secs_f32(),
+            base_damage: self.base_damage,
+            knockback: self.knockback
         }
     }
     pub fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32) {
@@ -471,7 +490,9 @@ impl Weapon {
             web_time::Duration::from_secs_f32(save.reload_duration), 
             save.rounds, 
             save.capacity, 
-            save.reserve_capacity
+            save.reserve_capacity,
+            save.base_damage,
+            save.knockback
         )
     }
 
@@ -500,6 +521,8 @@ impl Weapon {
             capacity: self.capacity,
             reserve_capacity: self.reserve_capacity,
             reload_duration: self.reload_duration.as_secs_f32(),
+            base_damage: self.base_damage,
+            knockback: self.knockback
         }
     }
     pub fn new(
@@ -522,7 +545,9 @@ impl Weapon {
         reload_duration: web_time::Duration,
         rounds: u32,
         capacity: u32,
-        reserve_capacity: u32
+        reserve_capacity: u32,
+        base_damage: f32,
+        knockback: f32
         
 
     ) -> Self {
@@ -598,7 +623,9 @@ impl Weapon {
             capacity,
             reserve_capacity,
             reload_duration: reload_duration,
-            despawn: false
+            despawn: false,
+            base_damage: base_damage,
+            knockback
             
         }
     }
@@ -638,7 +665,9 @@ impl Weapon {
         
         // dont shoot while reloading
         if self.last_reload.elapsed() < self.reload_duration {
-            play_sound_once(ctx.sounds.get(PathBuf::from("assets\\sounds\\pistol_dry_fire.wav")));
+
+            let sound = ctx.sounds.get(PathBuf::from("assets\\sounds\\pistol_dry_fire.wav"));
+
             return;
         }
 
@@ -647,7 +676,13 @@ impl Weapon {
         if self.rounds == 0 {
             self.reload();
 
-            play_sound_once(ctx.sounds.get(PathBuf::from("assets\\sounds\\pistol_dry_fire.wav")));
+            let sound = ctx.sounds.get(PathBuf::from("assets\\sounds\\pistol_dry_fire.wav"));
+
+
+            play_sound(sound, PlaySoundParams {
+                looped: false,
+                volume: 0.5,
+            });
 
             return;
         }
@@ -656,7 +691,14 @@ impl Weapon {
         
         self.shake_screen(ctx);
 
-        play_sound_once(ctx.sounds.get(self.fire_sound_path.clone()));
+
+        play_sound(
+            ctx.sounds.get(self.fire_sound_path.clone()),
+            PlaySoundParams {
+                looped: false,
+                volume: 0.2,
+            }
+        );
 
         
 
@@ -697,9 +739,20 @@ impl Weapon {
             for impact in  impacts.iter().filter(|intersection| {intersection.impacted_collider == body_collider || intersection.impacted_collider == head_collider}) {
                 player.handle_bullet_impact(&weapon_fire_context.space, impact.clone());
             };
+            
+            
+        }
 
-            
-            
+        for enemy in &mut *weapon_fire_context.enemies {
+
+            let body_collider = enemy.body.collider_handle;
+            let head_collider = enemy.head.collider_handle;
+
+            for impact in  impacts.iter().filter(|intersection| {intersection.impacted_collider == body_collider || intersection.impacted_collider == head_collider}) {
+                enemy.handle_bullet_impact(&mut weapon_fire_context.space, impact.clone());
+
+                break;
+            };
         }
 
         for prop in &mut *weapon_fire_context.props {
@@ -824,11 +877,20 @@ impl Weapon {
                     return true;
                 };
 
+                
+                let pos = space.collider_set.get(handle).unwrap().position().translation;
+
+                let distance = pos.vector - weapon_pos.translation.vector;
+
+                let bullet_damage = (self.base_damage - distance.magnitude() * 0.1).max(0.);
+
                 impacts.push(
                     BulletImpactData {
                         shooter_pos: *weapon_pos,
                         impacted_collider: handle,
-                        bullet_vector
+                        bullet_vector,
+                        damage: bullet_damage,
+                        knockback: self.knockback
                     }
                 );
 

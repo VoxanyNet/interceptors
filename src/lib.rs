@@ -1,14 +1,14 @@
-use std::{collections::HashMap, fs::read_to_string, net::{TcpListener, TcpStream}, path::PathBuf};
+use std::{collections::HashMap, f32::consts::PI, fs::read_to_string, net::{TcpListener, TcpStream}, path::PathBuf};
 
 use ewebsock::{WsReceiver, WsSender};
 use macroquad::{camera::Camera2D, color::{Color, WHITE}, file::load_string, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, prelude::camera::mouse::Camera, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}};
-use nalgebra::Vector2;
+use nalgebra::{vector, Vector2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, QueryFilter, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 use tungstenite::WebSocket;
 use nalgebra::point;
 
-use crate::{all_keys::ALL_KEYS, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, space::Space, texture_loader::TextureLoader, updates::NetworkPacket};
+use crate::{all_keys::ALL_KEYS, player::Facing, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, weapon::WeaponType};
 
 pub mod space;
 pub mod updates;
@@ -36,6 +36,62 @@ pub mod button;
 pub mod dropped_item;
 pub mod inventory;
 
+pub fn angle_weapon_to_mouse(
+    space: &mut Space, 
+    weapon: Option<&mut WeaponType>, 
+    body_rigid_body_handle: RigidBodyHandle, 
+    cursor_pos_rapier: Vector2<f32>,
+    facing: Facing
+) {
+    if weapon.is_none() {
+        return;
+    }
+
+    let shotgun_joint_handle = match weapon.as_ref().unwrap().player_joint_handle() {
+        Some(shotgun_joint_handle) => shotgun_joint_handle,
+        None => return,
+    };
+
+    // lol
+    let body_body = space.rigid_body_set.get_mut(body_rigid_body_handle).unwrap();
+
+    let body_body_pos = Vec2::new(body_body.translation().x, body_body.translation().y);
+
+    let weapon_pos = space.rigid_body_set.get(weapon.as_ref().unwrap().rigid_body_handle()).unwrap().translation();
+
+    let angle_to_mouse = get_angle_between_rapier_points(Vector2::new(weapon_pos.x, weapon_pos.y), cursor_pos_rapier);
+
+    let shotgun_joint = space.impulse_joint_set.get_mut(shotgun_joint_handle, true).unwrap();
+
+    let shotgun_joint_data = shotgun_joint.data.as_revolute_mut().unwrap();
+
+    // anchor the shotgun in a different position if its supposed to be on our right side
+    let shotgun_anchor_pos = match facing {
+        Facing::Right => vector![-30., 0.].into(),
+        Facing::Left => vector![30., 0.].into(),
+    };
+
+    shotgun_joint_data.set_local_anchor2(shotgun_anchor_pos);
+
+    let target_angle = match facing {
+        Facing::Right => {
+            -angle_to_mouse + (PI / 2.)
+        },
+        Facing::Left => {
+            (angle_to_mouse + (PI / 2.)) * -1.
+        },
+    };
+
+
+    if target_angle.abs() > 0.799 {
+        // dont try to set the angle if we know its beyond the limit
+        return;
+    }
+
+    shotgun_joint_data.set_motor_position(target_angle, 3000., 50.);
+
+    return;
+}
 pub struct SwapIter<'a, T> {
     vec: &'a mut Vec<T>,
     index: usize
@@ -582,7 +638,7 @@ pub struct ClientTickContext<'a> {
     pub camera_rect: &'a mut Rect,
     pub prefabs: &'a Prefabs,
     pub screen_shake: &'a mut ScreenShakeParameters,
-    pub sounds: &'a SoundLoader,
+    pub sounds: &'a mut SoundLoader,
     pub textures: &'a TextureLoader,
     pub camera: &'a Camera2D
 }

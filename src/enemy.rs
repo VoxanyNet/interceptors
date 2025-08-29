@@ -1,11 +1,11 @@
-use std::{path::PathBuf, time::Instant};
+use std::{f64::consts::E, path::PathBuf, time::Instant};
 
 use macroquad::math::Vec2;
 use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{Group, ImpulseJointHandle, InteractionGroups, RevoluteJointBuilder};
 use serde::{Deserialize, Serialize};
 
-use crate::{body_part::BodyPart, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, player::{Facing, Player, PlayerId}, space::Space, texture_loader::TextureLoader, uuid_u64, weapon::BulletImpactData, ClientId, ClientTickContext};
+use crate::{angle_weapon_to_mouse, body_part::BodyPart, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, player::{Facing, Player, PlayerId}, space::Space, texture_loader::TextureLoader, uuid_u64, weapon::{self, BulletImpactData, WeaponType, WeaponTypeItem, WeaponTypeSave}, ClientId, ClientTickContext};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct EnemyId {
@@ -28,12 +28,14 @@ pub struct Enemy {
     head_body_joint: Option<ImpulseJointHandle>,
     last_jump: web_time::Instant,
     player_target: Option<PlayerId>,
-    id: EnemyId
+    id: EnemyId,
+    pub despawn: bool,
+    pub weapon: Option<WeaponType>,
 }
 
 impl Enemy {
 
-    pub fn new(position: Isometry2<f32>, owner: ClientId, space: &mut Space) -> Self {
+    pub fn new(position: Isometry2<f32>, owner: ClientId, space: &mut Space, weapon: Option<WeaponTypeItem>) -> Self {
 
         let head = BodyPart::new(
             PathBuf::from("assets/cat/head.png"), 
@@ -55,6 +57,12 @@ impl Enemy {
             Vec2::new(22., 19.)
         );
 
+        let weapon = match weapon {
+            Some(weapon_item) => {
+                Some(weapon_item.to_weapon(space, Default::default(), owner, Some(body.body_handle)))
+            },
+            None => None,
+        };
 
         let head_body_joint = space.impulse_joint_set.insert(
             body.body_handle, 
@@ -71,18 +79,29 @@ impl Enemy {
         Self {
             head,
             body,
-            health: 100,
+            health: 30,
             facing: Facing::Right,
             owner,
             head_body_joint: Some(head_body_joint),
             last_jump: Instant::now(),
             player_target: None,
-            id: EnemyId::new()
+            id: EnemyId::new(),
+            despawn: false,
+            weapon
         }
     }
 
     pub fn from_save(save: EnemySave, space: &mut Space) -> Self {
-        Self::new(save.pos, save.owner, space)
+
+        let mut enemy = Self::new(save.pos, save.owner, space, None);
+
+        if let Some(weapon_save) = save.weapon {
+
+            enemy.weapon = Some(WeaponType::from_save(space, weapon_save, Some(enemy.body.body_handle)));
+
+        }
+
+        enemy
     }
 
     pub fn save(&self, space: &Space) -> EnemySave {
@@ -90,6 +109,10 @@ impl Enemy {
             pos: *space.rigid_body_set.get(self.body.body_handle).unwrap().position(),
             owner: self.owner,
             id: self.id,
+            weapon: match &self.weapon {
+                Some(weapon) => Some(weapon.save(space)),
+                None => None,
+            }
         }
     } 
 
@@ -100,32 +123,37 @@ impl Enemy {
             return;
         }
 
-        let our_pos = space.collider_set.get(bullet_impact.impacted_collider).unwrap().position().translation;
-
-        let distance = our_pos.vector - bullet_impact.shooter_pos.translation.vector;
-
-        let fall_off_multiplier = (-0.01 * distance.norm()).exp();
-
+        dbg!(bullet_impact.damage);
         // body shot
         if bullet_impact.impacted_collider == self.body.collider_handle {
-            let damage = (50.0 * fall_off_multiplier).round() as i32;
 
-            self.health -= damage;
+            self.health -= (bullet_impact.damage * 0.5) as i32;
 
-            //space.rigid_body_set.get(self.body.body_handle).unwrap().position()
+            space.rigid_body_set.get_mut(self.body.body_handle).unwrap().apply_impulse(bullet_impact.bullet_vector.normalize() * 100000., true);
 
         }
         // head shot
         else if bullet_impact.impacted_collider == self.head.collider_handle {
 
-            let damage = (100.0 * fall_off_multiplier).round() as i32;
+            let damage = bullet_impact.damage as i32;
 
             self.health -= damage;
+
+            space.rigid_body_set.get_mut(self.head.body_handle).unwrap().apply_impulse(bullet_impact.bullet_vector.normalize() * 100000., true);
 
         }
     }
 
-    pub fn client_tick(&mut self, space: &mut Space, ctx: &mut ClientTickContext, players: &Vec<Player>) {
+    pub fn despawn_if_below_level(&mut self, space: &mut Space, despawn_y: f32) {
+        let pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation;
+
+        if pos.y < despawn_y {
+            self.despawn(space);
+        }
+
+    }
+
+    pub fn client_tick(&mut self, space: &mut Space, ctx: &mut ClientTickContext, players: &Vec<Player>, despawn_y: f32) {
 
         if self.health > 0 {
             self.upright(space, ctx);
@@ -133,7 +161,11 @@ impl Enemy {
             self.target_player(players, space);
 
             self.follow_target(space, players);
+
+            
         }
+
+        self.angle_weapon_to_mouse(space, players);
         self.head.tick(space, ctx);
 
         self.body.tick(space, ctx);
@@ -142,8 +174,18 @@ impl Enemy {
 
         self.detach_head_if_dead(space);
 
+        self.despawn_if_below_level(space, despawn_y);
+
     }
     
+    pub fn despawn(&mut self, space: &mut Space) {
+        self.despawn = true;
+
+        space.rigid_body_set.remove(self.body.body_handle, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
+        space.rigid_body_set.remove(self.head.body_handle, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
+
+
+    }
     pub fn detach_head_if_dead(&mut self, space: &mut Space) {
 
         let head_joint_handle = match self.head_body_joint {
@@ -207,10 +249,6 @@ impl Enemy {
             true
         );
 
-
-
-
-
     }
 
     pub fn target_player(&mut self, players: &Vec<Player>, space: &Space) {
@@ -250,6 +288,17 @@ impl Enemy {
 
     }
 
+    pub fn angle_weapon_to_mouse(&mut self, space: &mut Space, players: &Vec<Player>) {
+
+        if let Some(player_target) = self.player_target {
+            let player = players.iter().find(|player|{player.id == player_target}).unwrap();
+
+            let player_pos = space.rigid_body_set.get(player.body.body_handle).unwrap().position().translation.vector;
+
+            angle_weapon_to_mouse(space, self.weapon.as_mut(), self.body.body_handle, player_pos, self.facing);
+        }
+        
+    }
     pub fn upright(&mut self, space: &mut Space, ctx: &mut ClientTickContext) {
         
         let body = space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
@@ -298,6 +347,10 @@ impl Enemy {
 
     pub async fn draw(&self, space: &Space, textures: &mut TextureLoader) {
 
+        if self.despawn {
+            return;
+        }
+
         let flip_x = match self.facing {
             Facing::Right => false,
             Facing::Left => true,
@@ -306,6 +359,10 @@ impl Enemy {
         self.body.draw(textures, space, flip_x).await;
 
         self.head.draw(textures, space, flip_x).await;
+
+        if let Some(weapon) = &self.weapon {
+            weapon.draw(space, textures, self.facing).await
+        }
     }
 }
 
@@ -313,5 +370,6 @@ impl Enemy {
 pub struct EnemySave {
     pos: Isometry2<f32>,
     owner: ClientId,
-    id: EnemyId
+    id: EnemyId,
+    weapon: Option<WeaponTypeSave>
 }

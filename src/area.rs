@@ -7,7 +7,7 @@ use rapier2d::prelude::RigidBodyVelocity;
 use serde::{Deserialize, Serialize};
 use web_sys::js_sys::WebAssembly::Instance;
 
-use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave}, font_loader::FontLoader, player::{self, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropItem, PropSave}, rapier_mouse_world_pos, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, ClientTickContext, Prefabs, ServerIO, SwapIter};
+use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave}, font_loader::FontLoader, player::{self, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropItem, PropSave}, rapier_mouse_world_pos, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::WeaponTypeItem, ClientTickContext, Prefabs, ServerIO, SwapIter};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -37,7 +37,8 @@ pub struct Area {
     pub dropped_items: Vec<DroppedItem>,
     pub max_camera_y: f32,
     pub minimum_camera_width: f32,
-    pub minimum_camera_height: f32
+    pub minimum_camera_height: f32,
+    pub despawn_y: f32
 }
 
 impl Area {
@@ -61,6 +62,7 @@ impl Area {
             max_camera_y: 0.,
             minimum_camera_width: 1920.,
             minimum_camera_height: 1080.,
+            despawn_y: 0.
         }
     }
 
@@ -166,7 +168,7 @@ impl Area {
     pub fn spawn_enemy(&mut self, ctx: &mut ClientTickContext) {
         let mouse_pos = rapier_mouse_world_pos(&ctx.camera_rect);
         
-        let enemy = Enemy::new(Isometry2::new(mouse_pos, 0.), *ctx.client_id, &mut self.space);
+        let enemy = Enemy::new(Isometry2::new(mouse_pos, 0.), *ctx.client_id, &mut self.space, Some(WeaponTypeItem::Shotgun(ShotgunItem::new())));
 
         self.enemies.push(enemy);
     }
@@ -249,8 +251,10 @@ impl Area {
         self.props.retain(|prop| {prop.despawn == false});
 
         for enemy in &mut self.enemies {
-            enemy.client_tick(&mut self.space, ctx, &self.players);
+            enemy.client_tick(&mut self.space, ctx, &self.players, self.despawn_y);
         }
+
+        self.enemies.retain(|enemy| {enemy.despawn == false});
 
         for dissolved_pixel in &mut self.dissolved_pixels {
             dissolved_pixel.client_tick(&mut self.space, ctx);
@@ -274,7 +278,21 @@ impl Area {
         while players_iter.not_done() {
             let (players, mut player) = players_iter.next();
 
-            player.client_tick(ctx, &mut self.space, self.id, players, &mut self.props, &mut self.bullet_trails, &mut self.dissolved_pixels, &mut self.dropped_items, self.max_camera_y, average_enemy_pos, self.minimum_camera_width, self.minimum_camera_height);
+            player.client_tick(
+                ctx, 
+                &mut self.space, 
+                self.id, 
+                players, 
+                &mut self.enemies,
+                &mut self.props, 
+                &mut self.bullet_trails,
+                &mut self.dissolved_pixels, 
+                &mut self.dropped_items,
+                self.max_camera_y, 
+                average_enemy_pos, 
+                self.minimum_camera_width, 
+                self.minimum_camera_height
+            );
 
             players_iter.restore(player);
         }
@@ -421,6 +439,7 @@ impl Area {
             minimum_camera_width: save.minimum_camera_width,
             minimum_camera_height: save.minimum_camera_height,
             max_camera_y: save.max_camera_y,
+            despawn_y: save.despawn_y
     
 
         }
@@ -495,7 +514,8 @@ impl Area {
             dropped_items,
             max_camera_y: self.max_camera_y,
             minimum_camera_width: self.minimum_camera_width,
-            minimum_camera_height: self.minimum_camera_height
+            minimum_camera_height: self.minimum_camera_height,
+            despawn_y: self.despawn_y
         }
     }
 
@@ -520,5 +540,6 @@ pub struct AreaSave {
     dropped_items: Vec<DroppedItemSave>,
     max_camera_y: f32,
     minimum_camera_width: f32,
-    minimum_camera_height: f32
+    minimum_camera_height: f32,
+    despawn_y: f32
 }
