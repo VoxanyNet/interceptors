@@ -28,7 +28,7 @@ pub struct BulletImpactData {
 } 
 
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum WeaponType {
     Shotgun(Shotgun)
 }
@@ -251,7 +251,7 @@ impl WeaponType {
 
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct Weapon {
     pub player_rigid_body_handle: Option<RigidBodyHandle>,
     pub collider: ColliderHandle,
@@ -755,7 +755,7 @@ impl Weapon {
             let head_collider = enemy.head.collider_handle;
 
             for impact in  impacts.iter().filter(|intersection| {intersection.impacted_collider == body_collider || intersection.impacted_collider == head_collider}) {
-                enemy.handle_bullet_impact(&mut weapon_fire_context.space, impact.clone());
+                enemy.handle_bullet_impact(weapon_fire_context.area_id, ctx, &mut weapon_fire_context.space, impact.clone());
 
                 break;
             };

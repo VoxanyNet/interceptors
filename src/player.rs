@@ -21,7 +21,7 @@ impl PlayerId {
     }
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Debug)]
 pub enum Facing {
     Right,
     Left
@@ -59,7 +59,7 @@ pub struct ItemSlotSave {
 pub struct Player {
     pub id: PlayerId,
     pub weapon: Option<WeaponType>,
-    health: u32,
+    pub health: i32,
     pub head: BodyPart,
     pub body: BodyPart,
     max_speed: Vector2<f32>,
@@ -973,4 +973,11 @@ pub struct ActiveWeaponUpdate {
     pub area_id: AreaId,
     pub player_id: PlayerId,
     pub weapon: Option<WeaponTypeSave>
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PlayerHealthUpdate {
+    pub area_id: AreaId,
+    pub health: i32,
+    pub player_id: PlayerId
 }

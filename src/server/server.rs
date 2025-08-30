@@ -1,6 +1,6 @@
 use std::fs::read_to_string;
 
-use interceptors_lib::{area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket}, weapon::WeaponType, world::World, ClientId, Prefabs, ServerIO};
+use interceptors_lib::{area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket}, weapon::WeaponType, world::World, ClientId, Prefabs, ServerIO};
 use tungstenite::Message;
 
 include!(concat!(env!("OUT_DIR"), "/prefabs.rs"));
@@ -20,7 +20,7 @@ impl Server {
 
         let mut world = World::empty();
 
-        let lobby_save: AreaSave = serde_json::from_str(&read_to_string("areas/lobby.json").unwrap()).unwrap();
+        let lobby_save: AreaSave = serde_json::from_str(&read_to_string("areas/forest.json").unwrap()).unwrap();
         
         let mut prefabs = Prefabs::new();
 
@@ -45,7 +45,7 @@ impl Server {
 
     }
 
-    pub fn handle_new_client(&mut self, new_client: ClientId) {
+pub fn handle_new_client(&mut self, new_client: ClientId) {
 
 
         self.network_io.send_client(new_client, NetworkPacket::LoadArea(
@@ -81,7 +81,7 @@ impl Server {
     pub fn handle_disconnected_client(&mut self, client_id: ClientId) {
         if self.network_io.clients.keys().len() == 0 {
 
-            let lobby: AreaSave = serde_json::from_str(&read_to_string("areas/lobby.json").unwrap()).unwrap();
+            let lobby: AreaSave = serde_json::from_str(&read_to_string("areas/forest.json").unwrap()).unwrap();
             self.world.areas[0] = Area::from_save(lobby, Some(AreaId::new()), &self.prefabs)
         }
     }
@@ -234,6 +234,19 @@ impl Server {
 
                     self.network_io.send_all_except(network_packet, client_id);
                 },
+                NetworkPacket::PlayerHealthUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    let player = area.players.iter_mut().find(|player| {player.id == update.player_id}).unwrap();
+
+                    player.health = update.health;
+
+                    self.network_io.send_all_except(network_packet, client_id);
+                }
                 NetworkPacket::DroppedItemVelocityUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(
                         |area| {
@@ -405,7 +418,103 @@ impl Server {
                     };
                     
                     self.network_io.send_all_except(network_packet, client_id);
+                },
+
+                NetworkPacket::NewEnemyUpdate(update) => {
+
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+
+                    let enemy = Enemy::from_save(update.enemy.clone(), &mut area.space);
+
+                    dbg!(enemy.id);
+
+                    area.enemies.push(enemy);
+
+                    self.network_io.send_all_except(network_packet, client_id);
                 }
+                NetworkPacket::EnemyPositionUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+
+                    let enemy = area.enemies.iter().find(|enemy| {enemy.id == update.enemy_id}).unwrap();
+
+                    area.space.rigid_body_set.get_mut(enemy.body.body_handle).unwrap().set_position(update.position, true);
+
+                    self.network_io.send_all_except(network_packet, client_id);
+
+                },
+                NetworkPacket::EnemyVelocityUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    dbg!(update.enemy_id);
+
+                    let enemy = area.enemies.iter().find(|enemy| {enemy.id == update.enemy_id}).unwrap();
+
+                    area.space.rigid_body_set.get_mut(enemy.body.body_handle).unwrap().set_vels(update.velocity, true);
+
+                    self.network_io.send_all_except(network_packet, client_id);
+                },
+                NetworkPacket::EnemyWeaponUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    let enemy = area.enemies.iter_mut().find(|enemy| {enemy.id == update.enemy_id}).unwrap();
+
+
+                    enemy.weapon = Some(
+                        WeaponType::from_save(&mut area.space, update.weapon.clone(), Some(enemy.body.body_handle))
+                    );
+
+                    self.network_io.send_all_except(network_packet, client_id);
+
+                },
+                NetworkPacket::EnemyHealthUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    let enemy = area.enemies.iter_mut().find(|enemy| {enemy.id == update.enemy_id}).unwrap();
+
+                    enemy.health = update.health;
+
+                    self.network_io.send_all_except(network_packet, client_id);
+                },
+                NetworkPacket::EnemyDespawnUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    let enemy = area.enemies.iter_mut().find(|enemy| {enemy.id == update.enemy_id}).unwrap();
+
+                    enemy.despawn(&mut area.space);
+
+                    area.enemies.retain(|enemy|{enemy.id != update.enemy_id});  
+
+                    self.network_io.send_all_except(network_packet, client_id);
+
+
+                },
+                
                 
             }
         }

@@ -7,7 +7,7 @@ use rapier2d::prelude::RigidBodyVelocity;
 use serde::{Deserialize, Serialize};
 use web_sys::js_sys::WebAssembly::Instance;
 
-use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave}, font_loader::FontLoader, player::{self, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropItem, PropSave}, rapier_mouse_world_pos, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::WeaponTypeItem, ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter};
+use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{self, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropItem, PropSave}, rapier_mouse_world_pos, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::WeaponTypeItem, ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -180,7 +180,16 @@ impl Area {
     pub fn spawn_enemy(&mut self, ctx: &mut ClientTickContext) {
         let mouse_pos = rapier_mouse_world_pos(&ctx.camera_rect);
         
-        let enemy = Enemy::new(Isometry2::new(mouse_pos, 0.), *ctx.client_id, &mut self.space, Some(WeaponTypeItem::Shotgun(ShotgunItem::new())));
+        let enemy = Enemy::new( Isometry2::new(mouse_pos, 0.), *ctx.client_id, &mut self.space, Some(WeaponTypeItem::Shotgun(ShotgunItem::new())));
+
+        dbg!(enemy.id);
+
+        ctx.network_io.send_network_packet(crate::updates::NetworkPacket::NewEnemyUpdate(
+            NewEnemyUpdate {
+                area_id: self.id,
+                enemy: enemy.save(&mut self.space),
+            }
+        ));
 
         self.enemies.push(enemy);
     }
@@ -246,6 +255,8 @@ impl Area {
         if is_key_released(KeyCode::T) {
             self.spawn_enemy(ctx);
         }
+
+
         self.spawn_prop(ctx);
 
 
@@ -253,7 +264,9 @@ impl Area {
         //     self.space.step(Duration::from_secs_f32(1./60.));
         // }
 
+        //let then = Instant::now();
         self.space.step(*ctx.last_tick_duration);
+        //dbg!(then.elapsed());
 
 
         for prop in &mut self.props {

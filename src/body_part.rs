@@ -6,6 +6,7 @@ use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, Rigid
 
 use crate::{draw_texture_onto_physics_body, space::Space, texture_loader::TextureLoader, ClientId, ClientTickContext};
 
+#[derive(Debug)]
 pub struct BodyPart {
     pub collider_handle: ColliderHandle,
     pub body_handle: RigidBodyHandle,

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::{area::{AreaId, AreaSave}, bullet_trail::SpawnBulletTrail, dropped_item::{DroppedItemVelocityUpdate, NewDroppedItemUpdate, RemoveDroppedItemUpdate}, player::{ActiveItemSlotUpdate, ActiveWeaponUpdate, ItemSlotQuantityUpdate, ItemSlotUpdate, NewPlayer, PlayerCursorUpdate, PlayerFacingUpdate, PlayerPositionUpdate, PlayerVelocityUpdate}, prop::{DissolveProp, NewProp, PropPositionUpdate, PropUpdateOwner, PropVelocityUpdate, RemovePropUpdate}, uuid_u64};
+use crate::{area::{AreaId, AreaSave}, bullet_trail::SpawnBulletTrail, dropped_item::{DroppedItemVelocityUpdate, NewDroppedItemUpdate, RemoveDroppedItemUpdate}, enemy::{EnemyDespawnUpdate, EnemyHealthUpdate, EnemyPositionUpdate, EnemyVelocityUpdate, EnemyWeaponUpdate, NewEnemyUpdate}, player::{ActiveItemSlotUpdate, ActiveWeaponUpdate, ItemSlotQuantityUpdate, ItemSlotUpdate, NewPlayer, PlayerCursorUpdate, PlayerFacingUpdate, PlayerHealthUpdate, PlayerPositionUpdate, PlayerVelocityUpdate}, prop::{DissolveProp, NewProp, PropPositionUpdate, PropUpdateOwner, PropVelocityUpdate, RemovePropUpdate}, uuid_u64};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub enum NetworkPacket {
@@ -23,7 +23,14 @@ pub enum NetworkPacket {
     ItemSlotQuantityUpdate(ItemSlotQuantityUpdate),
     ActiveItemSlotUpdate(ActiveItemSlotUpdate),
     ItemSlotUpdate(ItemSlotUpdate),
-    ActiveWeaponUpdate(ActiveWeaponUpdate)
+    ActiveWeaponUpdate(ActiveWeaponUpdate),
+    NewEnemyUpdate(NewEnemyUpdate),
+    EnemyVelocityUpdate(EnemyVelocityUpdate),
+    EnemyPositionUpdate(EnemyPositionUpdate),
+    EnemyWeaponUpdate(EnemyWeaponUpdate),
+    EnemyDespawnUpdate(EnemyDespawnUpdate),
+    PlayerHealthUpdate(PlayerHealthUpdate),
+EnemyHealthUpdate(EnemyHealthUpdate)
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]

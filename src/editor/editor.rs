@@ -351,7 +351,7 @@ impl AreaEditor {
             h: 720.,
         };
 
-        let area_json = read_to_string("areas/lobby.json").unwrap();
+        let area_json = read_to_string("areas/forest.json").unwrap();
         let area_save: AreaSave = serde_json::from_str(&area_json).unwrap();
 
         Self {
@@ -489,7 +489,7 @@ impl AreaEditor {
     pub fn save_area(&self) {
 
         std::fs::write(
-            "areas/lobby.json", 
+            "areas/forest.json", 
             serde_json::to_string_pretty(
                 &self.area.save()
             ).unwrap()

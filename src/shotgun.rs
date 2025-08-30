@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapon::{Weapon, WeaponFireContext, WeaponItem, WeaponItemSave, WeaponSave}, ClientId, ClientTickContext};
 
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct Shotgun {
     pub weapon: Weapon
 }

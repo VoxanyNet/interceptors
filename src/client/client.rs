@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::{Path, PathBuf}, time::Instant};
 
-use interceptors_lib::{area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, font_loader::FontLoader, phone::Phone, player::{ItemSlot, Player}, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, weapon::{self, WeaponType}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
+use interceptors_lib::{area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, phone::Phone, player::{ItemSlot, Player}, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, weapon::{self, WeaponType}, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
 use macroquad::{camera::{pop_camera_state, push_camera_state, set_camera, set_default_camera, Camera2D}, color::{BLACK, WHITE}, input::{is_key_released, KeyCode}, math::{vec2, Rect}, prelude::{camera::mouse::Camera, gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, text::Font, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::{clear_background, next_frame, request_new_screen_size, screen_height, screen_width}};
 
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
@@ -279,6 +279,7 @@ impl Client {
 
         for packet in packets {
             match packet {
+                
                 NetworkPacket::Ping(ping) => {
                     self.latency = self.pings.remove(&ping.id).unwrap().elapsed();
 
@@ -501,6 +502,94 @@ impl Client {
                         },
                         None => None,
                     };
+                },
+
+                NetworkPacket::EnemyPositionUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    let enemy = area.enemies.iter_mut().find(|enemy| {enemy.id == update.enemy_id}).unwrap();
+
+                    area.space.rigid_body_set.get_mut(enemy.body.body_handle).unwrap().set_position(update.position, true);
+                },
+
+                NetworkPacket::EnemyVelocityUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    let enemy = area.enemies.iter_mut().find(|enemy| {enemy.id == update.enemy_id}).unwrap();
+
+                    area.space.rigid_body_set.get_mut(enemy.body.body_handle).unwrap().set_vels(update.velocity, true);
+
+
+                },
+                NetworkPacket::EnemyWeaponUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    let enemy = area.enemies.iter_mut().find(|enemy| {enemy.id == update.enemy_id}).unwrap();
+
+
+
+                    enemy.weapon = Some(WeaponType::from_save(&mut area.space, update.weapon, Some(enemy.body.body_handle)));
+
+
+                },
+                NetworkPacket::NewEnemyUpdate(update) => {
+
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+
+                    let enemy = Enemy::from_save(update.enemy, &mut area.space);
+
+                    area.enemies.push(enemy);
+                }
+                NetworkPacket::EnemyDespawnUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    let enemy = area.enemies.iter_mut().find(|enemy| {enemy.id == update.enemy_id}).unwrap();
+
+                    enemy.despawn(&mut area.space);
+
+                    area.enemies.retain(|enemy| {enemy.id != update.enemy_id});
+
+                },
+                NetworkPacket::EnemyHealthUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(
+                        |area| {
+                            area.id == update.area_id
+                        }
+                    ).unwrap();
+
+                    let enemy = area.enemies.iter_mut().find(|enemy| {enemy.id == update.enemy_id}).unwrap();
+
+                    enemy.last_health_update = web_time::Instant::now();
+
+                    enemy.health = update.health
+                },
+                NetworkPacket::PlayerHealthUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                    let player = area.players.iter_mut().find(|player| {player.id == update.player_id}).unwrap();
+
+                    player.health = update.health
                 }
             }
         }
