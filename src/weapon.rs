@@ -31,7 +31,7 @@ pub struct BulletImpactData {
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum WeaponType {
-    Shotgun(Shotgun)
+    Shotgun(Shotgun),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
