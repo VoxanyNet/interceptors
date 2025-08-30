@@ -36,6 +36,7 @@ pub mod button;
 pub mod dropped_item;
 pub mod inventory;
 pub mod ambiance;
+pub mod junk;
 
 pub fn angle_weapon_to_mouse(
     space: &mut Space, 

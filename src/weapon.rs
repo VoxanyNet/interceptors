@@ -5,7 +5,7 @@ use nalgebra::{point, vector, Isometry2, Vector2};
 use rapier2d::{math::{Translation, Vector}, parry::query::Ray, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::AreaId, bullet_trail::{self, BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, dropped_item::{DroppedItem, NewDroppedItemUpdate}, enemy::Enemy, get_preview_resolution, inventory::Inventory, player::{ActiveWeaponUpdate, Facing, Player}, prop::{DissolvedPixel, Prop, PropVelocityUpdate}, shotgun::{Shotgun, ShotgunItem, ShotgunItemSave, ShotgunSave}, space::Space, texture_loader::TextureLoader, ClientId, ClientTickContext, Prefabs};
+use crate::{area::AreaId, bullet_trail::{self, BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, dropped_item::{DroppedItem, NewDroppedItemUpdate}, enemy::{Enemy, EnemyId}, get_preview_resolution, inventory::Inventory, player::{ActiveWeaponUpdate, Facing, Player, PlayerId}, prop::{DissolvedPixel, Prop, PropVelocityUpdate}, shotgun::{Shotgun, ShotgunItem, ShotgunItemSave, ShotgunSave}, space::Space, texture_loader::TextureLoader, ClientId, ClientTickContext, Prefabs};
 
 pub struct WeaponFireContext<'a> {
     pub space: &'a mut Space,
@@ -15,7 +15,8 @@ pub struct WeaponFireContext<'a> {
     pub facing: Facing,
     pub area_id: AreaId,
     pub dissolved_pixels: &'a mut Vec<DissolvedPixel>,
-    pub enemies: &'a mut Vec<Enemy>
+    pub enemies: &'a mut Vec<Enemy>,
+    pub weapon_owner: WeaponOwner
 }
 
 #[derive(Clone)]
@@ -249,6 +250,12 @@ impl WeaponType {
         }
     }
 
+}
+
+#[derive(Clone)]
+pub enum WeaponOwner {
+    Enemy(EnemyId),
+    Player(PlayerId)
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -755,7 +762,7 @@ impl Weapon {
             let head_collider = enemy.head.collider_handle;
 
             for impact in  impacts.iter().filter(|intersection| {intersection.impacted_collider == body_collider || intersection.impacted_collider == head_collider}) {
-                enemy.handle_bullet_impact(weapon_fire_context.area_id, ctx, &mut weapon_fire_context.space, impact.clone());
+                enemy.handle_bullet_impact(weapon_fire_context.area_id, ctx, &mut weapon_fire_context.space, impact.clone(), weapon_fire_context.weapon_owner.clone());
 
                 break;
             };

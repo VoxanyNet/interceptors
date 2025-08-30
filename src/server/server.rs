@@ -20,7 +20,8 @@ impl Server {
 
         let mut world = World::empty();
 
-        let lobby_save: AreaSave = serde_json::from_str(&read_to_string("areas/ship.json").unwrap()).unwrap();
+        //let lobby_save: AreaSave = serde_json::from_str(&read_to_string("areas/ship.json").unwrap()).unwrap();
+        let forest_save: AreaSave = serde_json::from_str(&read_to_string("areas/forest.json").unwrap()).unwrap();
         
         let mut prefabs = Prefabs::new();
 
@@ -28,7 +29,7 @@ impl Server {
             prefabs.load_prefab_data_block(prefab_path)
         }
 
-        world.areas.push(Area::from_save(lobby_save, None, &prefabs));
+        world.areas.push(Area::from_save(forest_save, None, &prefabs));
 
         
 
@@ -81,7 +82,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
     pub fn handle_disconnected_client(&mut self, client_id: ClientId) {
         if self.network_io.clients.keys().len() == 0 {
 
-            let lobby: AreaSave = serde_json::from_str(&read_to_string("areas/ship.json").unwrap()).unwrap();
+            let lobby: AreaSave = serde_json::from_str(&read_to_string("areas/forest.json").unwrap()).unwrap();
             self.world.areas[0] = Area::from_save(lobby, Some(AreaId::new()), &self.prefabs)
         }
     }
@@ -128,6 +129,9 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
         for (client_id, network_packet) in network_packets {
             match &network_packet {
+                NetworkPacket::MasterUpdate(update) => {
+                    panic!("received client bound update");
+                },
                 NetworkPacket::Ping(ping) => {
 
                     let client = self.network_io.clients.get_mut(&client_id).unwrap();

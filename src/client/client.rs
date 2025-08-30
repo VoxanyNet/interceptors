@@ -279,6 +279,12 @@ impl Client {
 
         for packet in packets {
             match packet {
+
+                NetworkPacket::MasterUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                    area.master = Some(update.master.clone());
+                },
                 
                 NetworkPacket::Ping(ping) => {
                     self.latency = self.pings.remove(&ping.id).unwrap().elapsed();

@@ -5,7 +5,7 @@ use nalgebra::{vector, Isometry2, Vector, Vector2};
 use rapier2d::{parry::query::Ray, prelude::{ColliderHandle, Group, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 
-use crate::{angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, get_angle_between_rapier_points, player::{self, Facing, Player, PlayerId}, prop::{DissolvedPixel, Prop}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::{self, BulletImpactData, WeaponFireContext, WeaponSave, WeaponType, WeaponTypeItem, WeaponTypeSave}, ClientId, ClientTickContext};
+use crate::{angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, get_angle_between_rapier_points, player::{self, Facing, Player, PlayerId}, prop::{DissolvedPixel, Prop}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::{self, BulletImpactData, WeaponFireContext, WeaponOwner, WeaponSave, WeaponType, WeaponTypeItem, WeaponTypeSave}, ClientId, ClientTickContext};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct EnemyId {
@@ -366,7 +366,12 @@ impl Enemy {
     } 
 
     #[inline]
-    pub fn handle_bullet_impact(&mut self, area_id: AreaId, ctx: &mut ClientTickContext, space: &mut Space, bullet_impact: BulletImpactData) {
+    pub fn handle_bullet_impact(&mut self, area_id: AreaId, ctx: &mut ClientTickContext, space: &mut Space, bullet_impact: BulletImpactData, weapon_owner: WeaponOwner) {
+
+        match weapon_owner {
+            WeaponOwner::Enemy(enemy_id) => return,
+            WeaponOwner::Player(player_id) => {},
+        }
 
         if self.health <= 0 {
             return;
@@ -398,6 +403,16 @@ impl Enemy {
                     area_id,
                     enemy_id: self.id,
                     health: self.health,
+                }
+            )
+        );
+
+        ctx.network_io.send_network_packet(
+            NetworkPacket::EnemyVelocityUpdate(
+                EnemyVelocityUpdate {
+                    area_id,
+                    enemy_id: self.id,
+                    velocity: *space.rigid_body_set.get(self.body.body_handle).unwrap().vels(),
                 }
             )
         );
@@ -443,6 +458,7 @@ impl Enemy {
                 area_id,
                 dissolved_pixels,
                 enemies,
+                weapon_owner: weapon::WeaponOwner::Enemy(self.id)
             });
 
             self.last_fired_weapon = web_time::Instant::now();
@@ -498,7 +514,8 @@ impl Enemy {
         }
        
 
-        match self.task {
+        if self.health > 0 {
+            match self.task {
             Task::BreakingProps => {
                 self.break_obstacles(props, space, ctx, players, bullet_trails, area_id, dissolved_pixels, enemies);
             },
@@ -514,6 +531,8 @@ impl Enemy {
             
             }
         }
+        }
+        
 
         self.despawn_if_below_level(area_id, ctx, space, despawn_y);
 
@@ -552,25 +571,28 @@ impl Enemy {
 
         self.detach_head_if_dead(space);
 
-        self.angle_head_to_target(space, players);
-
-        self.face_target(space, players);
+        
 
         if self.health > 0 {
             self.upright(space, ctx);
 
-            //self.target_player(players, space);
+            self.target_player(players, space);
+
+            self.angle_weapon_to_mouse(space, players);
+            self.change_facing_direction(space);
+
+            self.angle_head_to_target(space, players);
+
+            self.face_target(space, players);
 
             
         }
 
-        self.angle_weapon_to_mouse(space, players);
+        
 
         self.head.tick(space, ctx);
 
         self.body.tick(space, ctx);
-
-        self.change_facing_direction(space);
 
         
 

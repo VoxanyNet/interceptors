@@ -833,7 +833,8 @@ impl Player {
                     facing: self.facing,
                     area_id,
                     dissolved_pixels,
-                    enemies
+                    enemies,
+                    weapon_owner: weapon::WeaponOwner::Player(self.id)
                 });
             }
         }

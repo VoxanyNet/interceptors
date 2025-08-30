@@ -3,10 +3,6 @@
     50.0,
     100.0
   ],
-  "max_camera_y": 720.0,
-  "minimum_camera_width": 1200.0,
-  "minimum_camera_height": 1920.0, 
-  "despawn_y": -200.0,
   "decorations": [
     {
       "pos": [
@@ -2389,6 +2385,16 @@
         1175.0,
         20.0
       ]
+    },
+    {
+      "size": [
+        928.55835,
+        46.09778
+      ],
+      "pos": [
+        2811.6582,
+        46.35669
+      ]
     }
   ],
   "players": [],
@@ -2445,5 +2451,11 @@
       95.970856
     ]
   },
-  "dropped_items": []
+  "dropped_items": [],
+  "max_camera_y": 720.0,
+  "minimum_camera_width": 1200.0,
+  "minimum_camera_height": 1920.0,
+  "despawn_y": -200.0,
+  "master": null,
+  "ambiance": []
 }

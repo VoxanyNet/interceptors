@@ -7,7 +7,7 @@ use rapier2d::prelude::RigidBodyVelocity;
 use serde::{Deserialize, Serialize};
 use web_sys::js_sys::WebAssembly::Instance;
 
-use crate::{ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{self, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropItem, PropSave}, rapier_mouse_world_pos, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::WeaponTypeItem, ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter};
+use crate::{ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{self, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropItem, PropSave}, rapier_mouse_world_pos, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapon::WeaponTypeItem, ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -40,7 +40,37 @@ pub struct Area {
     pub minimum_camera_height: f32,
     pub despawn_y: f32,
     pub master: Option<ClientId>,
-    pub ambiance: Vec<Ambiance>
+    pub ambiance: Vec<Ambiance>,
+    pub wave_data: WaveData
+}
+
+pub struct WaveData {
+    wave: i32,
+    wave_end: web_time::Instant,
+    wave_start: web_time::Instant,
+    last_batch_spawn: web_time::Instant,
+    batch_size: u32,
+    total_size: u32,
+    spawned_this_wave: u32,
+    batch_interval: web_time::Duration,
+    active: bool
+}
+
+impl WaveData {
+    pub fn default() -> Self {
+        WaveData {
+            wave: 1,
+            wave_end: web_time::Instant::now(),
+            wave_start: web_time::Instant::now(),
+            last_batch_spawn: web_time::Instant::now(),
+            batch_size: 2,
+            total_size: 10,
+            spawned_this_wave: 0,
+            batch_interval: web_time::Duration::from_secs_f32(5.),
+            active: false
+
+        }
+    }
 }
 
 impl Area {
@@ -66,7 +96,8 @@ impl Area {
             minimum_camera_height: 1080.,
             despawn_y: 0.,
             master: None,
-            ambiance: Vec::new()
+            ambiance: Vec::new(),
+            wave_data: WaveData::default()
         }
     }
 
@@ -120,13 +151,22 @@ impl Area {
     pub fn server_tick(&mut self, io: &mut ServerIO, dt: web_time::Duration) {
         self.space.step(dt);
 
-        self.designate_master();
+        self.designate_master(io);
     }
 
-    pub fn designate_master(&mut self) {
+    pub fn designate_master(&mut self, server_io: &mut ServerIO) {
         if self.master == None {
             if let Some(player) = self.players.get(0) {
-                self.master = Some(player.owner)
+                self.master = Some(player.owner);
+
+                server_io.send_all_clients(
+                    NetworkPacket::MasterUpdate(
+                        MasterUpdate {
+                            area_id: self.id,
+                            master: self.master.unwrap().clone(),
+                        }
+                    ), 
+                );
             }
         }
     }
@@ -279,8 +319,74 @@ impl Area {
     }
 
 
+    pub fn wave_logic(&mut self, ctx: &mut ClientTickContext) {
+
+        // end wave
+        if self.wave_data.spawned_this_wave >= self.wave_data.total_size {
+            self.wave_data.wave_end = web_time::Instant::now();
+
+            self.wave_data.spawned_this_wave = 0;
+
+            self.wave_data.active = false;
+
+            dbg!("ending wave");
+
+            
+        }
+
+        // start new wave
+        if self.wave_data.wave_end.elapsed().as_secs_f32() > 5. && self.wave_data.active == false  {
+
+            dbg!("starting wave");
+
+            self.wave_data.wave += 1;
+
+            self.wave_data.batch_size += 2;
+
+            self.wave_data.total_size += 10;
+
+            self.wave_data.active = true;
+
+            self.wave_data.wave_start = web_time::Instant::now();
+        }
+
+        // spawn batch
+        if self.wave_data.active && self.wave_data.last_batch_spawn.elapsed() > self.wave_data.batch_interval {
+
+            dbg!("spawning batch");
+
+            for i in 0..self.wave_data.batch_size {
+
+                let enemy = Enemy::new(
+                    vector![2400. + (i as f32 * 50.), 200.].into(), 
+                    self.master.unwrap().clone(), 
+                    &mut self.space, 
+                    Some(WeaponTypeItem::Shotgun(
+                        ShotgunItem::new()
+                    ))
+                );
+
+                ctx.network_io.send_network_packet(
+                    NetworkPacket::NewEnemyUpdate(
+                        NewEnemyUpdate {
+                            area_id: self.id,
+                            enemy: enemy.save(&mut self.space),
+                        }
+                    )
+                );
+                self.enemies.push(
+                    enemy
+                );
+            }
+
+            self.wave_data.last_batch_spawn = web_time::Instant::now();
+          
+        }
+    }
 
     pub fn client_tick(&mut self, ctx: &mut ClientTickContext) {
+
+        self.wave_logic(ctx);
 
         self.start_ambiance(ctx);
 
@@ -543,7 +649,8 @@ impl Area {
             max_camera_y: save.max_camera_y,
             despawn_y: save.despawn_y,
             master: save.master,
-            ambiance
+            ambiance,
+            wave_data: WaveData::default()
 
         }
     }
