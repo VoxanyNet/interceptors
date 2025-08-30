@@ -6,7 +6,7 @@ use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{angle_weapon_to_mouse, area::{self, Area, AreaId}, body_part::BodyPart, bullet_trail::{self, BulletTrail}, computer::{Item, ItemSave}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, prop::{self, DissolvedPixel, Prop, PropItem}, rapier_mouse_world_pos, rapier_to_macroquad, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::{self, BulletImpactData, Weapon, WeaponFireContext, WeaponSave, WeaponType, WeaponTypeItem, WeaponTypeSave}, ClientId, ClientTickContext, Prefabs};
+use crate::{angle_weapon_to_mouse, area::{self, Area, AreaId}, body_part::BodyPart, bullet_trail::{self, BulletTrail}, computer::{Item, ItemSave}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, machine_gun::LMGItem, prop::{self, DissolvedPixel, Prop, PropItem}, rapier_mouse_world_pos, rapier_to_macroquad, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::{self, BulletImpactData, Weapon, WeaponFireContext, WeaponSave, WeaponType, WeaponTypeItem, WeaponTypeSave}, ClientId, ClientTickContext, Prefabs};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -414,8 +414,8 @@ impl Player {
             ItemSlot {
                 quantity: 1,
                 item: Item::Weapon(
-                    weapon::WeaponTypeItem::Shotgun(
-                        ShotgunItem::new()
+                    weapon::WeaponTypeItem::LMG(
+                        LMGItem::new()
                     )
                 ),
             }
