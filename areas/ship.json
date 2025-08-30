@@ -1,0 +1,56 @@
+{
+  "spawn_point": [
+    1840.0,
+    300.0
+  ],
+  "decorations": [
+    {
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        2250.0,
+        1150.0
+      ],
+      "sprite_path": "assets/ship.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null
+    }
+  ],
+  "clips": [
+    {
+      "size": [
+        2056.4758,
+        110.1416
+      ],
+      "pos": [
+        1134.4106,
+        125.89374
+      ]
+    }
+  ],
+  "players": [],
+  "backgrounds": [],
+  "generic_physics_props": [],
+  "enemies": [],
+  "computer_pos": null,
+  "dropped_items": [],
+  "max_camera_y": 720.0,
+  "minimum_camera_width": 1200.0,
+  "minimum_camera_height": 1920.0,
+  "despawn_y": -200.0,
+  "master": null,
+  "ambiance": [
+    {
+        "pos": [0.0, 0.0],
+        "path": "assets/sounds/ship_ambiant_hum.wav",
+        "volume": 1.0
+    },
+    {
+        "pos": [0.0, 0.0],
+        "path": "assets/sounds/ship_ambiant_thruster.wav",
+        "volume": 0.5
+    }
+  ]
+}

@@ -351,7 +351,7 @@ impl AreaEditor {
             h: 720.,
         };
 
-        let area_json = read_to_string("areas/forest.json").unwrap();
+        let area_json = read_to_string("areas/ship.json").unwrap();
         let area_save: AreaSave = serde_json::from_str(&area_json).unwrap();
 
         Self {
@@ -411,13 +411,13 @@ impl AreaEditor {
             self.cursor = mouse_world_pos(&self.camera_rect);
 
             // snap cursor to top left of decoration if the cursor is there
-            for decoration in &self.area.decorations {
-                if Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y).contains(mouse_world_pos(&self.camera_rect)) {
-                    self.cursor = decoration.pos;
+            // for decoration in &self.area.decorations {
+            //     if Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y).contains(mouse_world_pos(&self.camera_rect)) {
+            //         self.cursor = decoration.pos;
 
                     
-                } 
-            }
+            //     } 
+            // }
         }
     }
     pub fn update_cursor(&mut self) {
@@ -489,7 +489,7 @@ impl AreaEditor {
     pub fn save_area(&self) {
 
         std::fs::write(
-            "areas/forest.json", 
+            "areas/ship.json", 
             serde_json::to_string_pretty(
                 &self.area.save()
             ).unwrap()

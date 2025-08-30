@@ -1,13 +1,13 @@
 
 use std::{path::{Path, PathBuf}, time::{Duration, Instant}};
 
-use macroquad::{camera::Camera2D, input::{is_key_down, is_key_released, KeyCode}, math::Rect, window::{screen_height, screen_width}};
+use macroquad::{audio::{play_sound, stop_sound, PlaySoundParams}, camera::Camera2D, input::{is_key_down, is_key_released, KeyCode}, math::Rect, window::{screen_height, screen_width}};
 use nalgebra::{vector, Isometry, Isometry2, Vector2};
 use rapier2d::prelude::RigidBodyVelocity;
 use serde::{Deserialize, Serialize};
 use web_sys::js_sys::WebAssembly::Instance;
 
-use crate::{background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{self, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropItem, PropSave}, rapier_mouse_world_pos, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::WeaponTypeItem, ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter};
+use crate::{ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{self, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropItem, PropSave}, rapier_mouse_world_pos, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::WeaponTypeItem, ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -39,7 +39,8 @@ pub struct Area {
     pub minimum_camera_width: f32,
     pub minimum_camera_height: f32,
     pub despawn_y: f32,
-    pub master: Option<ClientId>
+    pub master: Option<ClientId>,
+    pub ambiance: Vec<Ambiance>
 }
 
 impl Area {
@@ -64,7 +65,8 @@ impl Area {
             minimum_camera_width: 1920.,
             minimum_camera_height: 1080.,
             despawn_y: 0.,
-            master: None
+            master: None,
+            ambiance: Vec::new()
         }
     }
 
@@ -246,7 +248,43 @@ impl Area {
         }
     }
 
+    pub fn start_ambiance(&mut self, ctx: &mut ClientTickContext) {
+        for ambiance in &mut self.ambiance {
+            if ambiance.sound.is_none() {
+
+                let sound = ctx.sounds.get(ambiance.path.clone());
+                play_sound(
+                    sound, 
+                    PlaySoundParams {
+                        looped: true,
+                        volume: ambiance.volume,
+                    }
+                );
+
+                ambiance.sound = Some(sound.clone());
+            }
+
+
+        }
+    }
+
+    pub fn stop_ambiance(&mut self) {
+        if is_key_released(KeyCode::J) {
+            for ambiance in &mut self.ambiance {
+                stop_sound(ambiance.sound.as_ref().unwrap());
+
+                
+            }
+        }
+    }
+
+
+
     pub fn client_tick(&mut self, ctx: &mut ClientTickContext) {
+
+        self.start_ambiance(ctx);
+
+        self.stop_ambiance();
 
         self.spawn_player_if_not_in_game(ctx);
 
@@ -422,6 +460,7 @@ impl Area {
         let mut generic_physics_props: Vec<Prop> = Vec::new();
         let mut enemies: Vec<Enemy> = Vec::new();
         let mut dropped_items: Vec<DroppedItem> = Vec::new();
+        let mut ambiance: Vec<Ambiance> = Vec::new();  
         
         for decoration_save in save.decorations {
             decorations.push(
@@ -465,6 +504,12 @@ impl Area {
             );
         }
 
+        for ambiance_save in save.ambiance {
+            ambiance.push(
+                Ambiance::from_save(ambiance_save)
+            );
+        }
+
 
         // if we are loading the id from the server we need to use the provided id
         let id = match id {
@@ -476,7 +521,7 @@ impl Area {
             Some(computer_pos) => {
                 Some(Computer::new(prefabs, &mut space, computer_pos, ))
             },
-            None => Some(Computer::new(prefabs, &mut space, vector![650., 120.].into())),
+            None => None,
         };
 
         Self {
@@ -497,7 +542,8 @@ impl Area {
             minimum_camera_height: save.minimum_camera_height,
             max_camera_y: save.max_camera_y,
             despawn_y: save.despawn_y,
-            master: save.master
+            master: save.master,
+            ambiance
 
         }
     }
@@ -511,6 +557,7 @@ impl Area {
         let mut generic_physics_props: Vec<PropSave> = Vec::new();
         let mut enemies: Vec<EnemySave> = Vec::new();
         let mut dropped_items: Vec<DroppedItemSave> = Vec::new();
+        let mut ambiances: Vec<AmbianceSave> = Vec::new();
 
         for decoration in &self.decorations {
             decorations.push(
@@ -548,6 +595,12 @@ impl Area {
             );
         }
 
+        for ambiance in &self.ambiance {
+            ambiances.push (
+                ambiance.save()
+            )
+        }
+
         let computer_pos = match &self.computer {
             Some(computer) => {
                 Some(self.space.rigid_body_set.get(computer.prop.rigid_body_handle).unwrap().position().clone())
@@ -573,7 +626,9 @@ impl Area {
             minimum_camera_width: self.minimum_camera_width,
             minimum_camera_height: self.minimum_camera_height,
             despawn_y: self.despawn_y,
-            master: self.master
+            master: self.master,
+            ambiance: ambiances
+
         }
     }
 
@@ -601,5 +656,7 @@ pub struct AreaSave {
     minimum_camera_height: f32,
     despawn_y: f32,
     #[serde(default)]
-    master: Option<ClientId>
+    master: Option<ClientId>,
+    #[serde[default]]
+    ambiance: Vec<AmbianceSave>
 }
