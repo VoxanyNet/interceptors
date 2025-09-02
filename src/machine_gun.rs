@@ -25,7 +25,7 @@ impl LMGItem {
                 mass: 1.,
                 texture_size: Vec2::new(100., 32.),
                 sprite: PathBuf::from("assets\\lmg.png"),
-                scale: 2.,
+                scale: 0.75,
                 fire_sound_path: PathBuf::from("assets\\sounds\\lmg_fire.wav"),
                 x_screen_shake_frequency: 10.,
                 x_screen_shake_intensity: 5.,
@@ -36,7 +36,7 @@ impl LMGItem {
                 capacity: 10000,
                 reserve_capacity: 10000000,
                 reload_duration: Duration::from_secs_f32(3.).as_secs_f32(),
-                base_damage: 4.,
+                base_damage: 1.,
                 knockback: 50000.,
             },
         }

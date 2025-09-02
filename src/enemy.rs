@@ -5,7 +5,7 @@ use nalgebra::{vector, Isometry2, Vector, Vector2};
 use rapier2d::{parry::query::Ray, prelude::{ColliderHandle, Group, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 
-use crate::{angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, get_angle_between_rapier_points, player::{self, Facing, Player, PlayerId}, prop::{DissolvedPixel, Prop}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::{self, BulletImpactData, WeaponFireContext, WeaponOwner, WeaponSave, WeaponType, WeaponTypeItem, WeaponTypeSave}, ClientId, ClientTickContext};
+use crate::{angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, get_angle_between_rapier_points, player::{self, Facing, Player, PlayerId}, prop::{DissolvedPixel, NewProp, Prop}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::{self, BulletImpactData, WeaponFireContext, WeaponOwner, WeaponSave, WeaponType, WeaponTypeItem, WeaponTypeSave}, ClientId, ClientTickContext};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct EnemyId {
@@ -45,7 +45,8 @@ pub struct Enemy {
     pub previous_velocity: RigidBodyVelocity,
     pub previous_position: Isometry2<f32>,
     pub last_position_update: web_time::Instant,
-    pub last_health_update: web_time::Instant
+    pub last_health_update: web_time::Instant,
+    pub death_time: Option<web_time::Instant>
 }
 
 impl Enemy {
@@ -335,7 +336,8 @@ impl Enemy {
             previous_position: Isometry2::default(),
             previous_velocity: RigidBodyVelocity::zero(),
             last_position_update: web_time::Instant::now(),
-            last_health_update: web_time::Instant::now()
+            last_health_update: web_time::Instant::now(),
+            death_time: None
             
         };
 
@@ -378,9 +380,7 @@ impl Enemy {
             WeaponOwner::Player(player_id) => {},
         }
 
-        if self.health <= 0 {
-            return;
-        }
+
 
         dbg!(bullet_impact.damage);
         // body shot
@@ -426,6 +426,26 @@ impl Enemy {
 
     }
 
+    pub fn despawn_if_dead(&mut self, ctx: &mut ClientTickContext, space: &mut Space, area_id: AreaId) {
+        
+        if let Some(death_time) = self.death_time {
+
+            dbg!(death_time);
+            if death_time.elapsed().as_secs_f32() > 3. {
+                self.despawn(space);
+
+                ctx.network_io.send_network_packet(
+                    NetworkPacket::EnemyDespawnUpdate(
+                        EnemyDespawnUpdate {
+                            area_id,
+                            enemy_id: self.id,
+                        }
+                    )
+                );
+                
+            }
+        }
+    }
     pub fn despawn_if_below_level(&mut self, area_id: AreaId, ctx: &mut ClientTickContext, space: &mut Space, despawn_y: f32) {
         let pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation;
 
@@ -488,7 +508,21 @@ impl Enemy {
         despawn_y: f32
     ) {
         
+
         self.set_task(space, players, props);
+
+        if self.health <= 0 {
+
+            
+
+            if self.death_time.is_none() {
+
+                println!("set death time");
+                
+
+                self.death_time = Some(web_time::Instant::now());
+            }
+        }
 
 
         let body = space.rigid_body_set.get(self.body.body_handle).unwrap();
@@ -540,7 +574,15 @@ impl Enemy {
             }
         }
         }
+
+        self.despawn_if_dead(ctx, space, area_id);
         
+
+        if self.despawn {
+            return;
+        }  
+
+
 
         self.despawn_if_below_level(area_id, ctx, space, despawn_y);
 
@@ -657,6 +699,10 @@ impl Enemy {
         let enemy_velocity = space.rigid_body_set.get(self.body.body_handle).unwrap().linvel().clone();
 
         if enemy_velocity.y.abs() > 20. {
+            return;
+        }
+
+        if enemy_velocity.x.abs() > 200. {
             return;
         }
         

@@ -38,6 +38,8 @@ pub mod inventory;
 pub mod ambiance;
 pub mod junk;
 pub mod machine_gun;
+pub mod car;
+
 pub fn angle_weapon_to_mouse(
     space: &mut Space, 
     weapon: Option<&mut WeaponType>, 

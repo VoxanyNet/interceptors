@@ -7,7 +7,7 @@ use rapier2d::prelude::RigidBodyVelocity;
 use serde::{Deserialize, Serialize};
 use web_sys::js_sys::WebAssembly::Instance;
 
-use crate::{ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{self, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropItem, PropSave}, rapier_mouse_world_pos, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapon::WeaponTypeItem, ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter};
+use crate::{ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{self, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropItem, PropSave}, rapier_mouse_world_pos, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapon::WeaponTypeItem, ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -41,7 +41,8 @@ pub struct Area {
     pub despawn_y: f32,
     pub master: Option<ClientId>,
     pub ambiance: Vec<Ambiance>,
-    pub wave_data: WaveData
+    pub wave_data: WaveData,
+    pub cars: Vec<Car>
 }
 
 pub struct WaveData {
@@ -97,7 +98,8 @@ impl Area {
             despawn_y: 0.,
             master: None,
             ambiance: Vec::new(),
-            wave_data: WaveData::default()
+            wave_data: WaveData::default(),
+            cars: Vec::new()
         }
     }
 
@@ -128,6 +130,10 @@ impl Area {
 
         for enemy in &self.enemies {
             enemy.draw(&self.space, textures).await;
+        }
+
+        for car in &self.cars {
+            car.draw(&self.space);
         }
 
         for pixel in &self.dissolved_pixels {
@@ -246,6 +252,7 @@ impl Area {
         let mut cumulative_y = 0.;
 
         for enemy in &self.enemies {
+  
             let enemy_pos = space.rigid_body_set.get(enemy.body.body_handle).unwrap().position().translation;
 
             cumulative_x += enemy_pos.x;
@@ -351,7 +358,7 @@ impl Area {
         }
 
         // spawn batch
-        if self.wave_data.active && self.wave_data.last_batch_spawn.elapsed() > self.wave_data.batch_interval {
+        if self.wave_data.active && self.wave_data.last_batch_spawn.elapsed() > self.wave_data.batch_interval && self.enemies.len() == 0 {
 
             dbg!("spawning batch");
 
@@ -386,7 +393,13 @@ impl Area {
 
     pub fn client_tick(&mut self, ctx: &mut ClientTickContext) {
 
-        self.wave_logic(ctx);
+        if is_key_released(KeyCode::M) {
+            self.cars.push(
+                Car::new(&mut self.space, rapier_mouse_world_pos(&ctx.camera_rect).into())
+            );
+        }
+
+        //self.wave_logic(ctx);
 
         self.start_ambiance(ctx);
 
@@ -650,7 +663,8 @@ impl Area {
             despawn_y: save.despawn_y,
             master: save.master,
             ambiance,
-            wave_data: WaveData::default()
+            wave_data: WaveData::default(),
+            cars: Vec::new()
 
         }
     }

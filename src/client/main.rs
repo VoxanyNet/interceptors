@@ -5,9 +5,6 @@ use crate::client::Client;
 
 mod client;
 
-#[cfg(feature = "dhat-heap")]
-#[global_allocator]
-static ALLOC: dhat::Alloc = dhat::Alloc;
 
 fn window_conf() -> Conf {
     let conf = Conf {

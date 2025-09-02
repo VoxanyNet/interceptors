@@ -1,7 +1,7 @@
 use std::{cmp::min, f32::consts::PI, mem::take, path::PathBuf, str::FromStr, time::Instant};
 
 use cs_utils::drain_filter;
-use macroquad::{audio::{play_sound, set_sound_volume}, color::{BLACK, LIGHTGRAY, WHITE}, input::{is_key_down, is_key_released, is_mouse_button_released, mouse_wheel, KeyCode}, math::{vec2, Rect, Vec2}, shapes::draw_rectangle, text::{draw_text_ex, TextParams}, window::{screen_height, screen_width}};
+use macroquad::{audio::{play_sound, set_sound_volume}, color::{BLACK, LIGHTGRAY, WHITE}, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_wheel, KeyCode}, math::{vec2, Rect, Vec2}, shapes::draw_rectangle, text::{draw_text_ex, TextParams}, window::{screen_height, screen_width}};
 use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
@@ -75,7 +75,8 @@ pub struct Player {
     last_changed_inventory_slot: web_time::Instant,
     last_dash: web_time::Instant,
     previous_pos: Isometry2<f32>,
-    last_position_update: web_time::Instant
+    last_position_update: web_time::Instant,
+    last_autofire: web_time::Instant
 }
 
 impl Player {
@@ -457,7 +458,8 @@ impl Player {
             junk: Vec::new(),
             last_dash: web_time::Instant::now(),
             previous_pos: Isometry2::default(),
-            last_position_update: web_time::Instant::now()
+            last_position_update: web_time::Instant::now(),
+            last_autofire: web_time::Instant::now()
         }
     }
 
@@ -788,7 +790,7 @@ impl Player {
         max_camera_y: f32,
         average_enemy_pos: Option<Vector2<f32>>,
         minimum_camera_width: f32,
-        minimum_camera_height: f32
+        minimum_camera_height: f32,
     ) {
 
         let pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position();
@@ -836,6 +838,29 @@ impl Player {
                     enemies,
                     weapon_owner: weapon::WeaponOwner::Player(self.id)
                 });
+
+                return;
+            }
+            
+
+            if is_mouse_button_down(macroquad::input::MouseButton::Left) {
+                if self.last_autofire.elapsed().as_secs_f32() < 0.1 {
+                    return;
+                }
+
+                weapon.fire(ctx, &mut WeaponFireContext {
+                    space,
+                    players,
+                    props,
+                    bullet_trails,
+                    facing: self.facing,
+                    area_id,
+                    dissolved_pixels,
+                    enemies,
+                    weapon_owner: weapon::WeaponOwner::Player(self.id)
+                });
+
+                self.last_autofire = Instant::now();
             }
         }
 

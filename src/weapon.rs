@@ -193,6 +193,7 @@ impl WeaponType {
         }
     }
 
+
     pub fn collider_handle(&self) -> ColliderHandle {
         match self {
             WeaponType::Shotgun(shotgun) => shotgun.weapon.collider,
@@ -658,7 +659,7 @@ impl Weapon {
             y_screen_shake_intensity,
             shell_sprite: shell_sprite_path,
             player_joint_handle: player_joint_handle,
-            last_reload: web_time::Instant::now(),
+            last_reload: web_time::Instant::now() - web_time::Duration::from_secs(100),
             rounds,
             capacity,
             reserve_capacity,
@@ -700,6 +701,8 @@ impl Weapon {
         
     ) {
 
+        dbg!(self.rounds);
+
         let innaccuracy_factor = innaccuracy_factor.unwrap_or(0.);
         let bullet_count = bullet_count.unwrap_or(1);
         
@@ -721,7 +724,7 @@ impl Weapon {
 
             play_sound(sound, PlaySoundParams {
                 looped: false,
-                volume: 0.5,
+                volume: 0.2,
             });
 
             return;
@@ -922,7 +925,7 @@ impl Weapon {
 
                 let distance = pos.vector - weapon_pos.translation.vector;
 
-                let bullet_damage = (self.base_damage - distance.magnitude() * 0.1).max(0.);
+                let bullet_damage = self.base_damage; // (self.base_damage - distance.magnitude() * 0.1).max(0.);
 
                 impacts.push(
                     BulletImpactData {

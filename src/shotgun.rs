@@ -44,7 +44,7 @@ impl ShotgunItem {
                 capacity: 2,
                 reserve_capacity: 24,
                 reload_duration: 0.7,
-                base_damage: 100.,
+                base_damage: 20.,
                 knockback: 100000.
             },
         }

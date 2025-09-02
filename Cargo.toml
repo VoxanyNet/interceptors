@@ -42,9 +42,6 @@ path = "src/editor/main.rs"
 name = "interceptors_lib"
 path = "src/lib.rs"
 
-[profile.release]
-debug = 1
+[profile.dev.package.rapier3d]
+opt-level = 3
 
-[features]
-dhat-heap = []    # if you are doing heap profiling
-dhat-ad-hoc = []  # if you are doing ad hoc profiling
