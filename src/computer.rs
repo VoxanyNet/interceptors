@@ -4,7 +4,7 @@ use macroquad::{camera::{pop_camera_state, push_camera_state, set_camera, set_de
 use nalgebra::Isometry2;
 use serde::{Deserialize, Serialize};
 
-use crate::{button::Button, font_loader::FontLoader, mouse_world_pos, player::Player, prop::{self, Prop, PropItem, PropItemSave, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, weapon::{Weapon, WeaponSave, WeaponType, WeaponTypeItem, WeaponTypeItemSave, WeaponTypeSave}, ClientTickContext, Prefabs};
+use crate::{button::Button, font_loader::FontLoader, mouse_world_pos, player::Player, prop::{Prop, PropItem, PropItemSave, PropSave}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, weapon::{Weapon, WeaponTypeItem, WeaponTypeItemSave}, ClientTickContext, Prefabs};
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum Item {

@@ -41,6 +41,7 @@ pub mod machine_gun;
 pub mod car;
 pub mod fragment;
 pub mod compound_test;
+pub mod weapons;
 
 pub fn angle_weapon_to_mouse(
     space: &mut Space, 
