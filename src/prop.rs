@@ -2,7 +2,7 @@ use std::{default, fs::read_to_string, path::{Path, PathBuf}, time::Instant};
 
 use macroquad::{audio::play_sound_once, color::{Color, WHITE}, input::is_mouse_button_released, math::Vec2, shapes::{draw_rectangle_ex, DrawRectangleParams}, texture::{draw_texture, draw_texture_ex, DrawTextureParams}};
 use nalgebra::{base, Isometry2, Vector, Vector2};
-use rapier2d::prelude::{ColliderBuilder, ColliderHandle, ColliderPair, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
+use rapier2d::prelude::{ColliderBuilder, ColliderHandle, ColliderPair, Compound, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
 use crate::{area::{Area, AreaId}, computer::Computer, contains_point, draw_preview, draw_texture_onto_physics_body, get_preview_resolution, prop, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::BulletImpactData, ClientId, ClientTickContext, Prefabs, ServerIO};
@@ -64,7 +64,7 @@ impl DissolvedPixel {
         color: Color,
         scale: f32,
         mass: Option<f32>,
-        velocity: Option<RigidBodyVelocity>
+        velocity: Option<RigidBodyVelocity>,
     ) -> Self {
 
         let velocity = match velocity {
@@ -77,18 +77,15 @@ impl DissolvedPixel {
             None => 1.,
         };
 
-        
-
         let rigid_body = space.rigid_body_set.insert(
             RigidBodyBuilder::dynamic()
                 .position(pos)
-                .additional_mass(0.0001)
                 .angvel(velocity.angvel)
                 .linvel(velocity.linvel)
         );
 
         let collider = space.collider_set.insert_with_parent(
-            ColliderBuilder::cuboid(1., 1.),
+            ColliderBuilder::cuboid(2., 2.).mass(mass),
             rigid_body,
             &mut space.rigid_body_set
         );
@@ -326,13 +323,58 @@ impl Prop {
 
         let total_pixel_count = texture.width() * texture.height();
 
-        for x in 0..texture.width() as u32 {
-            for y in 0..texture.height() as u32 {
-                let color = texture_data.get_pixel(x, y);
+        for x in (0..texture.width() as u32).step_by(4) {
+            for y in (0..texture.height() as u32).step_by(4) {
+
+                
+
+                // create an average of the 4 neighboring pixels
+                // start with bottom left
+                let mut color = texture_data.get_pixel(x, y);
+
+                let mut pixel_count = 1;
+
+                // bottom right
+                if x + 1 <= texture.width() as u32 {
+                    let bottom_right_color = texture_data.get_pixel(x + 1, y);
+
+                    color.r += bottom_right_color.r;
+                    color.g += bottom_right_color.g;
+                    color.b += bottom_right_color.b;
+
+                    pixel_count += 1;
+                }
+
+                // top left
+                if y + 1 <= texture.height() as u32 {
+                    let top_left_color = texture_data.get_pixel(x, y + 1);
+
+                    color.r += top_left_color.r;
+                    color.g += top_left_color.g;
+                    color.b += top_left_color.b;
+
+                    pixel_count += 1;
+                }
+
+                // top right
+                if x + 1 <= texture.width() as u32 && y + 1 <= texture.height() as u32 {
+                    let top_right_color = texture_data.get_pixel(x + 1, y + 1);
+
+                    color.r += top_right_color.r;
+                    color.g += top_right_color.g;
+                    color.b += top_right_color.b;
+
+                    pixel_count += 1;
+
+                }
+
+                color.r /= pixel_count as f32;
+                color.g /= pixel_count as f32;
+                color.b /= pixel_count as f32;
 
                 let translation = Vector2::new(
-                ((body_translation.x + (x as f32 * x_scale)) - half_extents.x) + 0.5, 
-                ((body_translation.y - (y as f32 * y_scale)) + half_extents.y) - 0.5    
+                ((body_translation.x + (x as f32 * x_scale)) - half_extents.x) + 2., 
+                ((body_translation.y - (y as f32 * y_scale)) + half_extents.y) - 2.    
                 );
 
                 let position = Isometry2::new(
@@ -342,11 +384,11 @@ impl Prop {
 
                 dissolved_pixels.push(
                     DissolvedPixel::new(
-                        position, // do we need to shift this over by 0.5?  
+                        position, 
                         space, 
                         color, 
                         x_scale, 
-                        Some(collider.mass() / total_pixel_count), // this needs to be divided by the number of pixels 
+                        Some(collider.mass() / total_pixel_count), 
                         Some(*body.vels())
                     )
                 );
@@ -439,6 +481,11 @@ impl Prop {
     }
 
     pub fn set_velocity(&mut self, velocity: RigidBodyVelocity, space: &mut Space) {
+
+        if self.despawn {
+            return;
+        }
+        
         space.rigid_body_set.get_mut(self.rigid_body_handle).unwrap().set_vels(velocity, true);
     }
 

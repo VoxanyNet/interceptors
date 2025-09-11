@@ -7,7 +7,7 @@ use rapier2d::prelude::RigidBodyVelocity;
 use serde::{Deserialize, Serialize};
 use web_sys::js_sys::WebAssembly::Instance;
 
-use crate::{ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{self, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropItem, PropSave}, rapier_mouse_world_pos, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapon::WeaponTypeItem, ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter};
+use crate::{ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{self, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropItem, PropSave}, rapier_mouse_world_pos, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapon::WeaponTypeItem, ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -42,7 +42,8 @@ pub struct Area {
     pub master: Option<ClientId>,
     pub ambiance: Vec<Ambiance>,
     pub wave_data: WaveData,
-    pub cars: Vec<Car>
+    pub cars: Vec<Car>,
+    pub compound_test: Vec<CompoundTest>
 }
 
 pub struct WaveData {
@@ -99,7 +100,8 @@ impl Area {
             master: None,
             ambiance: Vec::new(),
             wave_data: WaveData::default(),
-            cars: Vec::new()
+            cars: Vec::new(),
+            compound_test: Vec::new()
         }
     }
 
@@ -142,6 +144,10 @@ impl Area {
 
         for bullet_trail in &self.bullet_trails {
             bullet_trail.draw();
+        }
+
+        for compound_test in &self.compound_test {
+            compound_test.draw(&self.space, textures);
         }
 
 
@@ -396,6 +402,12 @@ impl Area {
         if is_key_released(KeyCode::M) {
             self.cars.push(
                 Car::new(&mut self.space, rapier_mouse_world_pos(&ctx.camera_rect).into())
+            );
+        }
+
+        if is_key_released(KeyCode::I) {
+            self.compound_test.push(
+                CompoundTest::new(&mut self.space, ctx, PathBuf::from("assets\\stone1.png"), 0., 0., rapier_mouse_world_pos(&ctx.camera_rect))
             );
         }
 
@@ -664,7 +676,8 @@ impl Area {
             master: save.master,
             ambiance,
             wave_data: WaveData::default(),
-            cars: Vec::new()
+            cars: Vec::new(),
+            compound_test: Vec::new()
 
         }
     }

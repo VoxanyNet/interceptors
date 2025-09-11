@@ -298,9 +298,9 @@ impl Client {
                 NetworkPacket::PropVelocityUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id} ).unwrap();
 
-                    let prop = area.props.iter_mut().find(|prop| {prop.id == update.id}).unwrap();
+                    let prop = area.props.iter_mut().find(|prop| {prop.id == update.id});
 
-                    prop.set_velocity(update.velocity, &mut area.space);
+                    if let Some(prop) = prop { prop.set_velocity(update.velocity, &mut area.space) }
                 },
                 NetworkPacket::PropUpdateOwner(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
@@ -370,7 +370,7 @@ impl Client {
                 NetworkPacket::PropPositionUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let prop = area.props.iter_mut().find(|prop| {prop.id} == update.prop_id).unwrap();
+                    let prop = if let Some(prop) = area.props.iter_mut().find(|prop| {prop.id} == update.prop_id) {prop} else {continue};
 
                     let current_pos = match area.space.rigid_body_set.get(prop.rigid_body_handle) {
                         Some(body) => body.position(),

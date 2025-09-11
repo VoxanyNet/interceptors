@@ -42,6 +42,6 @@ path = "src/editor/main.rs"
 name = "interceptors_lib"
 path = "src/lib.rs"
 
-[profile.dev.package.rapier3d]
+[profile.dev.package.rapier2d]
 opt-level = 3
 
