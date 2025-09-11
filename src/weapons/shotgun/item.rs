@@ -8,7 +8,7 @@ use crate::{space::Space, texture_loader::TextureLoader, weapons::{shotgun::{ite
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct ShotgunItem {
-    weapon: WeaponItem
+    pub weapon: WeaponItem
 }
 
 impl ShotgunItem {

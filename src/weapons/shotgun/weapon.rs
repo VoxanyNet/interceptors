@@ -1,4 +1,10 @@
-use crate::{space::Space, texture_loader::TextureLoader, weapons::weapon::weapon::Weapon};
+use std::path::PathBuf;
+
+use macroquad::{color::Color, math::Vec2};
+use nalgebra::Vector2;
+use rapier2d::prelude::{ImpulseJointHandle, RigidBodyHandle};
+
+use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapons::{shotgun::{item::ShotgunItem, weapon_save::ShotgunSave}, weapon::weapon::Weapon, weapon_fire_context::WeaponFireContext}, ClientId, ClientTickContext};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct Shotgun {

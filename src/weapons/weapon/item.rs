@@ -1,4 +1,10 @@
-use crate::weapons::weapon::item_save::WeaponItemSave;
+use std::path::PathBuf;
+
+use macroquad::{color::Color, math::Vec2};
+use nalgebra::Isometry2;
+use rapier2d::prelude::RigidBodyHandle;
+
+use crate::{draw_preview, get_preview_resolution, player::Facing, space::Space, texture_loader::TextureLoader, weapons::weapon::{item_save::WeaponItemSave, weapon::Weapon}, ClientId};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct WeaponItem {

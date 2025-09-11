@@ -1,3 +1,5 @@
+use crate::{area::AreaId, bullet_trail::BulletTrail, enemy::Enemy, player::{Facing, Player}, prop::{DissolvedPixel, Prop}, space::Space, weapons::weapon::weapon::WeaponOwner};
+
 pub struct WeaponFireContext<'a> {
     pub space: &'a mut Space,
     pub players: &'a mut Vec<Player>,

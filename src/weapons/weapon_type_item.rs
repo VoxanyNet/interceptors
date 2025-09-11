@@ -1,3 +1,9 @@
+use macroquad::{color::Color, math::Vec2};
+use nalgebra::Isometry2;
+use rapier2d::prelude::RigidBodyHandle;
+
+use crate::{area::AreaId, dropped_item::{DroppedItem, NewDroppedItemUpdate}, inventory::Inventory, player::ActiveWeaponUpdate, space::Space, texture_loader::TextureLoader, weapons::{lmg::item::LMGItem, shotgun::item::ShotgunItem, weapon_type::WeaponType, weapon_type_item_save::WeaponTypeItemSave}, ClientId, ClientTickContext};
+
 #[derive(PartialEq, Clone, Debug)]
 pub enum WeaponTypeItem {
     Shotgun(ShotgunItem),
