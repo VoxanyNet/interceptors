@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 
-use rapier2d::prelude::{ColliderHandle, ImpulseJointHandle, RigidBodyHandle};
+use nalgebra::{point, vector, Vector2};
+use rapier2d::{parry::query::Ray, prelude::{ColliderHandle, ImpulseJointHandle, QueryFilter, RigidBodyBuilder, RigidBodyHandle}};
 
-use crate::ClientId;
+use crate::{space::Space, weapons::bullet_impact_data::BulletImpactData, ClientId};
 
 
 #[derive(Clone)]

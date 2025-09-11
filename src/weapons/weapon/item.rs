@@ -1,3 +1,5 @@
+use crate::weapons::weapon::item_save::WeaponItemSave;
+
 #[derive(PartialEq, Clone, Debug)]
 pub struct WeaponItem {
     pub mass: f32,

@@ -6,7 +6,7 @@ use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{angle_weapon_to_mouse, area::{self, Area, AreaId}, body_part::BodyPart, bullet_trail::{self, BulletTrail}, computer::{Item, ItemSave}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, machine_gun::LMGItem, prop::{self, DissolvedPixel, Prop, PropItem}, rapier_mouse_world_pos, rapier_to_macroquad, shotgun::{Shotgun, ShotgunItem}, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapon::{self, BulletImpactData, Weapon, WeaponFireContext, WeaponSave, WeaponType, WeaponTypeItem, WeaponTypeSave}, ClientId, ClientTickContext, Prefabs};
+use crate::{angle_weapon_to_mouse, area::{self, Area, AreaId}, body_part::BodyPart, bullet_trail::{self, BulletTrail}, computer::{Item, ItemSave}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, prop::{self, DissolvedPixel, Prop, PropItem}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, lmg::item::LMGItem, shotgun::item::ShotgunItem, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type::WeaponType, weapon_type_item::WeaponTypeItem, weapon_type_save::WeaponTypeSave}, ClientId, ClientTickContext, Prefabs};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -404,7 +404,7 @@ impl Player {
             ItemSlot {
                 quantity: 1,
                 item: Item::Weapon(
-                    weapon::WeaponTypeItem::Shotgun(
+                    WeaponTypeItem::Shotgun(
                         ShotgunItem::new()
                     )
                 ),
@@ -415,7 +415,7 @@ impl Player {
             ItemSlot {
                 quantity: 1,
                 item: Item::Weapon(
-                    weapon::WeaponTypeItem::LMG(
+                    WeaponTypeItem::LMG(
                         LMGItem::new()
                     )
                 ),
@@ -836,7 +836,7 @@ impl Player {
                     area_id,
                     dissolved_pixels,
                     enemies,
-                    weapon_owner: weapon::WeaponOwner::Player(self.id)
+                    weapon_owner: WeaponOwner::Player(self.id)
                 });
 
                 return;
@@ -857,7 +857,7 @@ impl Player {
                     area_id,
                     dissolved_pixels,
                     enemies,
-                    weapon_owner: weapon::WeaponOwner::Player(self.id)
+                    weapon_owner: WeaponOwner::Player(self.id)
                 });
 
                 self.last_autofire = Instant::now();

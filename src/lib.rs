@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use tungstenite::WebSocket;
 use nalgebra::point;
 
-use crate::{all_keys::ALL_KEYS, player::Facing, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, weapon::WeaponType};
+use crate::{all_keys::ALL_KEYS, player::Facing, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, weapons::weapon_type::WeaponType};
 
 pub mod space;
 pub mod updates;
@@ -23,7 +23,6 @@ pub mod prop;
 pub mod all_keys;
 pub mod body_part;
 pub mod weapon;
-pub mod shotgun;
 pub mod bullet_trail;
 pub mod screen_shake;
 pub mod sound_loader;

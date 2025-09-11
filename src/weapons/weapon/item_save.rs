@@ -1,3 +1,8 @@
+use std::path::PathBuf;
+
+use macroquad::math::Vec2;
+use serde::{Deserialize, Serialize};
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct WeaponItemSave {
     pub mass: f32,

@@ -1,3 +1,11 @@
+use std::path::PathBuf;
+
+use macroquad::math::Vec2;
+use nalgebra::Isometry2;
+use serde::{Deserialize, Serialize};
+
+use crate::ClientId;
+
 // maybe this isnt the best idea to save all this info explicitly and just have the specific weapon types handle saving but idk this seems like it will save some time
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WeaponSave {
