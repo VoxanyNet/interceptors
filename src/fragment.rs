@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use macroquad::math::Rect;
-use rapier2d::prelude::{ColliderHandle, RigidBody, RigidBodyHandle};
+use rapier2d::prelude::{ColliderHandle, RigidBodyHandle};
 
 use crate::space::Space;
 

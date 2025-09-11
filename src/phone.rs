@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
-use macroquad::{color::WHITE, math::{Rect, Vec2}, texture::{draw_texture, draw_texture_ex, DrawTextureParams}, window::{screen_height, screen_width}};
+use macroquad::{color::WHITE, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams}, window::{screen_height, screen_width}};
 
-use crate::{texture_loader::TextureLoader, ClientTickContext};
+use crate::texture_loader::TextureLoader;
 
 enum PhoneAnimationState {
     Opening,

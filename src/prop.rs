@@ -1,11 +1,11 @@
-use std::{default, fs::read_to_string, path::{Path, PathBuf}, time::Instant};
+use std::{fs::read_to_string, path::PathBuf, time::Instant};
 
-use macroquad::{audio::play_sound_once, color::{Color, WHITE}, input::is_mouse_button_released, math::Vec2, shapes::{draw_rectangle_ex, DrawRectangleParams}, texture::{draw_texture, draw_texture_ex, DrawTextureParams}};
-use nalgebra::{base, Isometry2, Vector, Vector2};
-use rapier2d::prelude::{ColliderBuilder, ColliderHandle, ColliderPair, Compound, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
+use macroquad::{audio::play_sound_once, color::Color, math::Vec2, shapes::{draw_rectangle_ex, DrawRectangleParams}};
+use nalgebra::{Isometry2, Vector2};
+use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::{Area, AreaId}, computer::Computer, contains_point, draw_preview, draw_texture_onto_physics_body, get_preview_resolution, prop, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData, ClientId, ClientTickContext, Prefabs, ServerIO};
+use crate::{area::AreaId, draw_preview, draw_texture_onto_physics_body, get_preview_resolution, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData, ClientId, ClientTickContext, Prefabs, ServerIO};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Default, Debug)]
 pub enum PropMaterial {

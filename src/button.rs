@@ -1,6 +1,5 @@
-use macroquad::{input::{is_mouse_button_down, is_mouse_button_released, mouse_position}, math::{Rect, Vec2}};
+use macroquad::{input::{is_mouse_button_down, is_mouse_button_released}, math::{Rect, Vec2}};
 
-use crate::mouse_world_pos;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Button {

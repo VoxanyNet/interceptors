@@ -1,6 +1,6 @@
-use std::{path::{Path, PathBuf}, str::FromStr, time::{Duration, Instant}};
+use std::{path::PathBuf, str::FromStr};
 
-use macroquad::{camera::{pop_camera_state, push_camera_state, set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, GRAY, LIGHTGRAY, RED, WHITE}, input::{mouse_position, mouse_position_local}, math::{clamp, Rect, Vec2}, prelude::camera::mouse::Camera, shapes::{draw_line, draw_rectangle}, text::{draw_text_ex, Font, TextParams}, texture::{draw_texture, draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::clear_background};
+use macroquad::{camera::{set_camera, Camera2D}, color::{Color, BLACK, GRAY, WHITE}, math::{Rect, Vec2}, shapes::draw_line, text::{draw_text_ex, TextParams}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::clear_background};
 use nalgebra::Isometry2;
 use serde::{Deserialize, Serialize};
 

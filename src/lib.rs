@@ -1,7 +1,7 @@
 use std::{collections::HashMap, f32::consts::PI, fs::read_to_string, net::{TcpListener, TcpStream}, path::PathBuf};
 
 use ewebsock::{WsReceiver, WsSender};
-use macroquad::{camera::Camera2D, color::{Color, WHITE}, file::load_string, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, prelude::camera::mouse::Camera, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}};
+use macroquad::{camera::Camera2D, color::{Color, WHITE}, file::load_string, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}};
 use nalgebra::{vector, Vector2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, QueryFilter, RigidBodyHandle};
 use serde::{Deserialize, Serialize};

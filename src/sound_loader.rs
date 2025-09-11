@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use fxhash::FxHashMap;
-use macroquad::{audio::{load_sound, Sound}, texture::{self, load_texture, Texture2D}};
+use macroquad::audio::{load_sound, Sound};
 
 pub struct SoundLoader {
     pub cache: FxHashMap<PathBuf, Sound>

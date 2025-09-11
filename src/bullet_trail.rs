@@ -2,7 +2,7 @@ use macroquad::{color::{Color, WHITE}, shapes::draw_line};
 use nalgebra::Vector2;
 use serde::{Deserialize, Serialize};
 
-use crate::{area::{Area, AreaId}, rapier_to_macroquad, uuid_u64, ClientId, ClientTickContext};
+use crate::{area::AreaId, rapier_to_macroquad, uuid_u64, ClientId, ClientTickContext};
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct BulletTrailId {

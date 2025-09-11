@@ -1,9 +1,9 @@
 use macroquad::{color::WHITE, math::Vec2};
-use nalgebra::{Isometry2, Vector2, U4};
+use nalgebra::{Isometry2, Vector2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::AreaId, computer::{Item, ItemSave}, draw_texture_onto_physics_body, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, uuid_u64, Prefabs};
+use crate::{area::AreaId, computer::{Item, ItemSave}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, uuid_u64, Prefabs};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct DroppedItemId {

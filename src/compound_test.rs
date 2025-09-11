@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
-use macroquad::{color::WHITE, math::{vec2, Vec2}, texture::{draw_texture_ex, DrawTextureParams}};
-use nalgebra::{vector, Isometry2, Vector2};
-use rapier2d::{parry::{bounding_volume::Aabb, shape::Cuboid}, prelude::{ColliderBuilder, ColliderHandle, Compound, RigidBody, RigidBodyBuilder, RigidBodyHandle, Shape, SharedShape}};
+use macroquad::{color::WHITE, math::Vec2, texture::{draw_texture_ex, DrawTextureParams}};
+use nalgebra::{Isometry2, Vector2};
+use rapier2d::prelude::{ColliderBuilder, RigidBodyBuilder, RigidBodyHandle};
 
-use crate::{rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, ClientTickContext};
+use crate::{rapier_to_macroquad, space::Space, texture_loader::TextureLoader, ClientTickContext};
 
 pub struct CompoundTest {
     body: RigidBodyHandle,

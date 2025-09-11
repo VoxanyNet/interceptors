@@ -1,11 +1,11 @@
-use std::{f32::consts::PI, f64::consts::E, path::PathBuf, time::Instant};
+use std::{f32::consts::PI, path::PathBuf, time::Instant};
 
-use macroquad::{color::{BLACK, GREEN}, math::Vec2, rand::gen_range, shapes::{draw_rectangle, draw_rectangle_lines}};
-use nalgebra::{vector, Isometry2, Vector, Vector2};
+use macroquad::{color::{BLACK, GREEN}, math::Vec2, shapes::{draw_rectangle, draw_rectangle_lines}};
+use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::{parry::query::Ray, prelude::{ColliderHandle, Group, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 
-use crate::{angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, get_angle_between_rapier_points, player::{self, Facing, Player, PlayerId}, prop::{DissolvedPixel, NewProp, Prop}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type::WeaponType, weapon_type_item::WeaponTypeItem, weapon_type_save::WeaponTypeSave}, ClientId, ClientTickContext};
+use crate::{angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, get_angle_between_rapier_points, player::{Facing, Player, PlayerId}, prop::{DissolvedPixel, Prop}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type::WeaponType, weapon_type_item::WeaponTypeItem, weapon_type_save::WeaponTypeSave}, ClientId, ClientTickContext};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct EnemyId {

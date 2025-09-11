@@ -1,4 +1,4 @@
-use macroquad::{color::WHITE, shapes::{draw_circle, draw_rectangle}};
+use macroquad::{color::WHITE, shapes::draw_circle};
 use nalgebra::{point, vector, Isometry2};
 use rapier2d::{math::UnitVector, prelude::{ColliderBuilder, ColliderHandle, ImpulseJointHandle, PrismaticJointBuilder, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 

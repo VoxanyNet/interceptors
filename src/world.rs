@@ -1,5 +1,5 @@
 
-use macroquad::{camera::Camera2D, math::Rect, prelude::camera::mouse::Camera};
+use macroquad::{camera::Camera2D, math::Rect};
 
 use crate::{area::Area, font_loader::FontLoader, texture_loader::TextureLoader, ClientTickContext, Prefabs, ServerIO};
 

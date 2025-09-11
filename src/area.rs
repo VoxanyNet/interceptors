@@ -1,13 +1,12 @@
 
-use std::{path::{Path, PathBuf}, time::{Duration, Instant}};
+use std::{path::PathBuf, time::Instant};
 
-use macroquad::{audio::{play_sound, stop_sound, PlaySoundParams}, camera::Camera2D, input::{is_key_down, is_key_released, KeyCode}, math::Rect, window::{screen_height, screen_width}};
-use nalgebra::{vector, Isometry, Isometry2, Vector2};
+use macroquad::{audio::{play_sound, stop_sound, PlaySoundParams}, camera::Camera2D, input::{is_key_released, KeyCode}, math::Rect};
+use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::RigidBodyVelocity;
 use serde::{Deserialize, Serialize};
-use web_sys::js_sys::WebAssembly::Instance;
 
-use crate::{ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{self, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropItem, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::item::ShotgunItem, weapon_type_item::WeaponTypeItem}, ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter};
+use crate::{ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::item::ShotgunItem, weapon_type_item::WeaponTypeItem}, ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
