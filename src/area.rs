@@ -6,7 +6,7 @@ use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::RigidBodyVelocity;
 use serde::{Deserialize, Serialize};
 
-use crate::{ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::item::ShotgunItem, weapon_type_item::WeaponTypeItem}, ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter};
+use crate::{ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::{MasterUpdate, NetworkPacket}, uuid_u64, ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -233,7 +233,7 @@ impl Area {
     pub fn spawn_enemy(&mut self, ctx: &mut ClientTickContext) {
         let mouse_pos = rapier_mouse_world_pos(&ctx.camera_rect);
         
-        let enemy = Enemy::new( Isometry2::new(mouse_pos, 0.), *ctx.client_id, &mut self.space, Some(WeaponTypeItem::Shotgun(ShotgunItem::new())));
+        let enemy = Enemy::new( Isometry2::new(mouse_pos, 0.), *ctx.client_id, &mut self.space, None);
 
         dbg!(enemy.id);
 
@@ -373,9 +373,8 @@ impl Area {
                     vector![2400. + (i as f32 * 50.), 200.].into(), 
                     self.master.unwrap().clone(), 
                     &mut self.space, 
-                    Some(WeaponTypeItem::Shotgun(
-                        ShotgunItem::new()
-                    ))
+                    None
+                
                 );
 
                 ctx.network_io.send_network_packet(
@@ -417,8 +416,6 @@ impl Area {
         self.stop_ambiance();
 
         self.spawn_player_if_not_in_game(ctx);
-
-        self.spawn_dropped_item(ctx);
 
         if is_key_released(KeyCode::T) {
             self.spawn_enemy(ctx);
@@ -542,42 +539,6 @@ impl Area {
         None
     }
 
-    pub fn spawn_dropped_item(&mut self, ctx: &mut ClientTickContext) {
-        if is_key_released(KeyCode::K) {
-
-            
-            let mouse_pos = rapier_mouse_world_pos(&ctx.camera_rect);
-
-            let dropped_item = DroppedItem::new(
-                crate::computer::Item::Weapon(
-                    WeaponTypeItem::Shotgun(
-                        ShotgunItem::new()
-                    )
-                ),
-                mouse_pos.into(), 
-                RigidBodyVelocity::zero(), 
-                &mut self.space, 
-                ctx.textures, 
-                ctx.prefabs,
-                20.
-            );
-
-            self.dropped_items.push(
-                dropped_item.clone()
-            );
-
-            ctx.network_io.send_network_packet(
-            NetworkPacket::NewDroppedItemUpdate(
-                NewDroppedItemUpdate {
-                    dropped_item: dropped_item.save(&self.space),
-                    area_id: self.id,
-                }
-            )
-        );
-        }
-
-        
-    }
 
     pub fn from_save(save: AreaSave, id: Option<AreaId>, prefabs: &Prefabs) -> Self {
 

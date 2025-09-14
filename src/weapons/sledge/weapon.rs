@@ -4,7 +4,7 @@ use macroquad::{color::WHITE, math::Vec2};
 use nalgebra::{vector, Vector2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle};
 
-use crate::{draw_hitbox, player::Facing, space::Space, texture_loader::TextureLoader, weapons::{lmg::{item::LMGItem, weapon_save::LMGSave}, sledge::weapon_save::SledgeSave, weapon::weapon::Weapon, weapon_fire_context::WeaponFireContext}, ClientId};
+use crate::{draw_hitbox, player::Facing, space::Space, texture_loader::TextureLoader, weapons::{lmg::{ weapon_save::LMGSave}, sledge::weapon_save::SledgeSave, weapon::weapon::Weapon, weapon_fire_context::WeaponFireContext}, ClientId};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct Sledge {
@@ -65,14 +65,10 @@ impl Sledge {
         
     }
 
-    pub fn from_save(save: LMGSave, space: &mut Space, player_rigid_body_handle: Option<RigidBodyHandle>) -> Self {
-        Self::new(space, Vector2::zeros(), , player_rigid_body_handle)
+    pub fn from_save(save: LMGSave, space: &mut Space, player_rigid_body_handle: Option<RigidBodyHandle>, owner: ClientId) -> Self {
+        Self::new(space, Vector2::zeros(), owner, player_rigid_body_handle)
     }
     
-
-    pub fn to_item(&self, space: &Space) -> LMGItem {
-        
-    }
 
     
 }

@@ -6,7 +6,7 @@ use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, prop::{DissolvedPixel, Prop}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, lmg::item::LMGItem, shotgun::item::ShotgunItem, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type::WeaponType, weapon_type_item::WeaponTypeItem, weapon_type_save::WeaponTypeSave}, ClientId, ClientTickContext, Prefabs};
+use crate::{angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, prop::{DissolvedPixel, Prop}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}, ClientId, ClientTickContext, Prefabs};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -400,27 +400,6 @@ impl Player {
 
         let mut inventory = Inventory::new();
 
-        inventory.items[0] = Some(
-            ItemSlot {
-                quantity: 1,
-                item: Item::Weapon(
-                    WeaponTypeItem::Shotgun(
-                        ShotgunItem::new()
-                    )
-                ),
-            }
-        );
-
-        inventory.items[1] = Some(
-            ItemSlot {
-                quantity: 1,
-                item: Item::Weapon(
-                    WeaponTypeItem::LMG(
-                        LMGItem::new()
-                    )
-                ),
-            }
-        );
 
         // items[0] = Some(ItemSlot {
         //     quantity: 1,
@@ -525,6 +504,7 @@ impl Player {
         bullet_trails: &mut Vec<BulletTrail>,
         facing: Facing,
         area_id: AreaId,
+        enemies: &mut Vec<Enemy>,
         dissolved_pixels: &mut Vec<DissolvedPixel>,
         dropped_items: &mut Vec<DroppedItem>,
     ) {
@@ -548,9 +528,21 @@ impl Player {
                 prop_item.use_item(&mut item_slot.quantity, ctx, space, props);
                 
             },
-            Item::Weapon(weapon_type_item) => {
+            Item::Weapon(weapon_type) => {
+
+                let weapon_fire_context = &mut WeaponFireContext {
+                    space,
+                    players,
+                    props,
+                    bullet_trails,
+                    facing,
+                    area_id,
+                    dissolved_pixels,
+                    enemies,
+                    weapon_owner: WeaponOwner::Player(self.id),
+                };
     
-                weapon_type_item.use_item(&mut self.weapon, ctx, dropped_items, &mut self.inventory, area_id, space, self.id, self.body.body_handle, &mut item_slot.quantity);
+                weapon_type.fire(ctx, weapon_fire_context);
             }
         };
 
@@ -813,7 +805,7 @@ impl Player {
 
 
         if is_mouse_button_released(macroquad::input::MouseButton::Left) {
-            self.use_item(ctx, space, props, players, bullet_trails, self.facing, area_id, dissolved_pixels, dropped_items);
+            self.use_item(ctx, space, props, players, bullet_trails, self.facing, area_id, enemies, dissolved_pixels, dropped_items);
         }
 
         self.update_cursor_pos(ctx, area_id);

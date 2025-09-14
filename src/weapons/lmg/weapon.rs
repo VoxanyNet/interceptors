@@ -4,7 +4,7 @@ use macroquad::math::Vec2;
 use nalgebra::Vector2;
 use rapier2d::prelude::RigidBodyHandle;
 
-use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapons::{lmg::{item::LMGItem, weapon_save::LMGSave}, weapon::weapon::Weapon, weapon_fire_context::WeaponFireContext}, ClientId};
+use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapons::{lmg::{weapon_save::LMGSave}, weapon::weapon::Weapon, weapon_fire_context::WeaponFireContext}, ClientId};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct LMG {
@@ -42,12 +42,6 @@ impl LMG {
         }
     }
     
-
-    pub fn to_item(&self, space: &Space) -> LMGItem {
-        LMGItem {
-            weapon: self.weapon.to_item(space),
-        }
-    }
 
     pub fn new(space: &mut Space, pos: Vector2<f32>, owner: ClientId, player_rigid_body_handle: Option<RigidBodyHandle>, facing: Facing) -> Self {
         Self {

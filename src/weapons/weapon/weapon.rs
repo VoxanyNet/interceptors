@@ -4,7 +4,7 @@ use macroquad::{audio::{play_sound, PlaySoundParams}, color::Color, math::Vec2, 
 use nalgebra::{point, vector, Vector2};
 use rapier2d::{math::Vector, parry::query::Ray, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 
-use crate::{area::AreaId, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, enemy::EnemyId, get_preview_resolution, player::{Facing, PlayerId}, space::Space, texture_loader::TextureLoader, weapons::{bullet_impact_data::BulletImpactData, weapon::{item::WeaponItem, weapon_save::WeaponSave}, weapon_fire_context::WeaponFireContext}, ClientId, ClientTickContext};
+use crate::{area::AreaId, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, enemy::EnemyId, get_preview_resolution, player::{Facing, PlayerId}, space::Space, texture_loader::TextureLoader, weapons::{bullet_impact_data::BulletImpactData, weapon::{weapon_save::WeaponSave}, weapon_fire_context::WeaponFireContext}, ClientId, ClientTickContext};
 
 
 #[derive(Clone)]
@@ -48,33 +48,7 @@ impl Weapon {
         space.rigid_body_set.remove(self.rigid_body, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
     }
 
-    pub fn to_item(&self, space: &Space) -> WeaponItem {
-
-        let body = space.rigid_body_set.get(self.rigid_body).unwrap();
-        let collider = space.collider_set.get(self.collider).unwrap();
-
-        WeaponItem {
-            mass: body.mass(),
-            texture_size: Vec2 {
-                x: collider.shape().as_cuboid().unwrap().half_extents.x,
-                y: collider.shape().as_cuboid().unwrap().half_extents.y,
-            },
-            sprite: self.sprite.clone(),
-            scale: self.scale,
-            fire_sound_path: self.fire_sound_path.clone(),
-            x_screen_shake_frequency: self.x_screen_shake_frequency,
-            x_screen_shake_intensity: self.x_screen_shake_intensity,
-            y_screen_shake_frequency: self.y_screen_shake_frequency,
-            y_screen_shake_intensity: self.y_screen_shake_intensity,
-            shell_sprite: self.shell_sprite.clone(),
-            rounds: self.rounds,
-            capacity: self.capacity,
-            reserve_capacity: self.reserve_capacity,
-            reload_duration: self.reload_duration.as_secs_f32(),
-            base_damage: self.base_damage,
-            knockback: self.knockback
-        }
-    }
+    
     pub fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32) {
         draw_preview(textures, size, draw_pos, color, rotation, &self.sprite);
     }

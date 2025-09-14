@@ -4,18 +4,18 @@ use macroquad::{camera::{set_camera, Camera2D}, color::{Color, BLACK, GRAY, WHIT
 use nalgebra::Isometry2;
 use serde::{Deserialize, Serialize};
 
-use crate::{button::Button, font_loader::FontLoader, mouse_world_pos, player::Player, prop::{Prop, PropItem, PropItemSave, PropSave}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, weapons::{weapon_type_item::WeaponTypeItem, weapon_type_item_save::WeaponTypeItemSave}, ClientTickContext, Prefabs};
+use crate::{button::Button, font_loader::FontLoader, mouse_world_pos, player::Player, prop::{Prop, PropItem, PropItemSave, PropSave}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, weapons::{weapon::{weapon::Weapon, weapon_save::WeaponSave}, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}, ClientTickContext, Prefabs};
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum Item {
     Prop(PropItem),
-    Weapon(WeaponTypeItem)
+    Weapon(WeaponType)
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ItemSave {
     Prop(PropItemSave),
-    Weapon(WeaponTypeItemSave)
+    Weapon(WeaponTypeSave)
 }
 
 
@@ -39,7 +39,7 @@ impl Item {
     pub fn from_save(item_save: ItemSave, space: &mut Space) -> Item {
         match item_save {
             ItemSave::Prop(prop_item_save) => Item::Prop(PropItem::from_save(prop_item_save)),
-            ItemSave::Weapon(weapon_type_save) => Item::Weapon(WeaponTypeItem::from_save(weapon_type_save)) // pass None as player rigid body handle because its just an item
+            ItemSave::Weapon(weapon_type_save) => Item::Weapon(WeaponType::from_save(space, weapon_type_save, None)) 
         }
     }
     pub fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {

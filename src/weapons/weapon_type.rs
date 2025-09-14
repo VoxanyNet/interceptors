@@ -1,7 +1,7 @@
 use macroquad::{color::Color, math::Vec2};
 use rapier2d::prelude::{ColliderHandle, ImpulseJointHandle, RigidBodyHandle};
 
-use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapons::{lmg::weapon::LMG, shotgun::weapon::Shotgun, weapon_fire_context::WeaponFireContext, weapon_type_item::WeaponTypeItem, weapon_type_save::WeaponTypeSave}, ClientTickContext};
+use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapons::{lmg::weapon::LMG, shotgun::weapon::Shotgun, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}, ClientTickContext};
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum WeaponType {
@@ -10,6 +10,10 @@ pub enum WeaponType {
 }
 
 impl WeaponType {
+
+    pub fn stackable(&self) -> bool {
+        false
+    }
 
     pub fn name(&self) -> String {
         match self {
@@ -32,16 +36,7 @@ impl WeaponType {
             WeaponType::LMG(lmg) => lmg.weapon.despawn(space),
         }
     }
-    pub fn to_item(&self, space: &Space) -> WeaponTypeItem {
-        match self {
-            WeaponType::Shotgun(shotgun) => {
-                WeaponTypeItem::Shotgun(shotgun.to_item(space))
-            },
-            WeaponType::LMG(lmg) => {
-                WeaponTypeItem::LMG(lmg.to_item(space))
-            }
-        }
-    }
+
     pub fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32) {
         match self {
             WeaponType::Shotgun(shotgun) => shotgun.draw_preview(textures, size, draw_pos, color, rotation),

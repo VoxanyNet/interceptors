@@ -4,7 +4,7 @@ use macroquad::{color::Color, math::Vec2};
 use nalgebra::Vector2;
 use rapier2d::prelude::{ImpulseJointHandle, RigidBodyHandle};
 
-use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapons::{shotgun::{item::ShotgunItem, weapon_save::ShotgunSave}, weapon::weapon::Weapon, weapon_fire_context::WeaponFireContext}, ClientId, ClientTickContext};
+use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapons::{shotgun::{ weapon_save::ShotgunSave}, weapon::weapon::Weapon, weapon_fire_context::WeaponFireContext}, ClientId, ClientTickContext};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct Shotgun {
@@ -36,12 +36,6 @@ impl Shotgun {
     pub fn from_save(save: ShotgunSave, space: &mut Space, player_rigid_body_handle: Option<RigidBodyHandle>) -> Self {
         Self {
             weapon: Weapon::from_save(save.weapon, space, player_rigid_body_handle),
-        }
-    }
-
-    pub fn to_item(&self, space: &Space) -> ShotgunItem {
-        ShotgunItem {
-            weapon: self.weapon.to_item(space),
         }
     }
     pub fn fire(&mut self, ctx: &mut ClientTickContext, weapon_fire_context: &mut WeaponFireContext) {
