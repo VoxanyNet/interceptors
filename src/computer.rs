@@ -4,17 +4,17 @@ use macroquad::{camera::{set_camera, Camera2D}, color::{Color, BLACK, GRAY, WHIT
 use nalgebra::Isometry2;
 use serde::{Deserialize, Serialize};
 
-use crate::{button::Button, font_loader::FontLoader, mouse_world_pos, player::Player, prop::{Prop, PropItem, PropItemSave, PropSave}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, weapons::{weapon::{weapon::Weapon, weapon_save::WeaponSave}, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}, ClientTickContext, Prefabs};
+use crate::{button::Button, font_loader::FontLoader, mouse_world_pos, player::Player, prop::{Prop, PropSave}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, weapons::{weapon::{weapon::Weapon, weapon_save::WeaponSave}, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}, ClientTickContext, Prefabs};
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum Item {
-    Prop(PropItem),
+    Prop(Prop),
     Weapon(WeaponType)
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ItemSave {
-    Prop(PropItemSave),
+    Prop(PropSave),
     Weapon(WeaponTypeSave)
 }
 
@@ -24,21 +24,21 @@ impl Item {
 
     pub fn stackable(&self) -> bool {
         match self {
-            Item::Prop(prop_item) => prop_item.stackable(),
-            Item::Weapon(weapon_type_item) => weapon_type_item.stackable(),
+            Item::Prop(prop) => true,
+            Item::Weapon(weapon_type_item) => false,
         }
     }
 
     pub fn save(&self, space: &Space) -> ItemSave {
         match self {
-            Item::Prop(prop_item) => ItemSave::Prop(prop_item.save()),
+            Item::Prop(prop) => ItemSave::Prop(prop.save(space)),
             Item::Weapon(weapon) => ItemSave::Weapon(weapon.save(space))
         }
     }
 
     pub fn from_save(item_save: ItemSave, space: &mut Space) -> Item {
         match item_save {
-            ItemSave::Prop(prop_item_save) => Item::Prop(PropItem::from_save(prop_item_save)),
+            ItemSave::Prop(prop_save) => Item::Prop(Prop::from_save(prop_save, space)),
             ItemSave::Weapon(weapon_type_save) => Item::Weapon(WeaponType::from_save(space, weapon_type_save, None)) 
         }
     }
@@ -59,7 +59,7 @@ impl Item {
 
     pub fn name(&self, prefabs: &Prefabs) -> String {
         match self {
-            Item::Prop(prop_item) => prop_item.name(prefabs),
+            Item::Prop(prop) => prop.name(),
             Item::Weapon(weapon) => weapon.name()
             
         }
@@ -272,9 +272,7 @@ impl Computer {
             StoreItem {
                 cost: 20,
                 item: Item::Prop(
-                    PropItem {
-                        prefab_path: PathBuf::from_str("prefabs\\generic_physics_props\\box2.json").unwrap(),
-                    }
+                    Prop::from_prefab("prefabs\\generic_physics_props\\box2.json".to_string(), space)
                 ),
                 quantity: None
             }
@@ -283,11 +281,7 @@ impl Computer {
         available_items.push(
             StoreItem {
                 cost: 20,
-                item: Item::Prop(
-                    PropItem {
-                        prefab_path: PathBuf::from_str("prefabs\\generic_physics_props\\anvil.json").unwrap(),
-                    }
-                ),
+                item: Item::Prop(Prop::from_prefab("prefabs\\generic_physics_props\\anvil.json".to_string(), space)),
                 quantity: None
             }
         );
@@ -321,9 +315,7 @@ impl Computer {
                 StoreItem {
                     cost: 20,
                     item: Item::Prop(
-                        PropItem {
-                            prefab_path: PathBuf::from("prefabs\\generic_physics_props\\box2.json"),
-                        }
+                        Prop::from_prefab("prefabs\\generic_physics_props\\box2.json".to_string(), space)
                     ),
                     quantity: None
                 }
@@ -335,9 +327,7 @@ impl Computer {
                 StoreItem {
                     cost: 20,
                     item: Item::Prop(
-                        PropItem {
-                            prefab_path: PathBuf::from("prefabs\\generic_physics_props\\stone2.json"),
-                        }
+                        Prop::from_prefab("prefabs\\generic_physics_props\\stone2.json".to_string(), space)
                     ),
                     quantity: Some(1)
                 }

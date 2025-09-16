@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{area::AreaId, draw_preview, draw_texture_onto_physics_body, get_preview_resolution, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData, ClientId, ClientTickContext, Prefabs, ServerIO};
 
-#[derive(Serialize, Deserialize, Clone, Copy, Default, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, Default, Debug, PartialEq)]
 pub enum PropMaterial {
     Wood,
     #[default]
@@ -127,6 +127,7 @@ impl DissolvedPixel {
     }
 }
 
+#[derive(PartialEq, Clone, Debug)]
 pub struct Prop {
     pub rigid_body_handle: RigidBodyHandle,
     pub collider_handle: ColliderHandle,
@@ -141,79 +142,21 @@ pub struct Prop {
     name: String
 }
 
-#[derive(PartialEq, Clone, Debug)]
-pub struct PropItem {
-    pub prefab_path: PathBuf
-}
 
-impl PropItem {
+impl Prop {
 
-    pub fn stackable(&self) -> bool {
-        true
+    pub fn name(&self) -> String {
+        self.name.clone()
     }
 
-    pub fn from_save(save: PropItemSave) -> Self {
-        PropItem {
-            prefab_path: PathBuf::from(save.prefab_path),
-        }
-    }
-
-    pub fn save(&self) -> PropItemSave {
-        PropItemSave {
-            prefab_path: self.prefab_path.to_str().unwrap().to_string(),
-        }
-    }
-    pub fn name(&self, prefabs: &Prefabs) -> String {
-        let prop_json = prefabs.get_prefab_data(&self.prefab_path.to_str().unwrap());
-
-        let prop_save: PropSave = serde_json::from_str(&prop_json).unwrap();
-
-        prop_save.name
-    }
-
-    pub fn use_item(&mut self, quantity: &mut u32, ctx: &mut ClientTickContext, space: &mut Space, props: &mut Vec<Prop>) {
-        *quantity -= 1;
-
-        let mouse_pos = rapier_mouse_world_pos(&ctx.camera_rect);
-
-        let prop = self.to_prop(mouse_pos.into(), ctx.prefabs, space);
-
-        props.push(prop);
+    pub fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
+        draw_preview(textures, size, draw_pos, color, rotation, &self.sprite_path);
     }
 
     pub fn get_preview_resolution(&self, size: f32, prefabs: &Prefabs, textures: &TextureLoader) -> Vec2 {
 
-        
-        let prop_save: PropSave = serde_json::from_str(&prefabs.get_prefab_data(&self.prefab_path.to_string_lossy())).unwrap();
-
-        get_preview_resolution(size, textures, &prop_save.sprite_path)
+        get_preview_resolution(size, textures, &self.sprite_path)
     }
-
-    pub fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
-
-        let prop_save: PropSave = serde_json::from_str(&prefabs.get_prefab_data(&self.prefab_path.to_string_lossy())).unwrap();
-        
-        draw_preview(textures, size, draw_pos, color, rotation, &prop_save.sprite_path);
-    }
-
-    // might want to change this to not use prefabs
-    pub fn to_prop(&self, pos: Isometry2<f32>, prefabs: &Prefabs, space: &mut Space) -> Prop {
-
-        let prop_save: PropSave = serde_json::from_str(&prefabs.get_prefab_data(&self.prefab_path.to_string_lossy())).unwrap();
-
-        Prop::from_save(prop_save, space)
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct PropItemSave {
-    prefab_path: String
-}
-
-impl Prop {
-
-
-    
 
     pub fn handle_bullet_impact(
         &mut self, 

@@ -523,9 +523,9 @@ impl Player {
         let mut item_slot = item_slot.unwrap();
 
         match &mut item_slot.item {
-            Item::Prop(prop_item) => {
+            Item::Prop(prop) => {
 
-                prop_item.use_item(&mut item_slot.quantity, ctx, space, props);
+                prop.use_item(&mut item_slot.quantity, ctx, space, props);
                 
             },
             Item::Weapon(weapon_type) => {
