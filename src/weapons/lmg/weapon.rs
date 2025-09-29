@@ -46,8 +46,6 @@ impl LMG {
     pub fn new(space: &mut Space, pos: Vector2<f32>, owner: ClientId, player_rigid_body_handle: Option<RigidBodyHandle>, facing: Facing) -> Self {
         Self {
             weapon: Weapon::new(
-                space,
-                Default::default(),
                 owner,
                 player_rigid_body_handle,
                 PathBuf::from("assets\\lmg.png"),

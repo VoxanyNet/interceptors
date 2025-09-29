@@ -12,6 +12,7 @@ pub enum Item {
     Weapon(WeaponType)
 }
 
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ItemSave {
     Prop(PropSave),

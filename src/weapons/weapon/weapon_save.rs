@@ -9,7 +9,6 @@ use crate::ClientId;
 // maybe this isnt the best idea to save all this info explicitly and just have the specific weapon types handle saving but idk this seems like it will save some time
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WeaponSave {
-    pub pos: Isometry2<f32>,
     pub mass: f32,
     pub texture_size: Vec2,
     pub sprite: PathBuf,

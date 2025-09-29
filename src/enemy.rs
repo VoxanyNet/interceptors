@@ -128,16 +128,16 @@ impl Enemy {
                 }
 
                 if let Some(weapon) = &self.weapon {
-                    if collider_handle == weapon.collider_handle() {
+                    if Some(collider_handle) == weapon.collider_handle() {
                         return true;
                     }
                 }
 
-                if let Some(weapon) = &player.weapon {
-                    if collider_handle == weapon.collider_handle() {
-                        return true
-                    }
-                }
+                // if let Some(weapon) = &player.weapon {
+                //     if Some(collider_handle) == weapon.collider_handle() {
+                //         return true
+                //     }
+                // }
 
                 let collider_pos = space.collider_set.get(collider_handle).unwrap().position();
 

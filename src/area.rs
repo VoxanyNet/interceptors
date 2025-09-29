@@ -1,12 +1,13 @@
 
-use std::{path::PathBuf, time::Instant};
+use std::{path::PathBuf, str::FromStr, time::Instant};
 
 use macroquad::{audio::{play_sound, stop_sound, PlaySoundParams}, camera::Camera2D, input::{is_key_released, KeyCode}, math::Rect};
 use nalgebra::{vector, Isometry2, Vector2};
+use noise::{NoiseFn, Perlin};
 use rapier2d::prelude::RigidBodyVelocity;
 use serde::{Deserialize, Serialize};
 
-use crate::{ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::Computer, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, updates::{MasterUpdate, NetworkPacket}, uuid_u64, ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter};
+use crate::{ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, tile::{Tile, TileSave}, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::weapon::Shotgun, weapon_type::WeaponType}, ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -42,7 +43,8 @@ pub struct Area {
     pub ambiance: Vec<Ambiance>,
     pub wave_data: WaveData,
     pub cars: Vec<Car>,
-    pub compound_test: Vec<CompoundTest>
+    pub compound_test: Vec<CompoundTest>,
+    pub tiles: Vec<Tile>
 }
 
 pub struct WaveData {
@@ -75,6 +77,47 @@ impl WaveData {
 }
 
 impl Area {
+
+    pub fn generate_terrain(&mut self, seed: u32) {
+
+        let perlin = Perlin::new(seed); // seed = 0
+        let world_width = 200;
+        let world_height = 100;
+
+        let mut terrain: Vec<Vec<bool>> = vec![vec![false; world_height]; world_width];
+
+        let scale_factor = 50.;
+
+        let height_multiplier = 0.1;
+
+        for x in 0..world_width {
+            let noise_val = perlin.get([x as f64 / scale_factor, 0.0]);
+            let height = ((noise_val + 1.0) / 2.0 * world_height as f64 * height_multiplier) as usize + 20;
+
+            for y in 0..world_height {
+                if y <= height {
+                    terrain[x][y] = true;
+                } else {
+                    terrain[x][y] = false; 
+                }
+            }
+        }
+
+        for x in 0..world_width {
+            
+            for y in 0..world_height {
+
+                if terrain[x][y] {
+                    self.tiles.push(
+                        Tile::new(Vector2::new(x as f32 * 50., (y as f32 * 50.) - world_height as f32 * 50.), PathBuf::from_str("assets/dirt.png").unwrap())
+                    );
+                }
+            }
+        }
+
+
+
+    }
     pub fn empty() -> Self {
 
         
@@ -100,7 +143,8 @@ impl Area {
             ambiance: Vec::new(),
             wave_data: WaveData::default(),
             cars: Vec::new(),
-            compound_test: Vec::new()
+            compound_test: Vec::new(),
+            tiles: Vec::new()
         }
     }
 
@@ -147,6 +191,10 @@ impl Area {
 
         for compound_test in &self.compound_test {
             compound_test.draw(&self.space, textures);
+        }
+
+        for tile in &self.tiles {
+            tile.draw(&textures);
         }
 
 
@@ -205,7 +253,7 @@ impl Area {
 
         if is_key_released(KeyCode::E) {
             
-            let prefab_save: PropSave = serde_json::from_str(&ctx.prefabs.get_prefab_data("prefabs\\generic_physics_props\\box2.json")).unwrap();
+            let prefab_save: PropSave = serde_json::from_str(&ctx.prefabs.get_prefab_data("prefabs\\generic_physics_props\\anvil.json")).unwrap();
 
             let mut new_prop = Prop::from_save(prefab_save, &mut self.space);
 
@@ -280,7 +328,9 @@ impl Area {
             Some(_) => return,
             None => {
 
-                let player = Player::new(self.spawn_point.into(), &mut self.space, *ctx.client_id);
+                let mut player = Player::new(self.spawn_point.into(), &mut self.space, *ctx.client_id);
+
+                
 
                 ctx.network_io.send_network_packet(
                     NetworkPacket::NewPlayer(
@@ -291,9 +341,30 @@ impl Area {
                     )
                 );
 
+                player.inventory.try_insert_into_inventory(
+                    Item::Weapon(
+                        WeaponType::Shotgun(
+                            Shotgun::new(
+                                *ctx.client_id, 
+                                Some(player.body.body_handle), 
+                                Facing::Left
+                            )
+                        )
+                    ), 
+                    ctx, 
+                    self.id, 
+                    &mut self.space, 
+                    player.id
+                );
+
+
                 self.players.push(
                     player
                 );
+
+                
+
+                
 
                 
             },
@@ -406,6 +477,12 @@ impl Area {
         if is_key_released(KeyCode::I) {
             self.compound_test.push(
                 CompoundTest::new(&mut self.space, ctx, PathBuf::from("assets\\stone1.png"), 0., 0., rapier_mouse_world_pos(&ctx.camera_rect))
+            );
+        }
+        
+        if is_key_released(KeyCode::H) {
+            self.tiles.push(
+                Tile::new(rapier_mouse_world_pos(&ctx.camera_rect), PathBuf::from_str("assets/dirt.png").unwrap())
             );
         }
 
@@ -552,6 +629,7 @@ impl Area {
         let mut enemies: Vec<Enemy> = Vec::new();
         let mut dropped_items: Vec<DroppedItem> = Vec::new();
         let mut ambiance: Vec<Ambiance> = Vec::new();  
+        let mut tiles: Vec<Tile> = Vec::new();
         
         for decoration_save in save.decorations {
             decorations.push(
@@ -601,6 +679,12 @@ impl Area {
             );
         }
 
+        for tile_save in save.tiles {
+            tiles.push(
+                Tile::from_save(tile_save)
+            );
+        }
+
 
         // if we are loading the id from the server we need to use the provided id
         let id = match id {
@@ -637,7 +721,8 @@ impl Area {
             ambiance,
             wave_data: WaveData::default(),
             cars: Vec::new(),
-            compound_test: Vec::new()
+            compound_test: Vec::new(),
+            tiles
 
         }
     }
@@ -652,6 +737,7 @@ impl Area {
         let mut enemies: Vec<EnemySave> = Vec::new();
         let mut dropped_items: Vec<DroppedItemSave> = Vec::new();
         let mut ambiances: Vec<AmbianceSave> = Vec::new();
+        let mut tiles: Vec<TileSave> = Vec::new();
 
         for decoration in &self.decorations {
             decorations.push(
@@ -695,6 +781,12 @@ impl Area {
             )
         }
 
+        for tile in &self.tiles {
+            tiles.push(
+                tile.save()
+            );
+        }
+
         let computer_pos = match &self.computer {
             Some(computer) => {
                 Some(self.space.rigid_body_set.get(computer.prop.rigid_body_handle).unwrap().position().clone())
@@ -721,7 +813,8 @@ impl Area {
             minimum_camera_height: self.minimum_camera_height,
             despawn_y: self.despawn_y,
             master: self.master,
-            ambiance: ambiances
+            ambiance: ambiances,
+            tiles
 
         }
     }
@@ -752,5 +845,7 @@ pub struct AreaSave {
     #[serde(default)]
     master: Option<ClientId>,
     #[serde[default]]
-    ambiance: Vec<AmbianceSave>
+    ambiance: Vec<AmbianceSave>,
+    #[serde[default]]
+    tiles: Vec<TileSave>
 }

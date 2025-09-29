@@ -1,7 +1,7 @@
 use macroquad::{color::Color, math::Vec2};
 use rapier2d::prelude::{ColliderHandle, ImpulseJointHandle, RigidBodyHandle};
 
-use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapons::{lmg::weapon::LMG, shotgun::weapon::Shotgun, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}, ClientTickContext};
+use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapons::{lmg::weapon::LMG, shotgun::{self, weapon::Shotgun}, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}, ClientTickContext};
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum WeaponType {
@@ -11,10 +11,22 @@ pub enum WeaponType {
 
 impl WeaponType {
 
+
     pub fn stackable(&self) -> bool {
         false
     }
-
+    pub fn unequip(&mut self, space: &mut Space) {
+        match self {
+            WeaponType::Shotgun(shotgun) => shotgun.weapon.unequip(space),
+            WeaponType::LMG(lmg) => lmg.weapon.unequip(space),
+        }
+    }
+    pub fn equip(&mut self, space: &mut Space, player_rigid_body_handle: RigidBodyHandle) {
+        match self {
+            WeaponType::Shotgun(shotgun) => shotgun.weapon.equip(space, player_rigid_body_handle),
+            WeaponType::LMG(lmg) => lmg.weapon.equip(space, player_rigid_body_handle),
+        }
+    }
     pub fn name(&self) -> String {
         match self {
             WeaponType::Shotgun(shotgun) => shotgun.preview_name(),
@@ -23,7 +35,7 @@ impl WeaponType {
     }
 
 
-    pub fn collider_handle(&self) -> ColliderHandle {
+    pub fn collider_handle(&self) -> Option<ColliderHandle> {
         match self {
             WeaponType::Shotgun(shotgun) => shotgun.weapon.collider,
             WeaponType::LMG(lmg)  => lmg.weapon.collider
@@ -71,7 +83,7 @@ impl WeaponType {
         }
     }
 
-    pub fn rigid_body_handle(&self) -> RigidBodyHandle {
+    pub fn rigid_body_handle(&self) -> Option<RigidBodyHandle> {
         match self {
             WeaponType::Shotgun(shotgun) => shotgun.rigid_body_handle(),
             WeaponType::LMG(lmg) => lmg.weapon.rigid_body

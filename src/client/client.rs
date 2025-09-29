@@ -493,22 +493,6 @@ impl Client {
                         None => None,
                     }
                 },
-                NetworkPacket::ActiveWeaponUpdate(update) => {
-                    let area = self.world.areas.iter_mut().find(
-                        |area| {
-                            area.id == update.area_id
-                        }
-                    ).unwrap();
-
-                    let player = area.players.iter_mut().find(|player| {player.id == update.player_id}).unwrap();
-
-                    player.weapon = match update.weapon {
-                        Some(weapon) => {
-                            Some(WeaponType::from_save(&mut area.space, weapon, Some(player.body.body_handle)))
-                        },
-                        None => None,
-                    };
-                },
 
                 NetworkPacket::EnemyPositionUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(

@@ -23,7 +23,6 @@ pub enum NetworkPacket {
     ItemSlotQuantityUpdate(ItemSlotQuantityUpdate),
     ActiveItemSlotUpdate(ActiveItemSlotUpdate),
     ItemSlotUpdate(ItemSlotUpdate),
-    ActiveWeaponUpdate(ActiveWeaponUpdate),
     NewEnemyUpdate(NewEnemyUpdate),
     EnemyVelocityUpdate(EnemyVelocityUpdate),
     EnemyPositionUpdate(EnemyPositionUpdate),

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use macroquad::{audio::{play_sound, PlaySoundParams}, color::Color, math::Vec2, rand::RandomRange};
 use nalgebra::{point, vector, Vector2};
-use rapier2d::{math::Vector, parry::query::Ray, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
+use rapier2d::{math::Vector, parry::query::Ray, prelude::{Collider, ColliderHandle, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 
 use crate::{area::AreaId, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, enemy::EnemyId, get_preview_resolution, player::{Facing, PlayerId}, space::Space, texture_loader::TextureLoader, weapons::{bullet_impact_data::BulletImpactData, weapon::{weapon_save::WeaponSave}, weapon_fire_context::WeaponFireContext}, ClientId, ClientTickContext};
 
@@ -16,8 +16,8 @@ pub enum WeaponOwner {
 #[derive(PartialEq, Clone, Debug)]
 pub struct Weapon {
     pub player_rigid_body_handle: Option<RigidBodyHandle>,
-    pub collider: ColliderHandle,
-    pub rigid_body: RigidBodyHandle,
+    pub collider: Option<ColliderHandle>,
+    pub rigid_body: Option<RigidBodyHandle>,
     pub sprite: PathBuf,
     pub owner: ClientId,
     pub scale: f32,
@@ -36,7 +36,9 @@ pub struct Weapon {
     reload_duration: web_time::Duration,
     despawn: bool,
     base_damage: f32,
-    knockback: f32
+    knockback: f32,
+    texture_size: Vec2,
+    mass: f32
 }
 
 impl Weapon {
@@ -45,7 +47,76 @@ impl Weapon {
 
         self.despawn = true;
 
-        space.rigid_body_set.remove(self.rigid_body, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
+        if let Some(rigid_body) = self.rigid_body {
+            space.rigid_body_set.remove(rigid_body, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
+        }
+
+        
+    }
+
+    pub fn equip(&mut self, space: &mut Space, player_rigid_body_handle: RigidBodyHandle) {
+
+        if self.rigid_body.is_some() {
+            panic!()
+        }
+
+        let rigid_body = space.rigid_body_set.insert(
+            RigidBodyBuilder::dynamic()
+                .ccd_enabled(true)
+                .position(vector![0., 0.].into())
+                .build()
+        );
+
+
+        let collider = space.collider_set.insert_with_parent(
+            collider_from_texture_size(self.texture_size)
+                .mass(self.mass)
+                .build(), 
+            rigid_body, 
+            &mut space.rigid_body_set
+        );
+        space.collider_set.get_mut(collider).unwrap().set_collision_groups(InteractionGroups::none());
+
+        // joint the shotgun to the player
+        self.player_joint_handle = Some(space.impulse_joint_set.insert(
+            player_rigid_body_handle,
+            rigid_body,
+            RevoluteJointBuilder::new()
+                .local_anchor1(vector![0., 0.].into())
+                .local_anchor2(vector![30., 0.].into())
+                .limits([-0.8, 0.8])
+                .contacts_enabled(false)
+            .build(),
+            true
+        ));
+
+        self.rigid_body = Some(rigid_body);
+        self.collider = Some(collider);
+
+    }
+
+    pub fn unequip(&mut self, space: &mut Space) {
+
+        if self.rigid_body.is_none() {
+            panic!()
+        }
+
+        space.rigid_body_set.remove(
+            self.rigid_body.unwrap(), 
+            &mut space.island_manager, 
+            &mut space.collider_set, 
+            &mut space.impulse_joint_set, 
+            &mut space.multibody_joint_set, 
+            true
+        );
+
+        self.rigid_body = None;
+        self.collider = None;
+        self.player_joint_handle = None;
+
+
+        //println!("unequuop");
+
     }
 
     
@@ -60,8 +131,6 @@ impl Weapon {
     pub fn from_save(save: WeaponSave, space: &mut Space, player_rigid_body_handle: Option<RigidBodyHandle>) -> Self {
 
         Self::new(
-            space, 
-            save.pos.translation.vector, 
             save.owner, 
             player_rigid_body_handle, 
             save.sprite, 
@@ -87,16 +156,16 @@ impl Weapon {
 
     pub fn save(&self, space: &Space) -> WeaponSave {
 
-        let body = space.rigid_body_set.get(self.rigid_body).unwrap();
-        let collider = space.collider_set.get(self.collider).unwrap();
+        let position = match self.rigid_body {
+            Some(rigid_body) => {
+                Some(space.rigid_body_set.get(rigid_body).unwrap().position().clone())
+            },
+            None => None,
+        };
 
         WeaponSave {
-            pos: *body.position(),
-            mass: body.mass(),
-            texture_size: Vec2 {
-                x: collider.shape().as_cuboid().unwrap().half_extents.x,
-                y: collider.shape().as_cuboid().unwrap().half_extents.y,
-            },
+            mass: self.mass,
+            texture_size: self.texture_size,
             sprite: self.sprite.clone(),
             owner: self.owner,
             scale: self.scale,
@@ -115,8 +184,6 @@ impl Weapon {
         }
     }
     pub fn new(
-        space: &mut Space, 
-        pos: Vector2<f32>, 
         owner: ClientId, 
         player_rigid_body_handle: Option<RigidBodyHandle>,
         sprite_path: PathBuf,
@@ -136,7 +203,7 @@ impl Weapon {
         capacity: u32,
         reserve_capacity: u32,
         base_damage: f32,
-        knockback: f32
+        knockback: f32,
         
 
     ) -> Self {
@@ -145,57 +212,16 @@ impl Weapon {
 
         let texture_size = texture_size * scale ; // scale the size of the shotgun
         
-        let rigid_body = space.rigid_body_set.insert(
-            RigidBodyBuilder::dynamic()
-                .ccd_enabled(true)
-                .position(vector![pos.x, pos.y].into())
-                .build()
-        );
-
-        
-
-        let collider = space.collider_set.insert_with_parent(
-            collider_from_texture_size(texture_size)
-                .mass(mass)
-                .build(), 
-            rigid_body, 
-            &mut space.rigid_body_set
-        );
 
         let aim_angle_offset = match aim_angle_offset {
             Some(aim_angle_offset) => aim_angle_offset,
             None => 0.,
         };
 
-        // if we are attaching the weapon to the player we need to do some epic stuff!
-        let player_joint_handle: Option<ImpulseJointHandle> = if let Some(player_rigid_body_handle) = player_rigid_body_handle {
-
-            // make the shotgun not collide with anything
-            space.collider_set.get_mut(collider).unwrap().set_collision_groups(InteractionGroups::none());
-
-
-            // joint the shotgun to the player
-            Some(space.impulse_joint_set.insert(
-                player_rigid_body_handle,
-                rigid_body,
-                RevoluteJointBuilder::new()
-                    .local_anchor1(vector![0., 0.].into())
-                    .local_anchor2(vector![30., 0.].into())
-                    .limits([-0.8, 0.8])
-                    .contacts_enabled(false)
-                .build(),
-                true
-            ))
-            
-
-        } else {
-            None
-        };
-
         Self {
             player_rigid_body_handle,
-            collider,
-            rigid_body,
+            collider: None,
+            rigid_body: None,
             sprite: sprite_path,
             owner: owner,
             scale,
@@ -206,7 +232,7 @@ impl Weapon {
             y_screen_shake_frequency,
             y_screen_shake_intensity,
             shell_sprite: shell_sprite_path,
-            player_joint_handle: player_joint_handle,
+            player_joint_handle: None,
             last_reload: web_time::Instant::now() - web_time::Duration::from_secs(100),
             rounds,
             capacity,
@@ -214,12 +240,25 @@ impl Weapon {
             reload_duration: reload_duration,
             despawn: false,
             base_damage: base_damage,
-            knockback
+            knockback,
+            texture_size,
+            mass    
             
         }
     }
 
     pub async fn draw(&self, space: &Space, textures: &mut TextureLoader, facing: Facing) {
+
+        // dont draw if unequipped
+        let rigid_body = match self.rigid_body {
+            Some(rigid_body) => rigid_body,
+            None => return ,
+        };
+
+        let collider = match self.collider {
+            Some(collider) => collider,
+            None => return ,
+        };
 
         let flip_x = match facing {
             Facing::Right => false,
@@ -227,8 +266,8 @@ impl Weapon {
         };
 
         draw_texture_onto_physics_body(
-            self.rigid_body, 
-            self.collider, 
+            rigid_body, 
+            collider, 
             space, 
             &self.sprite, 
             textures, 
@@ -383,7 +422,7 @@ impl Weapon {
     
     pub fn create_bullet_trail(&mut self, ctx: &mut ClientTickContext, bullet_vector: Vector2<f32>, space: &Space, area_id: AreaId, bullet_trails: &mut Vec<BulletTrail>) {
 
-        let weapon_pos = space.rigid_body_set.get(self.rigid_body).unwrap().position();
+        let weapon_pos = space.rigid_body_set.get(self.rigid_body.unwrap()).unwrap().position();
 
         let bullet_trail = BulletTrail::new(
             Vector2::new(
@@ -416,7 +455,7 @@ impl Weapon {
     }
 
     pub fn get_bullet_vector_rapier(&mut self, space: &Space, facing: Facing) -> Vector2<f32> {
-        let weapon_body = space.rigid_body_set.get(self.rigid_body).unwrap().clone();
+        let weapon_body = space.rigid_body_set.get(self.rigid_body.unwrap()).unwrap().clone();
 
         let weapon_angle = weapon_body.rotation().angle();
 
@@ -446,7 +485,7 @@ impl Weapon {
 
         space.query_pipeline.update(&space.collider_set);
 
-        let weapon_pos = space.rigid_body_set.get(self.rigid_body).unwrap().position();
+        let weapon_pos = space.rigid_body_set.get(self.rigid_body.unwrap()).unwrap().position();
 
         let ray = Ray::new(point![weapon_pos.translation.x, weapon_pos.translation.y], vector![bullet_vector.x, bullet_vector.y]);
         let max_toi = 5000.0;
@@ -464,7 +503,7 @@ impl Weapon {
             filter, 
             |handle, _intersection| {
 
-                if self.collider == handle {
+                if self.collider == Some(handle) {
                     return true;
                 };
 

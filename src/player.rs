@@ -1,4 +1,4 @@
-use std::{f32::consts::PI, mem::take, path::PathBuf, str::FromStr, time::Instant};
+use std::{f32::consts::PI, mem::take, path::PathBuf, str::FromStr, time::Instant, usize};
 
 use cs_utils::drain_filter;
 use macroquad::{color::{BLACK, WHITE}, input::{is_key_down, is_mouse_button_down, is_mouse_button_released, mouse_wheel, KeyCode}, math::{Rect, Vec2}, shapes::draw_rectangle, text::{draw_text_ex, TextParams}, window::{screen_height, screen_width}};
@@ -58,7 +58,6 @@ pub struct ItemSlotSave {
 
 pub struct Player {
     pub id: PlayerId,
-    pub weapon: Option<WeaponType>,
     pub health: i32,
     pub head: BodyPart,
     pub body: BodyPart,
@@ -73,10 +72,12 @@ pub struct Player {
     pub inventory: Inventory,
     junk: Vec<ItemSlot>, // you can hold unlimited junk
     last_changed_inventory_slot: web_time::Instant,
+    pub previous_selected_item: usize,
     last_dash: web_time::Instant,
     previous_pos: Isometry2<f32>,
     last_position_update: web_time::Instant,
-    last_autofire: web_time::Instant
+    last_autofire: web_time::Instant,
+    flying: bool
 }
 
 impl Player {
@@ -106,6 +107,27 @@ impl Player {
 
 
 
+    }
+
+    pub fn equip_selected_weapon(&mut self, space: &mut Space) {
+
+        if self.previous_selected_item == self.selected_item {
+            return;
+        }
+
+        let item_slot = &mut self.inventory.items[self.selected_item];
+
+        match item_slot {
+            Some(item_slot) => {
+                match &mut item_slot.item {
+                    Item::Weapon(weapon_type) => {
+                        weapon_type.equip(space, self.body.body_handle)
+                    },
+                    Item::Prop(_) => return
+                }
+            },
+            None => return,
+        }
     }
 
     pub fn pickup_item(
@@ -348,9 +370,9 @@ impl Player {
                     ctx.camera_rect.y = macroquad_position.y - 100.
                 }
 
-                let max_camera_y = max_camera_y - ctx.camera_rect.h;
+                //let max_camera_y = max_camera_y - ctx.camera_rect.h;
 
-                ctx.camera_rect.y = ctx.camera_rect.y.min(max_camera_y);                
+                //ctx.camera_rect.y = ctx.camera_rect.y.min(max_camera_y);                
             },
         }
         
@@ -396,6 +418,7 @@ impl Player {
             true
         );
 
+
         let body_handle = body.body_handle.clone();
 
         let mut inventory = Inventory::new();
@@ -430,7 +453,6 @@ impl Player {
             cursor_pos_rapier: Vector2::zeros(),
             previous_cursor_pos: Vector2::zeros(),
             max_speed: Vector2::new(350., 80.),
-            weapon: None,
             selected_item: 0,
             inventory: inventory,
             last_changed_inventory_slot: Instant::now(),
@@ -438,7 +460,9 @@ impl Player {
             last_dash: web_time::Instant::now(),
             previous_pos: Isometry2::default(),
             last_position_update: web_time::Instant::now(),
-            last_autofire: web_time::Instant::now()
+            last_autofire: web_time::Instant::now(),
+            previous_selected_item: 1,
+            flying: true
         }
     }
 
@@ -525,7 +549,7 @@ impl Player {
         match &mut item_slot.item {
             Item::Prop(prop) => {
 
-                prop.use_item(&mut item_slot.quantity, ctx, space, props);
+                //prop.use_item(&mut item_slot.quantity, ctx, space, props);
                 
             },
             Item::Weapon(weapon_type) => {
@@ -570,10 +594,12 @@ impl Player {
         self.previous_cursor_pos = self.cursor_pos_rapier;
     }
 
+
     pub fn control(&mut self, space: &mut Space, ctx: &mut ClientTickContext) {
         let body = space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
 
         self.jump(body);
+        self.fly(body);
 
         let speed = 50.;
 
@@ -616,6 +642,21 @@ impl Player {
         }
     }
 
+
+    pub fn unequip_previous_weapon(&mut self, space: &mut Space) {
+        if self.selected_item != self.previous_selected_item {
+            match &mut self.inventory.items[self.previous_selected_item] {
+                Some(item_slot) => {
+                    match &mut item_slot.item {
+                        Item::Prop(prop) => {},
+                        Item::Weapon(weapon_type) => weapon_type.unequip(space),
+                    }
+                },
+                None => {},
+            }
+        }
+    }
+
     pub fn client_tick(
         &mut self, 
         ctx: &mut ClientTickContext, 
@@ -639,10 +680,19 @@ impl Player {
         self.angle_weapon_to_mouse(space, &ctx.camera_rect);
         
         self.angle_head_to_mouse(space);
+        
+        
 
         if self.owner == *ctx.client_id {
             self.owner_tick(space, ctx, area_id, players, enemies, props, bullet_trails, dissolved_pixels, dropped_items, max_camera_y, average_enemy_pos, minimum_camera_width, minimum_camera_height);
-        }
+        }   
+
+        self.unequip_previous_weapon(space);
+
+        self.equip_selected_weapon(space);
+
+
+        self.previous_selected_item = self.selected_item;
 
         self.previous_velocity = current_velocity;
         
@@ -690,13 +740,25 @@ impl Player {
         self.body.draw(textures, space, flip_x).await;
         self.head.draw(textures, space, flip_x).await;
 
-        if let Some(weapon) = &self.weapon {
-            weapon.draw(space, textures, self.facing).await
-        }
+        self.draw_selected_item(space, textures).await;
+
+
 
         self.draw_inventory(textures, space, prefabs, fonts);
         
         
+    }
+
+    pub async fn draw_selected_item(&self, space: &Space, textures: &mut TextureLoader) {
+        match &self.inventory.items[self.selected_item] {
+            Some(item_slot) => {
+                match &item_slot.item {
+                    Item::Prop(prop) => todo!(),
+                    Item::Weapon(weapon_type) => weapon_type.draw(space, textures, self.facing).await,
+                }
+            },
+            None => {},
+        }
     }
 
     pub fn change_facing_direction(&mut self, space: &Space, ctx: &mut ClientTickContext, area_id: AreaId) {
@@ -743,10 +805,35 @@ impl Player {
 
     pub fn angle_weapon_to_mouse(&mut self, space: &mut Space, camera_rect: &Rect) {
 
-        angle_weapon_to_mouse(space, self.weapon.as_mut(), self.body.body_handle, self.cursor_pos_rapier, self.facing);
+        match &mut self.inventory.items[self.selected_item] {
+            Some(item_slot) => match &mut item_slot.item {
+                Item::Prop(prop) => {return;},
+                Item::Weapon(weapon_type) => {
+
+                    //println!("angling");
+                    angle_weapon_to_mouse(space, Some(weapon_type), self.body.body_handle, self.cursor_pos_rapier, self.facing);
+                },
+            },
+            None => {},
+        }
+    }
+
+    pub fn fly(&mut self, body: &mut RigidBody) {
+
+        if is_key_down(KeyCode::Space) {
+            body.set_linvel(
+                Vector2::new(body.linvel().x, 200.), 
+                true
+            );
+        }
     }
 
     pub fn jump(&mut self, body: &mut RigidBody) {
+
+        if self.flying {
+            return;
+        }
+
         if is_key_down(KeyCode::Space) {
 
             // dont allow if moving, falling or jumping
@@ -765,6 +852,19 @@ impl Player {
                 Vector2::new(body.linvel().x, body.linvel().y + 700.), 
                 true
             );
+        }
+    }
+
+    pub fn get_selected_item_slot_mut(&mut self) -> &mut Option<ItemSlot> {
+        &mut self.inventory.items[self.selected_item]
+    }
+
+    pub fn get_selected_item_mut(&mut self) -> Option<&mut Item> {
+        match &mut self.inventory.items[self.selected_item] {
+            Some(item_slot) => {
+                Some(&mut item_slot.item)
+            },
+            None => None,
         }
     }
 
@@ -816,45 +916,7 @@ impl Player {
 
         self.change_active_inventory_slot(ctx, area_id, space);
 
-
-        if let Some(weapon) = &mut self.weapon {
-            if is_mouse_button_released(macroquad::input::MouseButton::Left) {
-                weapon.fire(ctx, &mut WeaponFireContext {
-                    space,
-                    players,
-                    props,
-                    bullet_trails,
-                    facing: self.facing,
-                    area_id,
-                    dissolved_pixels,
-                    enemies,
-                    weapon_owner: WeaponOwner::Player(self.id)
-                });
-
-                return;
-            }
-            
-
-            if is_mouse_button_down(macroquad::input::MouseButton::Left) {
-                if self.last_autofire.elapsed().as_secs_f32() < 0.1 {
-                    return;
-                }
-
-                weapon.fire(ctx, &mut WeaponFireContext {
-                    space,
-                    players,
-                    props,
-                    bullet_trails,
-                    facing: self.facing,
-                    area_id,
-                    dissolved_pixels,
-                    enemies,
-                    weapon_owner: WeaponOwner::Player(self.id)
-                });
-
-                self.last_autofire = Instant::now();
-            }
-        }
+    
 
         self.change_facing_direction(space, ctx, area_id);
 

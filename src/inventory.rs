@@ -5,6 +5,7 @@ pub struct Inventory {
 }
 
 impl Inventory {
+
     pub fn new() -> Self {
         Self {
             items: Default::default(),

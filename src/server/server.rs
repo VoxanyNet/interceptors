@@ -26,10 +26,14 @@ impl Server {
         let mut prefabs = Prefabs::new();
 
         for prefab_path in PREFAB_PATHS {
-            prefabs.load_prefab_data_block(prefab_path)
-        }
+            prefabs.load_prefab_data_blocking(prefab_path)
+        }   
 
-        world.areas.push(Area::from_save(forest_save, None, &prefabs));
+        let mut forest = Area::from_save(forest_save, None, &prefabs);
+
+        forest.generate_terrain(0);
+
+        world.areas.push(forest);
 
         
 
@@ -403,24 +407,6 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                         None => None,
                     };
 
-                    self.network_io.send_all_except(network_packet, client_id);
-                },
-                NetworkPacket::ActiveWeaponUpdate(update) => {
-                    let area = self.world.areas.iter_mut().find(
-                        |area| {
-                            area.id == update.area_id
-                        }
-                    ).unwrap();
-
-                    let player = area.players.iter_mut().find(|player| {player.id == update.player_id}).unwrap();
-
-                    player.weapon = match &update.weapon {
-                        Some(weapon) => {
-                            Some(WeaponType::from_save(&mut area.space, weapon.clone(), Some(player.body.body_handle)))
-                        },
-                        None => None,
-                    };
-                    
                     self.network_io.send_all_except(network_packet, client_id);
                 },
 

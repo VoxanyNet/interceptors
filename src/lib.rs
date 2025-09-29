@@ -41,6 +41,7 @@ pub mod car;
 pub mod fragment;
 pub mod compound_test;
 pub mod weapons;
+pub mod tile;
 
 pub fn angle_weapon_to_mouse(
     space: &mut Space, 
@@ -58,12 +59,15 @@ pub fn angle_weapon_to_mouse(
         None => return,
     };
 
+    println!("angling");
+
     // lol
     let body_body = space.rigid_body_set.get_mut(body_rigid_body_handle).unwrap();
 
     let body_body_pos = Vec2::new(body_body.translation().x, body_body.translation().y);
 
-    let weapon_pos = space.rigid_body_set.get(weapon.as_ref().unwrap().rigid_body_handle()).unwrap().translation();
+
+    let weapon_pos = space.rigid_body_set.get(weapon.as_ref().unwrap().rigid_body_handle().unwrap()).unwrap().translation();
 
     let angle_to_mouse = get_angle_between_rapier_points(Vector2::new(weapon_pos.x, weapon_pos.y), cursor_pos_rapier);
 
@@ -672,7 +676,7 @@ impl Prefabs {
         self.prefabs.insert(path.to_string(), data);
     }
 
-    pub fn load_prefab_data_block(&mut self, path: impl ToString) {
+    pub fn load_prefab_data_blocking(&mut self, path: impl ToString) {
 
         let data = read_to_string(path.to_string()).unwrap();
 
