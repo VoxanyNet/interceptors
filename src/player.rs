@@ -1,12 +1,12 @@
 use std::{f32::consts::PI, mem::take, path::PathBuf, str::FromStr, time::Instant, usize};
 
 use cs_utils::drain_filter;
-use macroquad::{color::{BLACK, WHITE}, input::{is_key_down, is_mouse_button_down, is_mouse_button_released, mouse_wheel, KeyCode}, math::{Rect, Vec2}, shapes::draw_rectangle, text::{draw_text_ex, TextParams}, window::{screen_height, screen_width}};
+use macroquad::{color::{BLACK, RED, WHITE}, input::{is_key_down, is_mouse_button_down, is_mouse_button_released, mouse_wheel, KeyCode}, math::{Rect, Vec2}, shapes::{draw_circle, draw_rectangle}, text::{draw_text, draw_text_ex, TextParams}, window::{screen_height, screen_width}};
 use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, prop::{DissolvedPixel, Prop}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}, ClientId, ClientTickContext, Prefabs};
+use crate::{angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, prop::{DissolvedPixel, Prop}, rapier_mouse_world_pos, rapier_to_macroquad, round_to_nearest, space::Space, texture_loader::TextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}, ClientId, ClientTickContext, Prefabs};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -671,7 +671,8 @@ impl Player {
         max_camera_y: f32,
         average_enemy_pos: Option<Vector2<f32>>,
         minimum_camera_width: f32,
-        minimum_camera_height: f32
+        minimum_camera_height: f32,
+        tiles: &mut Vec<Vec<Option<Tile>>>
 
     ) {
 
@@ -680,6 +681,10 @@ impl Player {
         self.angle_weapon_to_mouse(space, &ctx.camera_rect);
         
         self.angle_head_to_mouse(space);
+
+
+        self.materialize_tiles(space, tiles);
+
         
         
 
@@ -730,7 +735,59 @@ impl Player {
 
     }
 
-    pub async fn draw(&self, space: &Space, textures:&mut crate::texture_loader::TextureLoader, prefabs: &Prefabs, fonts: &FontLoader) {
+    
+    pub fn materialize_tiles(&mut self, space: &mut Space, tiles: &mut Vec<Vec<Tile>>) {
+
+        let player_pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation.vector;
+
+        let player_pos_tile_space = Vector2::new((player_pos.x / 50.) as usize, (player_pos.y / 50.) as usize);
+
+
+        // search a 10 by 10 area for blocks to materialize
+        for possible_tile_x in (player_pos_tile_space.x.saturating_sub(5))..(player_pos_tile_space.x + 5) {
+
+            if let Some(column) = tiles.get_mut(possible_tile_x) {
+
+                for possible_tile_y in (player_pos_tile_space.y.saturating_sub(5))..(player_pos_tile_space.y + 5) {
+
+                    if let Some(tile) = column.get_mut(possible_tile_y) {
+
+                        tile.materialize(Vector2::new(possible_tile_x, possible_tile_y), space);
+                    }
+                }
+            }
+            
+        }
+
+        
+
+        
+
+        // let mut tile_count = 0;
+        // for possible_tile_x in (rounded_player_pos.x - 500..rounded_player_pos.x + 500).step_by(50) {
+        //     for possible_tile_y in (rounded_player_pos.y - 500..rounded_player_pos.y + 500).step_by(50) {
+        //         let tile = match tiles.get(possible_tile_x as usize) {
+        //             Some(column) => {
+        //                 match column.get(possible_tile_y as usize) {
+        //                     Some(tile) => match tile {
+        //                         Some(tile) => tile,
+        //                         None => continue,
+        //                     },
+        //                     None => continue,
+        //                 }
+        //             },
+        //             None => continue,
+        //         };
+
+        //         tile_count += 1;
+        //     }
+        // }
+
+        // dbg!(tile_count);
+
+    }
+
+    pub async fn draw(&self, space: &Space, textures:&mut crate::texture_loader::TextureLoader, prefabs: &Prefabs, fonts: &FontLoader, camera_rect: &Rect, tiles: &Vec<Vec<Option<Tile>>>) {
         
         let flip_x = match self.facing {
             Facing::Right => false,
@@ -745,6 +802,12 @@ impl Player {
 
 
         self.draw_inventory(textures, space, prefabs, fonts);
+
+        let pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation.vector;
+
+        draw_text(&format!("{:?}", pos), camera_rect.x + 40., camera_rect.y + 40., 20., WHITE);
+
+    
         
         
     }

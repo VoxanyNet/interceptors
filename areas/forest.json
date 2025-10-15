@@ -1,52 +1,13 @@
 {
   "spawn_point": [
-    50.0,
-    100.0
+    100.0,
+    1400.0
   ],
   "decorations": [],
   "clips": [
   ],
   "players": [],
   "backgrounds": [
-    {
-      "repeat": true,
-      "pos": [
-        550.0,
-        -800.0
-      ],
-      "sprite_path": "assets/forest/Layer_0009_2.png",
-      "size": [
-        1856.0,
-        1586.0
-      ],
-      "parallax": 0.01
-    },
-    {
-      "repeat": true,
-      "pos": [
-        -50.0,
-        -700.0
-      ],
-      "sprite_path": "assets/forest/Layer_0003_6.png",
-      "size": [
-        1856.0,
-        1586.0
-      ],
-      "parallax": 0.25
-    },
-    {
-      "repeat": true,
-      "pos": [
-        0.0,
-        -700.0
-      ],
-      "sprite_path": "assets/forest/Layer_0002_7.png",
-      "size": [
-        1856.0,
-        1586.0
-      ],
-      "parallax": 0.25
-    }
   ],
   "generic_physics_props": [],
   "enemies": [],

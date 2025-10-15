@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
-use macroquad::{color::WHITE, math::Vec2, texture::{draw_texture_ex, DrawTextureParams}};
-use nalgebra::{Isometry2, Vector2};
-use rapier2d::prelude::{ColliderHandle, RigidBody, RigidBodyHandle};
+use macroquad::{color::{GRAY, WHITE}, math::Vec2, texture::{draw_texture_ex, DrawTextureParams}};
+use nalgebra::{vector, Isometry2, Vector2};
+use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBody, RigidBodyBuilder, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 
 use crate::{rapier_to_macroquad, space::Space, texture_loader::TextureLoader, uuid_u64};
@@ -22,52 +22,73 @@ impl TileId {
 #[derive(PartialEq, Clone, Debug)]
 pub struct Tile {
     sprite_path: PathBuf,
-    pos: Vector2<f32>, // we store an additional position value because the tile doesnt always have a rigid body
     rigid_body_handle: Option<RigidBodyHandle>,
     collider_handle: Option<ColliderHandle>,
-    id: TileId
 }
 
 impl Tile {
-    pub fn new(position: Vector2<f32>, sprite_path: PathBuf) -> Self {
+
+    pub fn materialize(&mut self, tile_index: Vector2<usize>, space: &mut Space) {
+
+        if self.rigid_body_handle.is_some() {
+            return;
+        }
+
+    
+        self.rigid_body_handle = space.rigid_body_set.insert(
+            RigidBodyBuilder::fixed()
+                .position(vector![
+                    (tile_index.x as f32 * 50.),
+                    (tile_index.y as f32 * 50.)
+                ].into())
+        ).into();
+
+        self.collider_handle = space.collider_set.insert_with_parent(
+            ColliderBuilder::round_cuboid(25., 25., 0.5), 
+            self.rigid_body_handle.unwrap(), 
+            &mut space.rigid_body_set
+        ).into();
+
+    }
+    pub fn new(sprite_path: PathBuf) -> Self {
         Self {
             sprite_path,
-            pos: position,
             rigid_body_handle: None,
             collider_handle: None,
-            id: TileId::new(),
         }
     } 
 
     pub fn from_save(save: TileSave) -> Self {
         Self {
             sprite_path: save.sprite_path,
-            pos: save.pos,
             rigid_body_handle: None,
             collider_handle: None,
-            id: save.id,
         }
     }
 
     pub fn save(&self) -> TileSave {
+        
         TileSave {
-            sprite_path: self.sprite_path.clone(),
-            pos: self.pos,
-            id: self.id,
+            sprite_path: self.sprite_path.clone()
         }
     }
 
-    pub fn draw(&self, textures: &TextureLoader) {
+    pub fn draw(&self, textures: &TextureLoader, position: Vector2<usize>) {
 
         let texture = textures.get(&self.sprite_path);
 
-        let macroquad_pos = rapier_to_macroquad(self.pos);
+        let macroquad_pos = rapier_to_macroquad(Vector2::new(position.x as f32, position.y as f32));
+
+        let color = match self.rigid_body_handle {
+            Some(_) => GRAY,
+            None => WHITE,
+        };
 
         draw_texture_ex(
             texture, 
             macroquad_pos.x - 25., 
             macroquad_pos.y - 25., 
-            WHITE, 
+            color, 
             DrawTextureParams {
                 dest_size: Some(Vec2::new(50., 50.)),
                 ..Default::default()
@@ -79,8 +100,6 @@ impl Tile {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TileSave {
-    sprite_path: PathBuf,
-    pos: Vector2<f32>,
-    id: TileId
+    pub sprite_path: PathBuf,
 }
 

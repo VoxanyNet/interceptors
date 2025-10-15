@@ -59,7 +59,6 @@ pub fn angle_weapon_to_mouse(
         None => return,
     };
 
-    println!("angling");
 
     // lol
     let body_body = space.rigid_body_set.get_mut(body_rigid_body_handle).unwrap();
@@ -651,6 +650,13 @@ pub struct ClientTickContext<'a> {
     pub sounds: &'a mut SoundLoader,
     pub textures: &'a TextureLoader,
     pub camera: &'a Camera2D
+}
+
+fn round_to_nearest(x: i32, n: i32) -> i32 {
+    if n == 0 {
+        return x; // avoid division by zero
+    }
+    ((x + n / 2) / n) * n
 }
 
 pub struct Prefabs {

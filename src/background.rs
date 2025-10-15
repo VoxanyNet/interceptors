@@ -24,7 +24,7 @@ impl Background {
         draw_texture_ex(
             texture, 
             self.pos.x + camera_rect.x * self.parallax, 
-            0., 
+            camera_rect.y - texture.height(), 
             WHITE, 
             DrawTextureParams {
                 dest_size: Some(self.size),
@@ -41,7 +41,7 @@ impl Background {
                 draw_texture_ex(
                     texture, 
                     (self.pos.x + (x as f32 * self.size.x)) + camera_rect.x * self.parallax, 
-                    0., 
+                    camera_rect.y - texture.height(), 
                     WHITE, 
                     DrawTextureParams {
                         dest_size: Some(self.size),

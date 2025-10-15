@@ -1,10 +1,10 @@
 use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}};
 
-use interceptors_lib::{area::{Area, AreaSave}, background::{Background, BackgroundSave}, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, Prefabs};
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{GREEN, RED, WHITE}, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel, KeyCode, MouseButton}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, window::{next_frame, screen_height, screen_width}};
+use interceptors_lib::{area::{Area, AreaSave}, background::{Background, BackgroundSave}, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::{Tile, TileSave}, Prefabs};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{GREEN, RED, WHITE}, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_position, mouse_wheel, KeyCode, MouseButton}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, window::{next_frame, screen_height, screen_width}};
 use nalgebra::{vector, Vector2};
 use rapier2d::prelude::{ColliderBuilder, RigidBodyBuilder};
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
 include!(concat!(env!("OUT_DIR"), "/prefabs.rs"));
@@ -25,14 +25,16 @@ fn list_dir_entries<P: AsRef<Path>>(path: P) -> std::io::Result<Vec<String>> {
 pub enum Mode {
     PrefabPlacement,
     ClipDefine,
-    SetSpawnPoint
+    SetSpawnPoint,
+    TilePlacement
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Display, EnumIter, Clone, Copy)]
 pub enum SpawnerCategory {
     Decoration,
     Background,
-    Prop
+    Prop,
+    Tile
 }
 
 pub struct SpawnerMenu {
@@ -43,12 +45,13 @@ pub struct SpawnerMenu {
 impl SpawnerMenu {
     pub fn new() -> Self {
 
-        let categories = vec![SpawnerCategory::Decoration, SpawnerCategory::Background, SpawnerCategory::Prop];
+        let categories = vec![SpawnerCategory::Decoration, SpawnerCategory::Background, SpawnerCategory::Prop, SpawnerCategory::Tile];
         let mut prefabs: HashMap<SpawnerCategory, Vec<String>> = HashMap::new();
 
         prefabs.insert(SpawnerCategory::Decoration, list_dir_entries("prefabs/decorations/").unwrap());
         prefabs.insert(SpawnerCategory::Background, list_dir_entries("prefabs/backgrounds/").unwrap());        
         prefabs.insert(SpawnerCategory::Prop, list_dir_entries("prefabs/generic_physics_props/").unwrap());  
+        prefabs.insert(SpawnerCategory::Tile, list_dir_entries("prefabs/tiles/").unwrap());
 
         Self {  
             prefabs,
@@ -152,7 +155,7 @@ impl Spawner {
         self.load_prefab();
 
 
-        if is_key_released_exclusive(&[KeyCode::Space]) {
+        if is_mouse_button_released(MouseButton::Left) {
             self.spawn(area, camera_rect, cursor, rapier_cursor);
         }
 
@@ -176,6 +179,32 @@ impl Spawner {
 
             self.selected_prefab_json = read_to_string(selected_prefab_path).unwrap();
         }   
+    }
+
+    /// Get the bounding box for cursor snapping in macroquad coords.
+    /// Returns None if snapping is not supported
+    pub fn get_snapping_bounding_box(&self, cursor: Vec2) -> Option<Rect> {
+        match self.current_category() {
+            SpawnerCategory::Decoration => {
+                let decoration_save: DecorationSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
+
+                let mut decoration: Decoration = Decoration::from_save(decoration_save);
+
+                decoration.pos = cursor;
+
+                return Some(Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y))
+                
+            },
+            SpawnerCategory::Background => {
+                return None
+            },
+            SpawnerCategory::Prop => {
+                None
+            },
+            SpawnerCategory::Tile => {
+                return  Some(Rect::new(cursor.x, cursor.y, 50., 50.));
+            }
+        }
     }
 
     pub async fn draw_preview_spawn(&self, camera_rect: &Rect, textures: &mut TextureLoader, cursor: Vec2, space: &mut Space, rapier_cursor: Vec2, elapsed: web_time::Duration) {
@@ -215,6 +244,13 @@ impl Spawner {
                 // need to immedietly remove the rigid bodies from space because this is a temporary object
                 space.rigid_body_set.remove(generic_physics_prop.rigid_body_handle, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
                 
+            },
+            SpawnerCategory::Tile => {
+                let tile_save: TileSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
+
+                let tile: Tile = Tile::from_save(tile_save);
+
+                tile.draw(textures, Vector2::new(rapier_cursor.x as usize, rapier_cursor.y as usize));
             }
         }
     }
@@ -255,6 +291,18 @@ impl Spawner {
                 generic_physics_prop.set_pos(vector![rapier_cursor.x + generic_physics_prop_save.size.x / 2., rapier_cursor.y - generic_physics_prop_save.size.y / 2.].into(), &mut area.space);
 
                 area.props.push(generic_physics_prop);
+            },
+
+            SpawnerCategory::Tile => {
+                let tile_save: TileSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
+                let tile: Tile = Tile::from_save(tile_save);
+
+                let x_index = (rapier_cursor.x / 50.) as usize;
+                let y_index = (rapier_cursor.y / 50.) as usize;
+
+                dbg!(&area.tiles);
+
+                area.tiles[x_index].insert(y_index, tile);
             }
         }
     }
@@ -359,7 +407,7 @@ impl AreaEditor {
             textures,
             spawner,
             selected_mode: 0,
-            mode_options: vec![Mode::PrefabPlacement, Mode::ClipDefine, Mode::SetSpawnPoint],
+            mode_options: vec![Mode::PrefabPlacement, Mode::ClipDefine, Mode::SetSpawnPoint, Mode::TilePlacement],
             camera_rect,
             cursor: Vec2::ZERO,
             clip_point_1: None,
@@ -406,80 +454,65 @@ impl AreaEditor {
         
     }
 
-    pub fn update_cursor_mouse(&mut self) {
-        if is_mouse_button_released(MouseButton::Left) {
-            self.cursor = mouse_world_pos(&self.camera_rect);
-
-            // snap cursor to top left of decoration if the cursor is there
-            // for decoration in &self.area.decorations {
-            //     if Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y).contains(mouse_world_pos(&self.camera_rect)) {
-            //         self.cursor = decoration.pos;
-
-                    
-            //     } 
-            // }
+    pub fn snap_cursor(&mut self) {
+        if !is_key_down(KeyCode::LeftShift) {
+            return;
         }
+
+        let bounding_box = self.spawner.get_snapping_bounding_box(self.cursor); 
+
+        if let Some(bounding_box)= bounding_box {
+            for decoration in &self.area.decorations {
+                let decoration_rect = Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y);
+
+                // Left snap
+                if bounding_box.x < decoration_rect.center().x 
+                && (decoration_rect.left() - bounding_box.right()) < bounding_box.size().x / 2.
+                && (bounding_box.center().y - decoration_rect.center().y).abs() < bounding_box.size().y / 2.{
+
+                    self.cursor.x = decoration_rect.left() - bounding_box.size().x;
+                    self.cursor.y = decoration_rect.y;
+
+                }
+
+                
+                // Right snap
+                else if bounding_box.x > decoration_rect.center().x 
+                && (bounding_box.left() - decoration_rect.right()) < bounding_box.size().x / 2.
+                && (bounding_box.center().y - decoration_rect.center().y).abs() < bounding_box.size().y / 2. {
+
+                    self.cursor.x = decoration_rect.right();
+                    self.cursor.y = decoration_rect.y;
+                }
+
+                // Top snap
+                else if bounding_box.y < decoration_rect.top() 
+                && (decoration_rect.top() - bounding_box.bottom()) < bounding_box.size().y 
+                && (decoration_rect.center().x - bounding_box.center().x).abs() < bounding_box.size().x / 2. {
+
+                    self.cursor.x = decoration_rect.x;
+                    self.cursor.y = decoration_rect.y - bounding_box.size().y;
+                }
+
+                // Bottom snap
+                else if bounding_box.top() > decoration_rect.bottom() 
+                && (bounding_box.top() - decoration_rect.bottom()) < bounding_box.size().y 
+                && (decoration_rect.center().x - bounding_box.center().x).abs() < bounding_box.size().x / 2. {
+
+                    self.cursor.x = decoration_rect.x;
+                    self.cursor.y = decoration_rect.bottom()
+                }
+            }
+
+        };
     }
+
     pub fn update_cursor(&mut self) {
 
-        if is_key_down(KeyCode::Tab) {
-            return;
-        }
+        self.cursor = mouse_world_pos(&self.camera_rect);
 
-        self.previous_cursor = self.cursor.clone();
+        self.snap_cursor();
         
-        let cursor_move_amount = match is_key_down(KeyCode::LeftShift) {
-            true => 10.,
-            false => 1.,
-        };
-
-        if self.last_cursor_move.elapsed().as_secs_f32() < 0.1 {
-            return;
-        }
-        
-
-        // let cursor_move_amount = match is_key_down(KeyCode::LeftAlt) {
-        //     true =>  {
-        //         if self.last_cursor_move.elapsed().as_secs_f32() < 0.1 {
-        //             return;
-        //         } else {
-        //             1.
-        //         }
-        //     },
-        //     false => {
-        //         if self.last_cursor_move.elapsed().as_secs_f32() < 0.1 {
-        //             return;
-        //         } else {
-        //             50.
-        //         }
-        //     },
-        // };
-
-        self.last_cursor_move = web_time::Instant::now();
-
-
-        if is_key_down(KeyCode::Left) {
-            
-
-            self.cursor.x -= cursor_move_amount;
-        }
-
-        if is_key_down(KeyCode::Right) {
-
-            self.cursor.x += cursor_move_amount;
-        }
-
-        if is_key_down(KeyCode::Up) {
-
-
-            self.cursor.y -= cursor_move_amount;
-        }
-
-        if is_key_down(KeyCode::Down) {
-
-            self.cursor.y += cursor_move_amount;
-        }
-
     }
 
     pub fn current_mode(&self) -> Mode {
@@ -680,7 +713,6 @@ impl AreaEditor {
             }
         }
 
-        self.update_cursor_mouse();
 
         self.move_delete();
 

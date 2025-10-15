@@ -44,7 +44,7 @@ pub struct Area {
     pub wave_data: WaveData,
     pub cars: Vec<Car>,
     pub compound_test: Vec<CompoundTest>,
-    pub tiles: Vec<Tile>
+    pub tiles: Vec<Vec<Option<Tile>>>
 }
 
 pub struct WaveData {
@@ -81,8 +81,8 @@ impl Area {
     pub fn generate_terrain(&mut self, seed: u32) {
 
         let perlin = Perlin::new(seed); // seed = 0
-        let world_width = 200;
-        let world_height = 100;
+        let world_width = 256;
+        let world_height = 64;
 
         let mut terrain: Vec<Vec<bool>> = vec![vec![false; world_height]; world_width];
 
@@ -108,9 +108,9 @@ impl Area {
             for y in 0..world_height {
 
                 if terrain[x][y] {
-                    self.tiles.push(
-                        Tile::new(Vector2::new(x as f32 * 50., (y as f32 * 50.) - world_height as f32 * 50.), PathBuf::from_str("assets/dirt.png").unwrap())
-                    );
+
+                    self.tiles[x].insert(y, Some(Tile::new(PathBuf::from_str("assets/dirt.png").unwrap())));
+                    
                 }
             }
         }
@@ -120,7 +120,9 @@ impl Area {
     }
     pub fn empty() -> Self {
 
-        
+        let world_height = 500;
+        let world_width = 500;
+    
         Self {
             spawn_point: Vector2::zeros(),
             space: Space::new(),
@@ -144,7 +146,7 @@ impl Area {
             wave_data: WaveData::default(),
             cars: Vec::new(),
             compound_test: Vec::new(),
-            tiles: Vec::new()
+            tiles: vec![vec![]; world_width]
         }
     }
 
@@ -170,7 +172,7 @@ impl Area {
         }
 
         for player in &self.players {
-            player.draw(&self.space, textures, prefabs, fonts).await;
+            player.draw(&self.space, textures, prefabs, fonts, camera_rect, &self.tiles).await;
         }
 
         for enemy in &self.enemies {
@@ -193,9 +195,17 @@ impl Area {
             compound_test.draw(&self.space, textures);
         }
 
-        for tile in &self.tiles {
-            tile.draw(&textures);
+        
+        for (x, row) in self.tiles.iter().enumerate() {
+            for (y, tile) in row.iter().enumerate() {
+
+                if let Some(tile) = tile {
+                    tile.draw(textures, Vector2::new(x * 50, y * 50))
+                }
+                
+            }
         }
+
 
 
     }
@@ -253,7 +263,7 @@ impl Area {
 
         if is_key_released(KeyCode::E) {
             
-            let prefab_save: PropSave = serde_json::from_str(&ctx.prefabs.get_prefab_data("prefabs\\generic_physics_props\\anvil.json")).unwrap();
+            let prefab_save: PropSave = serde_json::from_str(&ctx.prefabs.get_prefab_data("prefabs\\generic_physics_props\\box2.json")).unwrap();
 
             let mut new_prop = Prop::from_save(prefab_save, &mut self.space);
 
@@ -479,12 +489,7 @@ impl Area {
                 CompoundTest::new(&mut self.space, ctx, PathBuf::from("assets\\stone1.png"), 0., 0., rapier_mouse_world_pos(&ctx.camera_rect))
             );
         }
-        
-        if is_key_released(KeyCode::H) {
-            self.tiles.push(
-                Tile::new(rapier_mouse_world_pos(&ctx.camera_rect), PathBuf::from_str("assets/dirt.png").unwrap())
-            );
-        }
+
 
         //self.wave_logic(ctx);
 
@@ -590,7 +595,8 @@ impl Area {
                 self.max_camera_y, 
                 average_enemy_pos, 
                 self.minimum_camera_width, 
-                self.minimum_camera_height
+                self.minimum_camera_height,
+                &mut self.tiles
             );
 
             players_iter.restore(player);
@@ -629,7 +635,7 @@ impl Area {
         let mut enemies: Vec<Enemy> = Vec::new();
         let mut dropped_items: Vec<DroppedItem> = Vec::new();
         let mut ambiance: Vec<Ambiance> = Vec::new();  
-        let mut tiles: Vec<Tile> = Vec::new();
+        let mut tiles: Vec<Vec<Option<Tile>>> = vec![Vec::new(); 256];
         
         for decoration_save in save.decorations {
             decorations.push(
@@ -679,10 +685,10 @@ impl Area {
             );
         }
 
-        for tile_save in save.tiles {
-            tiles.push(
-                Tile::from_save(tile_save)
-            );
+        for (x, column) in save.tiles.iter().enumerate() {
+            for (y, tile) in column.iter().enumerate() {
+                tiles[x].insert(y, Some(Tile::from_save(tile.clone())));
+            }
         }
 
 
@@ -737,7 +743,7 @@ impl Area {
         let mut enemies: Vec<EnemySave> = Vec::new();
         let mut dropped_items: Vec<DroppedItemSave> = Vec::new();
         let mut ambiances: Vec<AmbianceSave> = Vec::new();
-        let mut tiles: Vec<TileSave> = Vec::new();
+        let mut tiles: Vec<Vec<TileSave>> = vec![Vec::new(); 256];
 
         for decoration in &self.decorations {
             decorations.push(
@@ -781,10 +787,18 @@ impl Area {
             )
         }
 
-        for tile in &self.tiles {
-            tiles.push(
-                tile.save()
-            );
+        for (x, row) in self.tiles.iter().enumerate() {
+
+            for (y, tile) in row.iter().enumerate() {
+
+                if let Some(tile) = tile {
+                    tiles[x].insert(y, tile.save());
+                }
+
+                
+                
+            }
+            
         }
 
         let computer_pos = match &self.computer {
@@ -847,5 +861,5 @@ pub struct AreaSave {
     #[serde[default]]
     ambiance: Vec<AmbianceSave>,
     #[serde[default]]
-    tiles: Vec<TileSave>
+    pub tiles: Vec<Vec<TileSave>>
 }

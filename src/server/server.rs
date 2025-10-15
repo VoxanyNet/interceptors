@@ -1,4 +1,4 @@
-use std::fs::read_to_string;
+use std::{fs::read_to_string, time::Duration};
 
 use interceptors_lib::{area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket}, weapons::weapon_type::WeaponType, world::World, ClientId, Prefabs, ServerIO};
 use tungstenite::Message;
@@ -20,10 +20,15 @@ impl Server {
 
         let mut world = World::empty();
 
+
         //let lobby_save: AreaSave = serde_json::from_str(&read_to_string("areas/ship.json").unwrap()).unwrap();
         let forest_save: AreaSave = serde_json::from_str(&read_to_string("areas/forest.json").unwrap()).unwrap();
+
+        
         
         let mut prefabs = Prefabs::new();
+
+
 
         for prefab_path in PREFAB_PATHS {
             prefabs.load_prefab_data_blocking(prefab_path)
@@ -87,7 +92,8 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
         if self.network_io.clients.keys().len() == 0 {
 
             let lobby: AreaSave = serde_json::from_str(&read_to_string("areas/forest.json").unwrap()).unwrap();
-            self.world.areas[0] = Area::from_save(lobby, Some(AreaId::new()), &self.prefabs)
+            self.world.areas[0] = Area::from_save(lobby, Some(AreaId::new()), &self.prefabs);
+            self.world.areas[0].generate_terrain(0);
         }
     }
 
