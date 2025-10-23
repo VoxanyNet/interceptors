@@ -66,10 +66,11 @@ impl Tile {
         }
     }
 
-    pub fn save(&self) -> TileSave {
+    pub fn save(&self, position: Vector2<usize>) -> TileSave {
         
         TileSave {
-            sprite_path: self.sprite_path.clone()
+            sprite_path: self.sprite_path.clone(),
+            position
         }
     }
 
@@ -101,5 +102,7 @@ impl Tile {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TileSave {
     pub sprite_path: PathBuf,
+    #[serde(default)]
+    pub position: Vector2<usize>
 }
 

@@ -1,14 +1,12 @@
 {
   "spawn_point": [
     100.0,
-    1400.0
+    600.0
   ],
   "decorations": [],
-  "clips": [
-  ],
+  "clips": [],
   "players": [],
-  "backgrounds": [
-  ],
+  "backgrounds": [],
   "generic_physics_props": [],
   "enemies": [],
   "computer_pos": {
@@ -18,7 +16,7 @@
     ],
     "translation": [
       650.0,
-      95.970856
+      -6233559.5
     ]
   },
   "dropped_items": [],
@@ -27,5 +25,7 @@
   "minimum_camera_height": 1920.0,
   "despawn_y": -200.0,
   "master": null,
-  "ambiance": []
+  "ambiance": [],
+  "tiles": [
+  ]
 }

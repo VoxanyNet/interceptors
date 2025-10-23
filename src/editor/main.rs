@@ -29,7 +29,6 @@ async fn main() {
 
     let x = serde_json::to_string_pretty(&x).unwrap();
 
-    println!("{}", x);
     let mut area_editor = AreaEditor::new().await;
 
     area_editor.run().await;

@@ -7,7 +7,7 @@ use noise::{NoiseFn, Perlin};
 use rapier2d::prelude::RigidBodyVelocity;
 use serde::{Deserialize, Serialize};
 
-use crate::{ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, tile::{Tile, TileSave}, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::weapon::Shotgun, weapon_type::WeaponType}, ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter};
+use crate::{ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, tile::{self, Tile, TileSave}, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::weapon::Shotgun, weapon_type::WeaponType}, ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -78,6 +78,24 @@ impl WaveData {
 
 impl Area {
 
+    pub fn get_tile_at_position_mut(&mut self, tile_pos: Vector2<f32>) -> Option<&mut Tile> {
+        let tile_index_x = (tile_pos.x / 50.) as usize;
+        let tile_index_y = (tile_pos.y / 50.) as usize;
+
+        self.get_tile_index(Vector2::new(tile_index_x, tile_index_y))
+    }
+
+    pub fn get_tile_index(&mut self, index: Vector2<usize>) -> Option<&mut Tile> {
+        if let Some(column) =  self.tiles.get_mut(index.x) {
+            if let Some(tile) = column.get_mut(index.y) {
+                return tile.as_mut()
+            } else {
+                return  None;
+            }
+        } else {
+            return  None;
+        }
+    }
     pub fn generate_terrain(&mut self, seed: u32) {
 
         let perlin = Perlin::new(seed); // seed = 0
@@ -146,7 +164,7 @@ impl Area {
             wave_data: WaveData::default(),
             cars: Vec::new(),
             compound_test: Vec::new(),
-            tiles: vec![vec![]; world_width]
+            tiles: vec![vec![None; world_height]; world_width]
         }
     }
 
@@ -635,7 +653,7 @@ impl Area {
         let mut enemies: Vec<Enemy> = Vec::new();
         let mut dropped_items: Vec<DroppedItem> = Vec::new();
         let mut ambiance: Vec<Ambiance> = Vec::new();  
-        let mut tiles: Vec<Vec<Option<Tile>>> = vec![Vec::new(); 256];
+        let mut tiles: Vec<Vec<Option<Tile>>> = vec![vec![None; 100]; 10_000];
         
         for decoration_save in save.decorations {
             decorations.push(
@@ -685,10 +703,10 @@ impl Area {
             );
         }
 
-        for (x, column) in save.tiles.iter().enumerate() {
-            for (y, tile) in column.iter().enumerate() {
-                tiles[x].insert(y, Some(Tile::from_save(tile.clone())));
-            }
+        for tile_save in save.tiles {
+            let tile = Tile::from_save(tile_save.clone());
+
+            tiles[tile_save.position.x][tile_save.position.y] = Some(tile);
         }
 
 
@@ -743,7 +761,7 @@ impl Area {
         let mut enemies: Vec<EnemySave> = Vec::new();
         let mut dropped_items: Vec<DroppedItemSave> = Vec::new();
         let mut ambiances: Vec<AmbianceSave> = Vec::new();
-        let mut tiles: Vec<Vec<TileSave>> = vec![Vec::new(); 256];
+        let mut tiles: Vec<TileSave> = vec![];
 
         for decoration in &self.decorations {
             decorations.push(
@@ -792,7 +810,7 @@ impl Area {
             for (y, tile) in row.iter().enumerate() {
 
                 if let Some(tile) = tile {
-                    tiles[x].insert(y, tile.save());
+                    tiles.push(tile.save(Vector2::new(x, y)));
                 }
 
                 
@@ -861,5 +879,5 @@ pub struct AreaSave {
     #[serde[default]]
     ambiance: Vec<AmbianceSave>,
     #[serde[default]]
-    pub tiles: Vec<Vec<TileSave>>
+    pub tiles: Vec<TileSave>
 }

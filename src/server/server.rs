@@ -36,7 +36,7 @@ impl Server {
 
         let mut forest = Area::from_save(forest_save, None, &prefabs);
 
-        forest.generate_terrain(0);
+        //forest.generate_terrain(0);
 
         world.areas.push(forest);
 

@@ -1,9 +1,10 @@
-use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}};
+use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}, time::Instant};
 
-use interceptors_lib::{area::{Area, AreaSave}, background::{Background, BackgroundSave}, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::{Tile, TileSave}, Prefabs};
+use interceptors_lib::{area::{Area, AreaSave}, background::{Background, BackgroundSave}, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::{Tile, TileId, TileSave}, Prefabs};
+use ldtk2::When;
 use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{GREEN, RED, WHITE}, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_position, mouse_wheel, KeyCode, MouseButton}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, window::{next_frame, screen_height, screen_width}};
-use nalgebra::{vector, Vector2};
-use rapier2d::prelude::{ColliderBuilder, RigidBodyBuilder};
+use nalgebra::{vector, Isometry, Isometry2, Vector2};
+use rapier2d::{math::Point, parry::shape::Cuboid, prelude::{ColliderBuilder, PointQuery, RigidBodyBuilder}};
 use serde::{de, Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
@@ -93,6 +94,10 @@ impl Spawner {
 
         draw_text(&format!("macroquad: {:?}", cursor), 0., screen_height() - 20., 24., WHITE);
         draw_text(&format!("rapier: {:?}", rapier_coords), 0., screen_height() - 40., 24., WHITE);
+
+    }
+
+    pub fn delete_selected_object(&mut self) {
 
     }
 
@@ -243,14 +248,17 @@ impl Spawner {
 
                 // need to immedietly remove the rigid bodies from space because this is a temporary object
                 space.rigid_body_set.remove(generic_physics_prop.rigid_body_handle, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
-                
+                 
             },
             SpawnerCategory::Tile => {
                 let tile_save: TileSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
 
+                let x_index = (rapier_cursor.x / 50.) as usize;
+                let y_index = ((rapier_cursor.y +25.) / 50.) as usize;
+
                 let tile: Tile = Tile::from_save(tile_save);
 
-                tile.draw(textures, Vector2::new(rapier_cursor.x as usize, rapier_cursor.y as usize));
+                tile.draw(textures, Vector2::new(x_index * 50, y_index * 50));
             }
         }
     }
@@ -299,10 +307,11 @@ impl Spawner {
 
                 let x_index = (rapier_cursor.x / 50.) as usize;
                 let y_index = (rapier_cursor.y / 50.) as usize;
+                
+                
 
-                dbg!(&area.tiles);
 
-                area.tiles[x_index].insert(y_index, tile);
+                area.tiles[x_index][y_index] = Some(tile);
             }
         }
     }
@@ -331,6 +340,13 @@ impl Spawner {
     }
 }
 
+#[derive(Clone)]
+pub enum SelectableObjectId {
+    Decoration(usize),
+    Tile(Vector2<usize>),
+    Prop(PropId)
+}
+
 pub struct AreaEditor {
     area: Area,
     textures: TextureLoader,
@@ -345,8 +361,10 @@ pub struct AreaEditor {
     last_cursor_move: web_time::Instant,
     prefab_data: Prefabs,
     fonts: FontLoader,
-    start: web_time::Instant
+    start: web_time::Instant,
+    selected_object: Option<SelectableObjectId>
 }
+
 
 fn round_to_nearest_50(n: f32) -> f32 {
     (n / 50.0).round() * 50.0
@@ -354,16 +372,108 @@ fn round_to_nearest_50(n: f32) -> f32 {
 
 impl AreaEditor {
 
-    pub fn highlight_selected_decoration(&mut self) {
+    pub fn get_hovered_object(&mut self) -> Option<SelectableObjectId> {
 
+        for (decoration_index, decoration) in self.area.decorations.iter().enumerate() {
+            let decoration_rect = Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y);
 
-        for decoration in &self.area.decorations {
-
-            let rect = Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y);
-
-            if rect.contains(mouse_world_pos(&self.camera_rect)) || rect.contains(self.cursor) {
-                draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 3., WHITE);
+            if decoration_rect.contains(mouse_world_pos(&self.camera_rect)) || decoration_rect.contains(self.cursor) {
+                return Some(SelectableObjectId::Decoration(decoration_index));
             }
+        }
+
+        for prop in &self.area.props {
+            let prop_collider = self.area.space.collider_set.get(prop.collider_handle).unwrap();
+
+            if prop_collider.shape().as_cuboid().unwrap().contains_point(prop_collider.position(), &Point::new(self.rapier_cursor().x, self.rapier_cursor().y)) {
+
+                return Some(SelectableObjectId::Prop(prop.id))
+                
+            }
+        }
+
+        let rapier_mouse_pos = self.rapier_cursor();
+
+        let then = Instant::now();
+
+        if let Some(tile) = self.area.get_tile_at_position_mut(Vector2::new(rapier_mouse_pos.x - 25., rapier_mouse_pos.y - 25.)) {
+            return Some(SelectableObjectId::Tile(Vector2::new((rapier_mouse_pos.x / 50.) as usize, (rapier_mouse_pos.y / 50.) as usize)))
+        } 
+        // for (x, row) in self.area.tiles.iter().enumerate() {
+        //     for (y, tile) in row.iter().enumerate() {
+
+        //         if let Some(tile) = tile {
+                    
+        //             let tile_shape = Cuboid::new(vector![25., 25.]);
+
+        //             if tile_shape.contains_point(&Isometry2::new(vector![x as f32 * 50., y as f32 * 50.], 0.), &Point::new(self.rapier_cursor().x, self.rapier_cursor().y)) {
+                        
+
+        //                 return Some(SelectableObjectId::Tile(Vector2::new(x, y)));
+        //             }
+        //         }
+                
+        //     }
+        // }
+
+        dbg!(then.elapsed());
+
+        return None;
+    }
+
+    pub fn select_object(&mut self) {
+        if !is_mouse_button_released(MouseButton::Left) {
+            return;
+        }
+
+        self.selected_object = self.get_hovered_object();
+    }
+
+    pub fn highlight_object(&mut self, item: SelectableObjectId) {
+
+
+        match item {
+            SelectableObjectId::Decoration(decoration_index) => {
+                let decoration = self.area.decorations.get(decoration_index).unwrap();
+
+                let decoration_rect = Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y);
+
+                draw_rectangle_lines(decoration_rect.x, decoration_rect.y, decoration_rect.w, decoration_rect.h, 3., WHITE);
+            },
+
+            SelectableObjectId::Tile(tile_index) => {
+                let tile = self.area.get_tile_index(tile_index);
+
+
+
+                if let Some(tile) = tile {
+
+                    let macroquad_pos = rapier_to_macroquad(Vector2::new(tile_index.x as f32 * 50., tile_index.y as f32 * 50.));
+
+                    let tile_rect = Rect::new(
+                        macroquad_pos.x - 25., 
+                        macroquad_pos.y - 25., 
+                        50., 
+                        50.
+                    );
+
+                    draw_rectangle_lines(tile_rect.x, tile_rect.y, tile_rect.w, tile_rect.h, 3., WHITE);
+                }
+            },
+
+            SelectableObjectId::Prop(prop_id) => {
+                let prop = self.area.props.iter().find(|prop| {prop_id == prop.id}).unwrap();
+
+                let prop_pos = self.area.space.rigid_body_set.get(prop.rigid_body_handle).unwrap().position();
+
+                let shape = self.area.space.collider_set.get(prop.collider_handle).unwrap().shape().as_cuboid().unwrap();
+
+                let macroquad_prop_pos = rapier_to_macroquad(prop_pos.translation.vector);
+
+                let prop_rect = Rect::new(macroquad_prop_pos.x - shape.half_extents.x, macroquad_prop_pos.y - shape.half_extents.y,  shape.half_extents.x * 2., shape.half_extents.y * 2.);
+
+                draw_rectangle_lines(prop_rect.x, prop_rect.y, prop_rect.w, prop_rect.h, 3., WHITE);
+            },  
         }
     }
 
@@ -416,7 +526,8 @@ impl AreaEditor {
             last_cursor_move: web_time::Instant::now(),
             prefab_data: prefabs,
             fonts,
-            start: web_time::Instant::now()
+            start: web_time::Instant::now(),
+            selected_object: None
         }
     }
 
@@ -429,6 +540,8 @@ impl AreaEditor {
         let mut decorations_remove: Vec<Decoration> = Vec::new();
 
         for decoration in &mut self.area.decorations {
+
+            dbg!("test");
 
             if Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y).contains(self.previous_cursor) || self.cursor == decoration.pos {
 
@@ -443,7 +556,7 @@ impl AreaEditor {
 
                     break;
                 }
-                
+                 
             }
         }
 
@@ -452,6 +565,18 @@ impl AreaEditor {
 
     pub fn delete(&mut self) {
         
+    }
+
+    pub fn highlight_hovered_object(&mut self) {
+        if let Some(hovered_object) = self.get_hovered_object() {
+            self.highlight_object(hovered_object);
+        }
+    }
+
+    pub fn highlight_selected_object(&mut self) {
+        if let Some(selected_object) = &self.selected_object {
+            self.highlight_object(selected_object.clone());
+        }
     }
 
     pub fn snap_cursor(&mut self) {
@@ -639,6 +764,7 @@ impl AreaEditor {
             draw_hitbox(&self.area.space, clip.rigid_body_handle, clip.collider_handle, color);
         }
     }
+
     pub async fn draw(&mut self) {
 
         let mut camera = Camera2D::from_display_rect(self.camera_rect);
@@ -656,6 +782,8 @@ impl AreaEditor {
             
             self.spawner.draw_preview_spawn(&self.camera_rect, &mut self.textures, self.cursor, &mut self.area.space, rapier_cursor, self.start.elapsed()).await;
         }
+
+        
         
         
         self.draw_cursor();
@@ -664,7 +792,9 @@ impl AreaEditor {
 
         self.draw_clips();
 
-        self.highlight_selected_decoration();
+        self.highlight_hovered_object();
+
+        self.highlight_selected_object();
         
         set_default_camera();
 
@@ -684,7 +814,10 @@ impl AreaEditor {
      pub fn draw_cursor(&self) {
         draw_rectangle(self.cursor.x, self.cursor.y, 5., 5., WHITE);
     }
+    
+    pub fn draw_mode_selection_buttons(&self) {
 
+    }
 
     pub fn clip_tick(&mut self) {
         if self.current_mode() == Mode::ClipDefine {
@@ -713,6 +846,11 @@ impl AreaEditor {
             }
         }
 
+        self.select_object();
+        
+        let then = Instant::now();
+        self.get_hovered_object();
+        dbg!(then.elapsed());
 
         self.move_delete();
 

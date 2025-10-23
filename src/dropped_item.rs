@@ -107,8 +107,6 @@ impl DroppedItem {
 
         let preview_size = item.get_preview_resolution(textures, size, prefabs);
 
-        dbg!(preview_size);
-
         let rigid_body = space.rigid_body_set.insert(
             RigidBodyBuilder::dynamic()
                 .position(pos)

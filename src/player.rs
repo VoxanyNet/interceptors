@@ -736,7 +736,7 @@ impl Player {
     }
 
     
-    pub fn materialize_tiles(&mut self, space: &mut Space, tiles: &mut Vec<Vec<Tile>>) {
+    pub fn materialize_tiles(&mut self, space: &mut Space, tiles: &mut Vec<Vec<Option<Tile>>>) {
 
         let player_pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation.vector;
 
@@ -750,9 +750,13 @@ impl Player {
 
                 for possible_tile_y in (player_pos_tile_space.y.saturating_sub(5))..(player_pos_tile_space.y + 5) {
 
-                    if let Some(tile) = column.get_mut(possible_tile_y) {
+                    // check if this is a valid tile slot in the first place (might be out of bounds)
+                    if let Some(tile_slot) = column.get_mut(possible_tile_y) {
 
-                        tile.materialize(Vector2::new(possible_tile_x, possible_tile_y), space);
+                        // see if theres actually a tile
+                        if let Some(tile) = tile_slot {
+                            tile.materialize(Vector2::new(possible_tile_x, possible_tile_y), space);
+                        }
                     }
                 }
             }
