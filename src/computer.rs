@@ -99,7 +99,8 @@ impl CategoryTab {
                     y: pos.y,
                     w: text_length * 13.,
                     h: 20.,
-                }
+                },
+                None
             ),
             text: text.to_string(),
             font,
@@ -186,7 +187,8 @@ impl StoreCategory {
                     pos.y, 
                     40., 
                     40.
-                )
+                ),
+                None
             )
         );
     }

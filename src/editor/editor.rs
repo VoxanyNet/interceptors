@@ -1,12 +1,14 @@
-use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}, time::Instant};
+use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}, str::FromStr, time::Instant};
 
-use interceptors_lib::{area::{Area, AreaSave}, background::{Background, BackgroundSave}, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::{Tile, TileId, TileSave}, Prefabs};
+use interceptors_lib::{Prefabs, area::{Area, AreaSave}, background::{Background, BackgroundSave}, button::Button, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::{Tile, TileId, TileSave}};
 use ldtk2::When;
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{GREEN, RED, WHITE}, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_position, mouse_wheel, KeyCode, MouseButton}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, window::{next_frame, screen_height, screen_width}};
+use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, RED, WHITE}, input::{self, KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_position, mouse_wheel}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, texture::{DrawTextureParams, draw_texture_ex}, window::{next_frame, screen_height, screen_width}};
 use nalgebra::{vector, Isometry, Isometry2, Vector2};
 use rapier2d::{math::Point, parry::shape::Cuboid, prelude::{ColliderBuilder, PointQuery, RigidBodyBuilder}};
 use serde::{de, Deserialize, Serialize};
 use strum::{Display, EnumIter};
+
+use crate::editor_input_context::EditorInputContext;
 
 include!(concat!(env!("OUT_DIR"), "/prefabs.rs"));
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
@@ -27,7 +29,8 @@ pub enum Mode {
     PrefabPlacement,
     ClipDefine,
     SetSpawnPoint,
-    TilePlacement
+    TilePlacement, 
+    Select
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Display, EnumIter, Clone, Copy)]
@@ -66,7 +69,8 @@ pub struct Spawner {
     selected_prefab: i32, // vector index
     selected_category: i32,
     change: bool,
-    selected_prefab_json: String
+    selected_prefab_json: String, // the path to the currently selected prefab
+    prefab_buttons: Vec<(Button, i32)> // each path gets its own button
 }
 
 impl Spawner {
@@ -79,13 +83,69 @@ impl Spawner {
             selected_category: 0,
             change: true,
             selected_prefab_json: String::new(),
+            prefab_buttons: Vec::new()
         };
 
         spawner.load_prefab();
 
+        spawner.rebuild_buttons();
+
         spawner
 
 
+    }
+
+    pub fn rebuild_buttons(&mut self) {
+        self.prefab_buttons.clear();
+
+        for (index, prefab_path) in self.menu.prefabs.get(&self.current_category()).unwrap().iter().enumerate() {
+
+            let y = ((index) * 20) as f32 + 20.;
+
+            let width = prefab_path.len() as f32 * 9.;
+
+            let button = Button::new(
+                Rect::new(0., y, width, 20.), 
+                None
+            );
+
+            self.prefab_buttons.push((button, index as i32));
+        }
+    }
+
+    pub fn hovered(&self) -> bool {
+        for (button, _) in &self.prefab_buttons {
+            if button.hovered {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    pub fn update_buttons(&mut self) {
+
+
+        let mouse_pos = mouse_position();
+        let mouse_pos = Vec2::new(mouse_pos.0, mouse_pos.1);
+
+        for (button, _) in &mut self.prefab_buttons {
+            button.update(mouse_pos);
+        }
+    }
+
+    pub fn handle_buttons(&mut self, editor_input_context: EditorInputContext) {
+
+        if editor_input_context != EditorInputContext::SpawnerMenu {
+            return;
+        }
+        for (button, index) in &self.prefab_buttons {
+            if button.released {
+                println!("yes");
+                self.selected_prefab = *index;
+                self.change = true;
+            }
+        }
     }
 
     pub fn draw_coords(&self, cursor: Vec2) {
@@ -101,7 +161,14 @@ impl Spawner {
 
     }
 
-    pub fn tick(&mut self, area: &mut Area, camera_rect: &Rect, cursor: Vec2, rapier_cursor: Vec2) {
+    pub fn tick(
+        &mut self, 
+        area: &mut Area, 
+        camera_rect: &Rect, 
+        cursor: Vec2, 
+        rapier_cursor: Vec2,
+        input_context: EditorInputContext
+    ) {
 
 
         self.change = false;
@@ -112,12 +179,16 @@ impl Spawner {
                 self.selected_category += 1;
 
                 self.change = true;
+
+                self.rebuild_buttons();
             }
 
             if is_key_released(KeyCode::Left) {
                 self.selected_category -= 1;
 
                 self.change = true;
+
+                self.rebuild_buttons();
             }
         }
 
@@ -138,6 +209,9 @@ impl Spawner {
                 self.change = true;
             }
         }
+
+        self.update_buttons();
+        self.handle_buttons(input_context);
 
         if self.selected_category > self.menu.categories.len() as i32 - 1 {
             self.selected_category = 0
@@ -160,7 +234,7 @@ impl Spawner {
         self.load_prefab();
 
 
-        if is_mouse_button_released(MouseButton::Left) {
+        if is_mouse_button_released(MouseButton::Left) && input_context == EditorInputContext::World {
             self.spawn(area, camera_rect, cursor, rapier_cursor);
         }
 
@@ -335,12 +409,18 @@ impl Spawner {
             draw_text(&path, 0., ((index) * 20) as f32 + 40., 20., color);
         }
 
+        for (button, _) in &self.prefab_buttons {
+            let rect = button.rect;
+
+            draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 2., WHITE);
+        }
+
         self.draw_coords(cursor);
 
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum SelectableObjectId {
     Decoration(usize),
     Tile(Vector2<usize>),
@@ -362,7 +442,112 @@ pub struct AreaEditor {
     prefab_data: Prefabs,
     fonts: FontLoader,
     start: web_time::Instant,
-    selected_object: Option<SelectableObjectId>
+    selected_objects: Vec<SelectableObjectId>,
+    ui: EditorModeSelectUI,
+    input_context: EditorInputContext,
+    selection_rect: Option<Rect>,
+    selected_released_flag: bool
+}
+
+pub struct EditorModeSelectUI {
+   select_mode_toggle: Button,
+   prefab_mode_toggle: Button,
+
+}
+
+
+pub struct EditorUITickContext<'a> {
+    selected_mode: &'a mut usize,
+    input_context: EditorInputContext
+}
+
+impl EditorModeSelectUI {
+    pub fn new() -> Self {
+
+        let select_mode_toggle = Button::new(Rect::new(screen_width() - 32., 32., 32., 32.), None);
+        let prefab_mode_toggle = Button::new(Rect::new(screen_width() - 32., 64., 32., 32.), None);
+        
+        Self {
+            select_mode_toggle,
+            prefab_mode_toggle
+        }
+    }
+    
+    pub fn hovered(&self) -> bool {
+        if self.select_mode_toggle.hovered {
+            true
+        } else if self.prefab_mode_toggle.hovered {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn update_buttons(&mut self) {
+        let mouse_pos: Vec2 = mouse_position().into();
+
+        self.select_mode_toggle.update(mouse_pos);
+        self.prefab_mode_toggle.update(mouse_pos);
+    }
+
+    pub fn handle_buttons(&mut self, ctx: &mut EditorUITickContext) {
+
+        if ctx.input_context != EditorInputContext::EditorModeMenu {
+            return;
+        }
+
+        if self.select_mode_toggle.released {
+            
+            *ctx.selected_mode = 0
+        }
+
+        if self.prefab_mode_toggle.released {
+            *ctx.selected_mode = 1;
+        }
+    }
+
+    pub fn update(&mut self, ctx: &mut EditorUITickContext) {
+        
+        self.update_buttons();
+        self.reposition_elements();
+        self.handle_buttons(ctx);
+
+    }
+
+
+    pub fn reposition_elements(&mut self) {
+        self.prefab_mode_toggle.rect.x = screen_width() - self.prefab_mode_toggle.rect.w;
+        
+        self.select_mode_toggle.rect.x = screen_width() - self.prefab_mode_toggle.rect.w;
+    }
+
+    pub fn draw(&self, textures: &TextureLoader) {
+
+        self.draw_button(textures, &self.select_mode_toggle, "assets/ui/cursor.png");
+        self.draw_button(textures, &self.prefab_mode_toggle, "assets/ui/spawner.png");
+
+    }
+
+    pub fn draw_button(&self, textures: &TextureLoader, button: &Button, image_path: &str) {
+        let mut button_background_color = WHITE;
+        button_background_color.a = 0.5;
+
+        // background
+        draw_rectangle(button.rect.x, button.rect.y, button.rect.w, button.rect.h, button_background_color);
+
+        // image
+        draw_texture_ex(
+            textures.get(&PathBuf::from_str(image_path).unwrap()), 
+            button.rect.x, 
+            button.rect.y, 
+            WHITE, 
+            DrawTextureParams {
+                dest_size: Vec2::new(button.rect.w, button.rect.h).into(),
+                ..Default::default()
+            }
+        );
+
+    }
 }
 
 
@@ -394,29 +579,10 @@ impl AreaEditor {
 
         let rapier_mouse_pos = self.rapier_cursor();
 
-        let then = Instant::now();
-
         if let Some(tile) = self.area.get_tile_at_position_mut(Vector2::new(rapier_mouse_pos.x - 25., rapier_mouse_pos.y - 25.)) {
             return Some(SelectableObjectId::Tile(Vector2::new((rapier_mouse_pos.x / 50.) as usize, (rapier_mouse_pos.y / 50.) as usize)))
         } 
-        // for (x, row) in self.area.tiles.iter().enumerate() {
-        //     for (y, tile) in row.iter().enumerate() {
 
-        //         if let Some(tile) = tile {
-                    
-        //             let tile_shape = Cuboid::new(vector![25., 25.]);
-
-        //             if tile_shape.contains_point(&Isometry2::new(vector![x as f32 * 50., y as f32 * 50.], 0.), &Point::new(self.rapier_cursor().x, self.rapier_cursor().y)) {
-                        
-
-        //                 return Some(SelectableObjectId::Tile(Vector2::new(x, y)));
-        //             }
-        //         }
-                
-        //     }
-        // }
-
-        dbg!(then.elapsed());
 
         return None;
     }
@@ -426,7 +592,17 @@ impl AreaEditor {
             return;
         }
 
-        self.selected_object = self.get_hovered_object();
+        if !is_key_down(KeyCode::LeftControl) {
+            self.selected_objects.clear();
+        }
+
+        if let Some(hovered_object) = self.get_hovered_object() {
+            self.selected_objects.push(hovered_object);
+        }
+
+        
+
+        
     }
 
     pub fn highlight_object(&mut self, item: SelectableObjectId) {
@@ -517,7 +693,7 @@ impl AreaEditor {
             textures,
             spawner,
             selected_mode: 0,
-            mode_options: vec![Mode::PrefabPlacement, Mode::ClipDefine, Mode::SetSpawnPoint, Mode::TilePlacement],
+            mode_options: vec![Mode::Select, Mode::PrefabPlacement, Mode::ClipDefine, Mode::SetSpawnPoint, Mode::TilePlacement],
             camera_rect,
             cursor: Vec2::ZERO,
             clip_point_1: None,
@@ -527,7 +703,22 @@ impl AreaEditor {
             prefab_data: prefabs,
             fonts,
             start: web_time::Instant::now(),
-            selected_object: None
+            selected_objects: Vec::new(),
+            ui: EditorModeSelectUI::new(),
+            input_context: EditorInputContext::World,
+            selection_rect: None,
+            selected_released_flag: false
+        }
+    }
+
+    pub fn update_input_context(&mut self) {
+        if self.ui.hovered() {
+            self.input_context = EditorInputContext::EditorModeMenu
+        } else if self.spawner.hovered() {
+            self.input_context = EditorInputContext::SpawnerMenu
+        } 
+        else {
+            self.input_context = EditorInputContext::World;
         }
     }
 
@@ -540,8 +731,6 @@ impl AreaEditor {
         let mut decorations_remove: Vec<Decoration> = Vec::new();
 
         for decoration in &mut self.area.decorations {
-
-            dbg!("test");
 
             if Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y).contains(self.previous_cursor) || self.cursor == decoration.pos {
 
@@ -574,8 +763,9 @@ impl AreaEditor {
     }
 
     pub fn highlight_selected_object(&mut self) {
-        if let Some(selected_object) = &self.selected_object {
-            self.highlight_object(selected_object.clone());
+
+        for selected_object in self.selected_objects.clone() {
+            self.highlight_object(selected_object);
         }
     }
 
@@ -798,12 +988,15 @@ impl AreaEditor {
         
         set_default_camera();
 
+        self.ui.draw(&self.textures);
+
         
 
         if self.current_mode() == Mode::PrefabPlacement {
             self.spawner.draw_menu(&self.camera_rect, &mut self.textures, self.cursor).await;
         }
 
+        self.draw_selection_rect();
 
 
         self.draw_selected_mode();
@@ -811,7 +1004,25 @@ impl AreaEditor {
         next_frame().await
     }
 
-     pub fn draw_cursor(&self) {
+    pub fn draw_selection_rect(&self) {
+
+        match self.selection_rect {
+            Some(selection_rect) => {
+                draw_rectangle_lines(
+                    selection_rect.x, 
+                    selection_rect.y, 
+                    selection_rect.w, 
+                    selection_rect.h, 
+                    3., 
+                    WHITE
+                );
+            },
+            None => {},
+        }
+        
+    }
+
+    pub fn draw_cursor(&self) {
         draw_rectangle(self.cursor.x, self.cursor.y, 5., 5., WHITE);
     }
     
@@ -819,55 +1030,155 @@ impl AreaEditor {
 
     }
 
-    pub fn clip_tick(&mut self) {
-        if self.current_mode() == Mode::ClipDefine {
+    fn mode_prefab_placement_tick(&mut self) {
+        let rapier_cursor = self.rapier_cursor();
 
-            if !is_key_released(KeyCode::Space) {
-                return;
-            }
-
-            if self.clip_point_1.is_none() {
-                self.clip_point_1 = Some(self.rapier_cursor())
-            } else if self.clip_point_1.is_some() && self.clip_point_2.is_none() {
-                self.clip_point_2 = Some(self.rapier_cursor())
-            } else {
-                self.clip_point_1 = Some(self.rapier_cursor());
-
-                self.clip_point_2 = None
-            }
-        }
+        self.spawner.tick(&mut self.area, &self.camera_rect, self.cursor, rapier_cursor, self.input_context);
     }
 
-    pub fn tick(&mut self) {
-
+    fn mode_clip_define_tick(&mut self) {
         if is_key_down(KeyCode::LeftControl) {
             if is_key_released(KeyCode::Space) {
                 self.create_clip();
             }
         }
 
-        self.select_object();
-        
-        let then = Instant::now();
-        self.get_hovered_object();
-        dbg!(then.elapsed());
+        if !is_key_released(KeyCode::Space) {
+            return;
+        }
 
-        self.move_delete();
+        if self.clip_point_1.is_none() {
+            self.clip_point_1 = Some(self.rapier_cursor())
+        } else if self.clip_point_1.is_some() && self.clip_point_2.is_none() {
+            self.clip_point_2 = Some(self.rapier_cursor())
+        } else {
+            self.clip_point_1 = Some(self.rapier_cursor());
 
-        self.area.space.step(web_time::Duration::from_secs_f64(0.016));
-        
+            self.clip_point_2 = None
+        }
+    }
 
-        self.clip_tick();
+    fn mode_set_spawnpoint_tick(&mut self) {
 
-        self.update_cursor();
+    
+    }
 
-        if self.mode_options[self.selected_mode] == Mode::PrefabPlacement {
+    fn mode_tile_placement_tick(&mut self) {
 
-            let rapier_cursor = self.rapier_cursor();
+    }
 
-            self.spawner.tick(&mut self.area, &self.camera_rect, self.cursor, rapier_cursor);
+    pub fn rectangle_select(&mut self) {
+
+        if is_mouse_button_released(MouseButton::Left) {
+
+            self.selected_released_flag = true;
+        }
+
+        if self.selected_released_flag && self.selection_rect.is_some() {
+            let too_small = self.selection_rect.unwrap().size().abs().length() < 20.;
+
+            if too_small {
+                self.selection_rect = None;
+            }
         }
         
+        if is_mouse_button_down(MouseButton::Left) {
+
+            // new selection rect
+            if self.selected_released_flag {
+                self.selection_rect = Some(Rect::new(mouse_position().0, mouse_position().1, 0., 0.));
+                self.selected_released_flag = false;    
+            }
+
+            match &mut self.selection_rect {
+                Some(selection_rect) => {
+                    selection_rect.w = mouse_position().0 - selection_rect.x;
+                    selection_rect.h = mouse_position().1 - selection_rect.y;
+                },
+                None => {
+                    // NOT POSSIBLE (meme)
+                },
+            }
+
+        }
+        
+
+
+    }
+
+    pub fn get_objects_in_selection_rectangle(&mut self) -> Vec<SelectableObjectId> {
+
+        let mut selected_objects = Vec::new();
+
+        let selection_rect = match &self.selection_rect {
+            Some(selection_rect) => selection_rect,
+            None => return selected_objects,
+        };
+
+        for (decoration_index, decoration) in self.area.decorations.iter().enumerate() {
+            let decoration_rect = Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y);
+
+            if selection_rect.overlaps(&decoration_rect) {
+                selected_objects.push(SelectableObjectId::Decoration(decoration_index));
+            }
+        }
+
+        for prop in &self.area.props {
+            let prop_collider = self.area.space.collider_set.get(prop.collider_handle).unwrap();
+
+            let prop_macroquad_pos = rapier_to_macroquad(prop_collider.position().translation.vector);
+
+            if selection_rect.contains(prop_macroquad_pos) {
+                selected_objects.push(SelectableObjectId::Prop(prop.id));
+            }
+        }
+
+        // need to add tiles!
+
+        return selected_objects
+    }
+
+    fn mode_select_tick(&mut self) {
+        self.select_object();
+        self.rectangle_select();
+        self.select_objects_in_rectangle();
+    }
+
+    fn select_objects_in_rectangle(&mut self) {
+
+        let mut new_selected_objects = Vec::new();
+        for selected_object in self.get_objects_in_selection_rectangle() {
+            if !self.selected_objects.contains(&selected_object) {
+                new_selected_objects.push(selected_object);
+            }
+        }
+
+
+        for object in new_selected_objects {
+            self.selected_objects.push(object);
+        }
+
+    }
+
+    pub fn editor_mode_tick(&mut self) {
+        match self.current_mode() {
+            Mode::PrefabPlacement => self.mode_prefab_placement_tick(),
+            Mode::ClipDefine => self.mode_clip_define_tick(),
+            Mode::SetSpawnPoint => self.mode_set_spawnpoint_tick(),
+            Mode::TilePlacement => self.mode_tile_placement_tick(),
+            Mode::Select => self.mode_select_tick(),
+        }
+    }
+
+    pub fn tick(&mut self) {    
+
+        self.update_input_context();
+        self.ui.update(&mut EditorUITickContext { selected_mode: &mut self.selected_mode, input_context: self.input_context });
+        self.editor_mode_tick();
+        self.area.space.step(web_time::Duration::from_secs_f64(0.016));
+        self.update_cursor();
+        self.change_mode();
+        self.update_camera();
 
         if is_key_down(KeyCode::LeftControl) {
             if is_key_released(KeyCode::S) {
@@ -879,9 +1190,7 @@ impl AreaEditor {
         }
 
 
-        self.change_mode();
-
-        self.update_camera();
+        
         
     }
 

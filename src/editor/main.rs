@@ -6,6 +6,7 @@ use macroquad::{miniquad::conf::Platform, window::Conf};
 use crate::editor::AreaEditor;
 
 pub mod editor;
+pub mod editor_input_context;
 
 fn window_conf() -> Conf {
     let conf = Conf {
