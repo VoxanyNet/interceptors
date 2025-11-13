@@ -2,30 +2,22 @@ use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf
 
 use interceptors_lib::{Prefabs, area::{Area, AreaSave}, background::{Background, BackgroundSave}, button::Button, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::{Tile, TileId, TileSave}};
 use ldtk2::When;
-use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, RED, WHITE}, input::{self, KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_position, mouse_wheel}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, texture::{DrawTextureParams, draw_texture_ex}, window::{next_frame, screen_height, screen_width}};
+use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, LIGHTGRAY, RED, WHITE}, input::{self, KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_position, mouse_wheel}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, texture::{DrawTextureParams, draw_texture_ex}, window::{next_frame, screen_height, screen_width}};
 use nalgebra::{vector, Isometry, Isometry2, Vector2};
 use rapier2d::{math::Point, parry::shape::Cuboid, prelude::{ColliderBuilder, PointQuery, RigidBodyBuilder}};
 use serde::{de, Deserialize, Serialize};
-use strum::{Display, EnumIter};
+use strum::{Display, EnumIter, IntoEnumIterator};
 
-use crate::editor_input_context::EditorInputContext;
+use crate::{editor_input_context::EditorInputContext, editor_mode_select_ui::EditorModeSelectUI, editor_ui_tick_context::EditorUITickContext, selectable_object_id::SelectableObjectId, spawner::Spawner};
 
 include!(concat!(env!("OUT_DIR"), "/prefabs.rs"));
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
 
-fn list_dir_entries<P: AsRef<Path>>(path: P) -> std::io::Result<Vec<String>> {
-    let path = path.as_ref(); // keep the original path reference
-    let entries = fs::read_dir(path)?
-        .filter_map(|entry| entry.ok())
-        .map(|entry| entry.path()) // convert to full PathBuf
-        .filter_map(|p: PathBuf| p.to_str().map(|s| s.to_string())) // PathBuf -> String
-        .collect();
 
-    Ok(entries)
-}
+
 
 #[derive(Display, PartialEq, Clone, Copy)]
-pub enum Mode {
+pub enum EditorMode {
     PrefabPlacement,
     ClipDefine,
     SetSpawnPoint,
@@ -33,406 +25,12 @@ pub enum Mode {
     Select
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Display, EnumIter, Clone, Copy)]
-pub enum SpawnerCategory {
-    Decoration,
-    Background,
-    Prop,
-    Tile
-}
-
-pub struct SpawnerMenu {
-    pub categories: Vec<SpawnerCategory>,
-    pub prefabs: HashMap<SpawnerCategory, Vec<String>>
-}
-
-impl SpawnerMenu {
-    pub fn new() -> Self {
-
-        let categories = vec![SpawnerCategory::Decoration, SpawnerCategory::Background, SpawnerCategory::Prop, SpawnerCategory::Tile];
-        let mut prefabs: HashMap<SpawnerCategory, Vec<String>> = HashMap::new();
-
-        prefabs.insert(SpawnerCategory::Decoration, list_dir_entries("prefabs/decorations/").unwrap());
-        prefabs.insert(SpawnerCategory::Background, list_dir_entries("prefabs/backgrounds/").unwrap());        
-        prefabs.insert(SpawnerCategory::Prop, list_dir_entries("prefabs/generic_physics_props/").unwrap());  
-        prefabs.insert(SpawnerCategory::Tile, list_dir_entries("prefabs/tiles/").unwrap());
-
-        Self {  
-            prefabs,
-            categories
-        }
-    }
-}
-
-pub struct Spawner {
-    menu: SpawnerMenu,
-    selected_prefab: i32, // vector index
-    selected_category: i32,
-    change: bool,
-    selected_prefab_json: String, // the path to the currently selected prefab
-    prefab_buttons: Vec<(Button, i32)> // each path gets its own button
-}
-
-impl Spawner {
-    pub async fn new() -> Self {
-        let spawner_menu = SpawnerMenu::new();
-
-        let mut spawner = Self {
-            menu: spawner_menu,
-            selected_prefab: 0,
-            selected_category: 0,
-            change: true,
-            selected_prefab_json: String::new(),
-            prefab_buttons: Vec::new()
-        };
-
-        spawner.load_prefab();
-
-        spawner.rebuild_buttons();
-
-        spawner
-
-
-    }
-
-    pub fn rebuild_buttons(&mut self) {
-        self.prefab_buttons.clear();
-
-        for (index, prefab_path) in self.menu.prefabs.get(&self.current_category()).unwrap().iter().enumerate() {
-
-            let y = ((index) * 20) as f32 + 20.;
-
-            let width = prefab_path.len() as f32 * 9.;
-
-            let button = Button::new(
-                Rect::new(0., y, width, 20.), 
-                None
-            );
-
-            self.prefab_buttons.push((button, index as i32));
-        }
-    }
-
-    pub fn hovered(&self) -> bool {
-        for (button, _) in &self.prefab_buttons {
-            if button.hovered {
-                return true
-            }
-        }
-
-        return false
-    }
-
-    pub fn update_buttons(&mut self) {
-
-
-        let mouse_pos = mouse_position();
-        let mouse_pos = Vec2::new(mouse_pos.0, mouse_pos.1);
-
-        for (button, _) in &mut self.prefab_buttons {
-            button.update(mouse_pos);
-        }
-    }
-
-    pub fn handle_buttons(&mut self, editor_input_context: EditorInputContext) {
-
-        if editor_input_context != EditorInputContext::SpawnerMenu {
-            return;
-        }
-        for (button, index) in &self.prefab_buttons {
-            if button.released {
-                println!("yes");
-                self.selected_prefab = *index;
-                self.change = true;
-            }
-        }
-    }
-
-    pub fn draw_coords(&self, cursor: Vec2) {
-
-        let rapier_coords = macroquad_to_rapier(&cursor);
-
-        draw_text(&format!("macroquad: {:?}", cursor), 0., screen_height() - 20., 24., WHITE);
-        draw_text(&format!("rapier: {:?}", rapier_coords), 0., screen_height() - 40., 24., WHITE);
-
-    }
-
-    pub fn delete_selected_object(&mut self) {
-
-    }
-
-    pub fn tick(
-        &mut self, 
-        area: &mut Area, 
-        camera_rect: &Rect, 
-        cursor: Vec2, 
-        rapier_cursor: Vec2,
-        input_context: EditorInputContext
-    ) {
-
-
-        self.change = false;
-
-        // change selected category
-        if is_key_down(KeyCode::Tab) {
-            if is_key_released(KeyCode::Right) {
-                self.selected_category += 1;
-
-                self.change = true;
-
-                self.rebuild_buttons();
-            }
-
-            if is_key_released(KeyCode::Left) {
-                self.selected_category -= 1;
-
-                self.change = true;
-
-                self.rebuild_buttons();
-            }
-        }
-
-
-        // change selected prefab
-        if is_key_down(KeyCode::Tab) {
-
-            if is_key_released(KeyCode::Up) {
-                
-                self.selected_prefab -= 1;
-
-                self.change = true;
-            }
-
-            if is_key_released(KeyCode::Down) {
-                self.selected_prefab += 1;
-
-                self.change = true;
-            }
-        }
-
-        self.update_buttons();
-        self.handle_buttons(input_context);
-
-        if self.selected_category > self.menu.categories.len() as i32 - 1 {
-            self.selected_category = 0
-        }
-
-        if self.selected_category < 0 {
-            self.selected_category = self.menu.categories.len() as i32 - 1;
-        }
-
-        let category = self.menu.categories.get(self.selected_category as usize).unwrap();
-
-        if self.selected_prefab > self.menu.prefabs.get(category).unwrap().len() as i32 - 1  {
-            self.selected_prefab = 0
-        }
-
-        if self.selected_prefab < 0 {
-            self.selected_prefab = self.menu.prefabs.get(category).unwrap().len() as i32 - 1;
-        }
-
-        self.load_prefab();
-
-
-        if is_mouse_button_released(MouseButton::Left) && input_context == EditorInputContext::World {
-            self.spawn(area, camera_rect, cursor, rapier_cursor);
-        }
-
-        
-
-    }
-
-    pub fn current_category(&self) -> SpawnerCategory {
-        self.menu.categories.get(self.selected_category as usize).unwrap().clone()
-    }
-
-    pub fn current_prefab(&self) -> String {
-        let prefabs = self.menu.prefabs.get(&self.current_category()).unwrap();
-
-        prefabs.get(self.selected_prefab as usize).unwrap().clone()
-    }
-
-    pub fn load_prefab(&mut self) {
-        if self.change {
-            let selected_prefab_path = self.menu.prefabs.get(&self.current_category()).unwrap().get(self.selected_prefab as usize).unwrap();
-
-            self.selected_prefab_json = read_to_string(selected_prefab_path).unwrap();
-        }   
-    }
-
-    /// Get the bounding box for cursor snapping in macroquad coords.
-    /// Returns None if snapping is not supported
-    pub fn get_snapping_bounding_box(&self, cursor: Vec2) -> Option<Rect> {
-        match self.current_category() {
-            SpawnerCategory::Decoration => {
-                let decoration_save: DecorationSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
-
-                let mut decoration: Decoration = Decoration::from_save(decoration_save);
-
-                decoration.pos = cursor;
-
-                return Some(Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y))
-                
-            },
-            SpawnerCategory::Background => {
-                return None
-            },
-            SpawnerCategory::Prop => {
-                None
-            },
-            SpawnerCategory::Tile => {
-                return  Some(Rect::new(cursor.x, cursor.y, 50., 50.));
-            }
-        }
-    }
-
-    pub async fn draw_preview_spawn(&self, camera_rect: &Rect, textures: &mut TextureLoader, cursor: Vec2, space: &mut Space, rapier_cursor: Vec2, elapsed: web_time::Duration) {
-
-        match self.current_category() {
-            
-            SpawnerCategory::Decoration => {
-
-                let decoration_save: DecorationSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
-
-                let mut decoration: Decoration = Decoration::from_save(decoration_save);
-
-                decoration.pos = cursor;
-
-                decoration.draw(textures, elapsed).await
-                
-            },
-            SpawnerCategory::Background => {
-                let background_save: BackgroundSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
-
-                let mut background = Background::from_save(background_save);
-
-                background.pos = cursor;
-
-                background.draw(textures, camera_rect).await
-            },
-
-            SpawnerCategory::Prop => {
-                let generic_physics_prop_save: PropSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
-
-                let mut generic_physics_prop = Prop::from_save(generic_physics_prop_save.clone(), space);
-
-                generic_physics_prop.set_pos(vector![rapier_cursor.x + generic_physics_prop_save.size.x / 2., rapier_cursor.y - generic_physics_prop_save.size.y / 2.].into(), space);
-
-                generic_physics_prop.draw(space, textures).await;
-
-                // need to immedietly remove the rigid bodies from space because this is a temporary object
-                space.rigid_body_set.remove(generic_physics_prop.rigid_body_handle, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
-                 
-            },
-            SpawnerCategory::Tile => {
-                let tile_save: TileSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
-
-                let x_index = (rapier_cursor.x / 50.) as usize;
-                let y_index = ((rapier_cursor.y +25.) / 50.) as usize;
-
-                let tile: Tile = Tile::from_save(tile_save);
-
-                tile.draw(textures, Vector2::new(x_index * 50, y_index * 50));
-            }
-        }
-    }
-    
-    pub fn spawn(&mut self, area: &mut Area, camera_rect: &Rect, cursor: Vec2, rapier_cursor: Vec2) {
-        
-
-        match self.current_category() {
-            
-            SpawnerCategory::Decoration => {
-
-                dbg!("spawning");
-                let decoration_save: DecorationSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
-
-                let mut decoration: Decoration = Decoration::from_save(decoration_save);
-
-
-                decoration.pos = cursor;
-
-                area.decorations.push(decoration);
-                
-            },
-            SpawnerCategory::Background => {
-                let background_save: BackgroundSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
-
-                let mut background = Background::from_save(background_save);
-
-                background.pos = cursor;
-
-                area.backgrounds.insert(0, background);
-            },
-
-            SpawnerCategory::Prop => {
-                let generic_physics_prop_save: PropSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
-
-                let mut generic_physics_prop = Prop::from_save(generic_physics_prop_save.clone(), &mut area.space);
-
-                generic_physics_prop.set_pos(vector![rapier_cursor.x + generic_physics_prop_save.size.x / 2., rapier_cursor.y - generic_physics_prop_save.size.y / 2.].into(), &mut area.space);
-
-                area.props.push(generic_physics_prop);
-            },
-
-            SpawnerCategory::Tile => {
-                let tile_save: TileSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
-                let tile: Tile = Tile::from_save(tile_save);
-
-                let x_index = (rapier_cursor.x / 50.) as usize;
-                let y_index = (rapier_cursor.y / 50.) as usize;
-                
-                
-
-
-                area.tiles[x_index][y_index] = Some(tile);
-            }
-        }
-    }
-
-
-    pub async fn draw_menu(&self, camera_rect: &Rect, textures: &mut TextureLoader, cursor: Vec2) {
-
-        let category = self.menu.categories.get(self.selected_category as usize).unwrap();
-    
-        draw_text(&format!("{}", category), 0., 20., 24., WHITE);
-
-
-        let prefab_paths = self.menu.prefabs.get(category).unwrap();
-        for (index, path) in prefab_paths.iter().enumerate() {
-
-            let color = match index == self.selected_prefab as usize {
-                true => GREEN,
-                false => WHITE,
-            };
-
-            draw_text(&path, 0., ((index) * 20) as f32 + 40., 20., color);
-        }
-
-        for (button, _) in &self.prefab_buttons {
-            let rect = button.rect;
-
-            draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 2., WHITE);
-        }
-
-        self.draw_coords(cursor);
-
-    }
-}
-
-#[derive(Clone, PartialEq)]
-pub enum SelectableObjectId {
-    Decoration(usize),
-    Tile(Vector2<usize>),
-    Prop(PropId)
-}
-
 pub struct AreaEditor {
     area: Area,
     textures: TextureLoader,
     spawner: Spawner,
     selected_mode: usize,
-    mode_options: Vec<Mode>,
+    mode_options: Vec<EditorMode>,
     camera_rect: Rect,
     previous_cursor: Vec2,
     cursor: Vec2,
@@ -447,112 +45,6 @@ pub struct AreaEditor {
     input_context: EditorInputContext,
     selection_rect: Option<Rect>,
     selected_released_flag: bool
-}
-
-pub struct EditorModeSelectUI {
-   select_mode_toggle: Button,
-   prefab_mode_toggle: Button,
-
-}
-
-
-pub struct EditorUITickContext<'a> {
-    selected_mode: &'a mut usize,
-    input_context: EditorInputContext
-}
-
-impl EditorModeSelectUI {
-    pub fn new() -> Self {
-
-        let select_mode_toggle = Button::new(Rect::new(screen_width() - 32., 32., 32., 32.), None);
-        let prefab_mode_toggle = Button::new(Rect::new(screen_width() - 32., 64., 32., 32.), None);
-        
-        Self {
-            select_mode_toggle,
-            prefab_mode_toggle
-        }
-    }
-    
-    pub fn hovered(&self) -> bool {
-        if self.select_mode_toggle.hovered {
-            true
-        } else if self.prefab_mode_toggle.hovered {
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn update_buttons(&mut self) {
-        let mouse_pos: Vec2 = mouse_position().into();
-
-        self.select_mode_toggle.update(mouse_pos);
-        self.prefab_mode_toggle.update(mouse_pos);
-    }
-
-    pub fn handle_buttons(&mut self, ctx: &mut EditorUITickContext) {
-
-        if ctx.input_context != EditorInputContext::EditorModeMenu {
-            return;
-        }
-
-        if self.select_mode_toggle.released {
-            
-            *ctx.selected_mode = 0
-        }
-
-        if self.prefab_mode_toggle.released {
-            *ctx.selected_mode = 1;
-        }
-    }
-
-    pub fn update(&mut self, ctx: &mut EditorUITickContext) {
-        
-        self.update_buttons();
-        self.reposition_elements();
-        self.handle_buttons(ctx);
-
-    }
-
-
-    pub fn reposition_elements(&mut self) {
-        self.prefab_mode_toggle.rect.x = screen_width() - self.prefab_mode_toggle.rect.w;
-        
-        self.select_mode_toggle.rect.x = screen_width() - self.prefab_mode_toggle.rect.w;
-    }
-
-    pub fn draw(&self, textures: &TextureLoader) {
-
-        self.draw_button(textures, &self.select_mode_toggle, "assets/ui/cursor.png");
-        self.draw_button(textures, &self.prefab_mode_toggle, "assets/ui/spawner.png");
-
-    }
-
-    pub fn draw_button(&self, textures: &TextureLoader, button: &Button, image_path: &str) {
-        let mut button_background_color = WHITE;
-        button_background_color.a = 0.5;
-
-        // background
-        draw_rectangle(button.rect.x, button.rect.y, button.rect.w, button.rect.h, button_background_color);
-
-        // image
-        draw_texture_ex(
-            textures.get(&PathBuf::from_str(image_path).unwrap()), 
-            button.rect.x, 
-            button.rect.y, 
-            WHITE, 
-            DrawTextureParams {
-                dest_size: Vec2::new(button.rect.w, button.rect.h).into(),
-                ..Default::default()
-            }
-        );
-
-    }
-}
-
-
-fn round_to_nearest_50(n: f32) -> f32 {
-    (n / 50.0).round() * 50.0
 }
 
 impl AreaEditor {
@@ -693,7 +185,7 @@ impl AreaEditor {
             textures,
             spawner,
             selected_mode: 0,
-            mode_options: vec![Mode::Select, Mode::PrefabPlacement, Mode::ClipDefine, Mode::SetSpawnPoint, Mode::TilePlacement],
+            mode_options: vec![EditorMode::Select, EditorMode::PrefabPlacement, EditorMode::ClipDefine, EditorMode::SetSpawnPoint, EditorMode::TilePlacement],
             camera_rect,
             cursor: Vec2::ZERO,
             clip_point_1: None,
@@ -830,7 +322,7 @@ impl AreaEditor {
         
     }
 
-    pub fn current_mode(&self) -> Mode {
+    pub fn current_mode(&self) -> EditorMode {
         self.mode_options.get(self.selected_mode).unwrap().clone()
     }
 
@@ -966,7 +458,7 @@ impl AreaEditor {
 
         self.area.draw(&mut self.textures, &self.camera_rect, &self.prefab_data, &camera, &self.fonts, self.start.elapsed()).await;
 
-        if self.current_mode() == Mode::PrefabPlacement {
+        if self.current_mode() == EditorMode::PrefabPlacement {
 
             let rapier_cursor = self.rapier_cursor();
             
@@ -992,7 +484,7 @@ impl AreaEditor {
 
         
 
-        if self.current_mode() == Mode::PrefabPlacement {
+        if self.current_mode() == EditorMode::PrefabPlacement {
             self.spawner.draw_menu(&self.camera_rect, &mut self.textures, self.cursor).await;
         }
 
@@ -1162,11 +654,11 @@ impl AreaEditor {
 
     pub fn editor_mode_tick(&mut self) {
         match self.current_mode() {
-            Mode::PrefabPlacement => self.mode_prefab_placement_tick(),
-            Mode::ClipDefine => self.mode_clip_define_tick(),
-            Mode::SetSpawnPoint => self.mode_set_spawnpoint_tick(),
-            Mode::TilePlacement => self.mode_tile_placement_tick(),
-            Mode::Select => self.mode_select_tick(),
+            EditorMode::PrefabPlacement => self.mode_prefab_placement_tick(),
+            EditorMode::ClipDefine => self.mode_clip_define_tick(),
+            EditorMode::SetSpawnPoint => self.mode_set_spawnpoint_tick(),
+            EditorMode::TilePlacement => self.mode_tile_placement_tick(),
+            EditorMode::Select => self.mode_select_tick(),
         }
     }
 
@@ -1195,7 +687,7 @@ impl AreaEditor {
     }
 
     pub fn set_spawn_point(&mut self) {
-        if self.current_mode() != Mode::SetSpawnPoint {
+        if self.current_mode() != EditorMode::SetSpawnPoint {
             return;
         }
 
