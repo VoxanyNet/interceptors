@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}, str::FromStr, time::Instant};
 
-use interceptors_lib::{Prefabs, area::{Area, AreaSave}, background::{Background, BackgroundSave}, button::Button, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::{Tile, TileId, TileSave}};
+use interceptors_lib::{Prefabs, area::{Area, AreaSave}, background::{Background, BackgroundSave}, button::Button, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, drawable::DrawContext, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::{Tile, TileId, TileSave}};
 use ldtk2::When;
 use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, LIGHTGRAY, RED, WHITE}, input::{self, KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_position, mouse_wheel}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, texture::{DrawTextureParams, draw_texture_ex}, window::{next_frame, screen_height, screen_width}};
 use nalgebra::{vector, Isometry, Isometry2, Vector2};
@@ -8,7 +8,7 @@ use rapier2d::{math::Point, parry::shape::Cuboid, prelude::{ColliderBuilder, Poi
 use serde::{de, Deserialize, Serialize};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use crate::{editor_input_context::EditorInputContext, editor_mode_select_ui::EditorModeSelectUI, editor_ui_tick_context::EditorUITickContext, selectable_object_id::SelectableObjectId, spawner::Spawner};
+use crate::{editor_input_context::EditorInputContext, editor_mode_select_ui::EditorModeSelectUI, editor_ui_tick_context::EditorUITickContext, selectable_object_id::{self, SelectableObject, SelectableObjectId}, spawner::Spawner};
 
 include!(concat!(env!("OUT_DIR"), "/prefabs.rs"));
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
@@ -44,7 +44,9 @@ pub struct AreaEditor {
     ui: EditorModeSelectUI,
     input_context: EditorInputContext,
     selection_rect: Option<Rect>,
-    selected_released_flag: bool
+    selected_released_flag: bool,
+    last_mouse_pos: Vec2,
+    dragging_object: bool
 }
 
 impl AreaEditor {
@@ -95,6 +97,45 @@ impl AreaEditor {
         
 
         
+    }
+
+    pub fn drag_object(&mut self) {
+
+        self.dragging_object = false;  
+
+        if self.current_mode() != EditorMode::Select {return};
+        if !is_mouse_button_down(MouseButton::Left) {return};
+        if self.get_hovered_object().is_none() {return};
+        if self.selection_rect.is_some() {return};
+
+        self.dragging_object = true;
+        
+
+        let delta = mouse_world_pos(&self.camera_rect) - self.last_mouse_pos;
+
+        for selected_object_id in &self.selected_objects {
+            if let Some(selected_object) = selected_object_id.get_object(&mut self.area.props, &mut self.area.tiles, &mut self.area.decorations) {
+                match selected_object {
+                    SelectableObject::Decoration(decoration) => {
+                        
+                        decoration.pos += delta;
+                    },
+                    SelectableObject::Tile(tile) => {
+
+                    },
+                    SelectableObject::Prop(prop) => {
+                        let body = self.area.space.rigid_body_set.get_mut(prop.rigid_body_handle).unwrap();
+
+                        body.set_position(
+                            vector![body.translation().x + delta.x, body.translation().y + delta.y].into(), 
+                            true
+                        );
+                    },
+                }
+            }
+        }
+        
+         
     }
 
     pub fn highlight_object(&mut self, item: SelectableObjectId) {
@@ -199,7 +240,9 @@ impl AreaEditor {
             ui: EditorModeSelectUI::new(),
             input_context: EditorInputContext::World,
             selection_rect: None,
-            selected_released_flag: false
+            selected_released_flag: false,
+            last_mouse_pos: Vec2::ZERO,
+            dragging_object: false
         }
     }
 
@@ -458,11 +501,22 @@ impl AreaEditor {
 
         self.area.draw(&mut self.textures, &self.camera_rect, &self.prefab_data, &camera, &self.fonts, self.start.elapsed()).await;
 
+        let draw_context = DrawContext {
+            space: &self.area.space,
+            textures: &self.textures,
+            prefabs: &self.prefab_data,
+            fonts: &self.fonts,
+            camera_rect: &self.camera_rect,
+            tiles: &self.area.tiles,
+            elapsed_time: &self.start.elapsed(),
+            default_camera: &camera,
+        };
+
         if self.current_mode() == EditorMode::PrefabPlacement {
 
             let rapier_cursor = self.rapier_cursor();
             
-            self.spawner.draw_preview_spawn(&self.camera_rect, &mut self.textures, self.cursor, &mut self.area.space, rapier_cursor, self.start.elapsed()).await;
+            self.spawner.draw_preview_spawn(&draw_context, self.cursor, rapier_cursor).await;
         }
 
         
@@ -573,6 +627,8 @@ impl AreaEditor {
                 self.selection_rect = None;
             }
         }
+
+        if self.dragging_object {return;}
         
         if is_mouse_button_down(MouseButton::Left) {
 
@@ -631,6 +687,7 @@ impl AreaEditor {
     }
 
     fn mode_select_tick(&mut self) {
+        self.drag_object();
         self.select_object();
         self.rectangle_select();
         self.select_objects_in_rectangle();
@@ -662,6 +719,9 @@ impl AreaEditor {
         }
     }
 
+    pub fn update_last_mouse_pos(&mut self) {
+        self.last_mouse_pos = mouse_world_pos(&self.camera_rect);
+    }
     pub fn tick(&mut self) {    
 
         self.update_input_context();
@@ -671,6 +731,7 @@ impl AreaEditor {
         self.update_cursor();
         self.change_mode();
         self.update_camera();
+        
 
         if is_key_down(KeyCode::LeftControl) {
             if is_key_released(KeyCode::S) {
@@ -681,7 +742,7 @@ impl AreaEditor {
             }
         }
 
-
+        self.update_last_mouse_pos();
         
         
     }

@@ -42,6 +42,8 @@ pub mod fragment;
 pub mod compound_test;
 pub mod weapons;
 pub mod tile;
+pub mod drawable;
+pub mod editor_context_menu;
 
 pub fn angle_weapon_to_mouse(
     space: &mut Space, 
@@ -205,7 +207,7 @@ pub async fn draw_texture_onto_physics_body(
     collider_handle: ColliderHandle,
     space: &Space, 
     texture_path: &PathBuf, 
-    textures: &mut TextureLoader, 
+    textures: &TextureLoader, 
     flip_x: bool, 
     flip_y: bool, 
     additional_rotation: f32

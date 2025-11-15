@@ -4,7 +4,7 @@ use macroquad::{camera::{set_camera, Camera2D}, color::{Color, BLACK, GRAY, WHIT
 use nalgebra::Isometry2;
 use serde::{Deserialize, Serialize};
 
-use crate::{button::Button, font_loader::FontLoader, mouse_world_pos, player::Player, prop::{Prop, PropSave}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, weapons::{weapon::{weapon::Weapon, weapon_save::WeaponSave}, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}, ClientTickContext, Prefabs};
+use crate::{ClientTickContext, Prefabs, button::Button, drawable::{DrawContext, Drawable}, font_loader::FontLoader, mouse_world_pos, player::Player, prop::{Prop, PropSave}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, weapons::{weapon::{weapon::Weapon, weapon_save::WeaponSave}, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum Item {
@@ -254,6 +254,7 @@ pub struct Computer {
     pub render_target: Option<RenderTarget> // server cant initialize render targets 
 }
 
+
 impl Computer {
 
     pub fn new(prefabs: &Prefabs, space:&mut crate::space::Space, pos: Isometry2<f32>) -> Self {
@@ -465,10 +466,14 @@ impl Computer {
 
         // IN THE FUTURE IF THE RENDER TARGET DOES NOT MATCH THE DESTINATION SIZE THESE COORDS NEED TO MULTIPLIED BY THAT RATIO
     }
-    pub async fn draw(&mut self, textures: &mut TextureLoader, space:&crate::space::Space, prefabs: &Prefabs, default_camera: &Camera2D, fonts: &FontLoader) {
-        self.prop.draw(space, textures).await;
+}
 
-        let prop_pos = space.rigid_body_set.get(self.prop.rigid_body_handle).unwrap().position();
+#[async_trait::async_trait]
+impl Drawable for Computer {
+    async fn draw(&mut self, draw_context: &DrawContext) {
+        self.prop.draw(draw_context).await;
+
+        let prop_pos = draw_context.space.rigid_body_set.get(self.prop.rigid_body_handle).unwrap().position();
 
         let mut color = BLACK;
 
@@ -495,7 +500,7 @@ impl Computer {
     
         clear_background(color);        
 
-        let font = fonts.get(PathBuf::from("assets/fonts/CutePixel.ttf"));
+        let font = draw_context.fonts.get(PathBuf::from("assets/fonts/CutePixel.ttf"));
 
         //draw_rectangle(0., 0., 20., 20., RED);
 
@@ -508,16 +513,16 @@ impl Computer {
         // });
 
         for category_tab in &self.category_tabs {
-            category_tab.draw(fonts);
+            category_tab.draw(draw_context.fonts);
         }
 
         let selected_item_category = self.item_categories.get(self.selected_category).unwrap();
 
-        selected_item_category.draw(textures, prefabs, fonts);
+        selected_item_category.draw(draw_context.textures, draw_context.prefabs, draw_context.fonts);
         
 
         // set the camera back
-        set_camera(default_camera);
+        set_camera(draw_context.default_camera);
 
         draw_texture_ex(
             &camera.render_target.unwrap().texture, 
@@ -529,5 +534,9 @@ impl Computer {
                 ..Default::default()
             }
         );
+    }
+
+    fn draw_layer(&self) -> u32 {
+        1
     }
 }

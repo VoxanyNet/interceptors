@@ -1,11 +1,12 @@
 use std::{fs::read_to_string, path::PathBuf, time::Instant};
 
+use async_trait::async_trait;
 use macroquad::{audio::play_sound_once, color::Color, math::Vec2, shapes::{draw_rectangle_ex, DrawRectangleParams}};
 use nalgebra::{Isometry2, Vector2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::AreaId, draw_preview, draw_texture_onto_physics_body, get_preview_resolution, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData, ClientId, ClientTickContext, Prefabs, ServerIO};
+use crate::{ClientId, ClientTickContext, Prefabs, ServerIO, area::AreaId, draw_preview, draw_texture_onto_physics_body, drawable::{DrawContext, Drawable}, get_preview_resolution, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Default, Debug, PartialEq)]
 pub enum PropMaterial {
@@ -99,17 +100,20 @@ impl DissolvedPixel {
             despawn: false
         }
     }
-    pub fn draw(&self, space: &Space) {
+}
 
+#[async_trait]
+impl Drawable for DissolvedPixel {
+    async fn draw(&mut self, draw_context: &DrawContext) {
         if self.despawn {
             return;
         }
 
-        let body = space.rigid_body_set.get(self.body).unwrap();
+        let body = draw_context.space.rigid_body_set.get(self.body).unwrap();
 
         let macroquad_pos = rapier_to_macroquad(*body.translation());
 
-        let shape = space.collider_set.get(self.collider).unwrap().shape().as_cuboid().unwrap();
+        let shape = draw_context.space.collider_set.get(self.collider).unwrap().shape().as_cuboid().unwrap();
 
 
         draw_rectangle_ex(
@@ -123,7 +127,10 @@ impl DissolvedPixel {
                 color: self.color 
             }
         );
-        
+    }
+
+    fn draw_layer(&self) -> u32 {
+        1
     }
 }
 
@@ -491,24 +498,30 @@ impl Prop {
         }
     }
 
-    pub async fn draw(&self, space: &Space, textures: &mut TextureLoader) {
+}
 
-        if self.despawn {
+#[async_trait]
+impl Drawable for Prop {
+    async fn draw(&mut self, draw_context: &crate::drawable::DrawContext) {
+         if self.despawn {
             return;
         }
         draw_texture_onto_physics_body(
             self.rigid_body_handle, 
             self.collider_handle, 
-            space, 
+            draw_context.space, 
             &self.sprite_path, 
-            textures, 
+             draw_context.textures, 
             false, 
             false, 
             0.
         ).await;
     }
-}
 
+    fn draw_layer(&self) -> u32 {
+        1
+    }
+}
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PropSave {
     pub size: Vec2,

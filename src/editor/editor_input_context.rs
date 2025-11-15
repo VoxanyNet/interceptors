@@ -2,5 +2,6 @@
 pub enum EditorInputContext {
     World,
     EditorModeMenu,
-    SpawnerMenu
+    SpawnerMenu,
+    
 }

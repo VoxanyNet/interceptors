@@ -5,7 +5,7 @@ use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::{parry::query::Ray, prelude::{ColliderHandle, Group, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 
-use crate::{angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, get_angle_between_rapier_points, player::{Facing, Player, PlayerId}, prop::{DissolvedPixel, Prop}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}, ClientId, ClientTickContext};
+use crate::{ClientId, ClientTickContext, angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, drawable::{DrawContext, Drawable}, get_angle_between_rapier_points, player::{Facing, Player, PlayerId}, prop::{DissolvedPixel, Prop}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct EnemyId {
@@ -830,9 +830,11 @@ impl Enemy {
 
         draw_rectangle(mpos.x - 25., mpos.y - 60., 50. * (self.health.max(0) as f32/30.), 10., GREEN);
     }
+}
 
-    pub async fn draw(&self, space: &Space, textures: &mut TextureLoader) {
-
+#[async_trait::async_trait]
+impl Drawable for Enemy {
+    async fn draw(&mut self, draw_context: &DrawContext) {
         if self.despawn {
             return;
         }
@@ -842,15 +844,19 @@ impl Enemy {
             Facing::Left => true,
         };
 
-        self.body.draw(textures, space, flip_x).await;
+        self.body.draw(draw_context.textures, draw_context.space, flip_x).await;
 
-        self.head.draw(textures, space, flip_x).await;
+        self.head.draw(draw_context.textures, draw_context.space, flip_x).await;
 
         if let Some(weapon) = &self.weapon {
-            weapon.draw(space, textures, self.facing).await
+            weapon.draw(draw_context.space, draw_context.textures, self.facing).await
         }
 
-        self.draw_health_bar(space);
+        self.draw_health_bar(draw_context.space);
+    }
+
+    fn draw_layer(&self) -> u32 {
+        todo!()
     }
 }
 

@@ -247,7 +247,7 @@ impl Weapon {
         }
     }
 
-    pub async fn draw(&self, space: &Space, textures: &mut TextureLoader, facing: Facing) {
+    pub async fn draw(&self, space: &Space, textures: &TextureLoader, facing: Facing) {
 
         // dont draw if unequipped
         let rigid_body = match self.rigid_body {

@@ -3,7 +3,7 @@ use nalgebra::{Isometry2, Vector2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{area::AreaId, computer::{Item, ItemSave}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, uuid_u64, Prefabs};
+use crate::{Prefabs, area::AreaId, computer::{Item, ItemSave}, drawable::{DrawContext, Drawable}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, uuid_u64};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct DroppedItemId {
@@ -131,18 +131,20 @@ impl DroppedItem {
             despawn: false
         }
     }
+}
 
-    pub fn draw(&self, space: &Space, textures: &TextureLoader, prefabs: &Prefabs) {
-
+#[async_trait::async_trait]
+impl Drawable for DroppedItem {
+    async fn draw(&mut self, draw_context: &DrawContext) {
         if self.despawn == true {
             return;
         }
 
-        let body = space.rigid_body_set.get(self.body).unwrap();
+        let body = draw_context.space.rigid_body_set.get(self.body).unwrap();
 
         let pos = body.position();
 
-        let half_extents = space.collider_set.get(self.collider).unwrap().shape().as_cuboid().unwrap().half_extents;
+        let half_extents = draw_context.space.collider_set.get(self.collider).unwrap().shape().as_cuboid().unwrap().half_extents;
 
         // preview uses macroquad coords
         let macroquad_pos = rapier_to_macroquad(pos.translation.vector);
@@ -157,22 +159,22 @@ impl DroppedItem {
         };
 
         self.item.draw_preview(
-            textures, 
+            draw_context.textures, 
             size, 
             Vec2 {
                 x: macroquad_pos.x - half_extents.x,
                 y: macroquad_pos.y - half_extents.y,
             }, 
-            prefabs, 
+            draw_context.prefabs, 
             Some(WHITE),
             macroquad_rotation
         );
-            
-        
-        
+    }
+
+    fn draw_layer(&self) -> u32 {
+        1
     }
 }
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DroppedItemSave {
     pos: Isometry2<f32>,

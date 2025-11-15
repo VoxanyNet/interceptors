@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}, str::FromStr, time::Instant};
 
-use interceptors_lib::{Prefabs, area::{Area, AreaSave}, background::{Background, BackgroundSave}, button::Button, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::{Tile, TileId, TileSave}};
+use interceptors_lib::{Prefabs, area::{Area, AreaSave}, background::{Background, BackgroundSave}, button::Button, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, drawable::{DrawContext, Drawable}, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::{Tile, TileId, TileSave}};
 use ldtk2::When;
 use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, LIGHTGRAY, RED, WHITE}, input::{self, KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_position, mouse_wheel}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, texture::{DrawTextureParams, draw_texture_ex}, window::{next_frame, screen_height, screen_width}};
 use nalgebra::{vector, Isometry, Isometry2, Vector2};
@@ -18,7 +18,8 @@ pub struct Spawner {
     change: bool,
     selected_prefab_json: String, // the path to the currently selected prefab
     prefab_buttons: Vec<(Button, i32)>, // button -> prefab index
-    category_buttons: Vec<(Button, SpawnerCategory)>
+    category_buttons: Vec<(Button, SpawnerCategory)>,
+    preview_space: Space
 }
 
 impl Spawner {
@@ -53,7 +54,8 @@ impl Spawner {
             change: true,
             selected_prefab_json: String::new(),
             prefab_buttons: Vec::new(),
-            category_buttons
+            category_buttons,
+            preview_space: Space::new()
         };
 
         spawner.load_prefab();
@@ -231,7 +233,9 @@ impl Spawner {
         }
     }
 
-    pub async fn draw_preview_spawn(&self, camera_rect: &Rect, textures: &mut TextureLoader, cursor: Vec2, space: &mut Space, rapier_cursor: Vec2, elapsed: web_time::Duration) {
+    pub async fn draw_preview_spawn(&mut self, draw_context: &DrawContext<'_>, cursor: Vec2, rapier_cursor: Vec2) {
+
+        
 
         match self.selected_category {
             
@@ -243,7 +247,7 @@ impl Spawner {
 
                 decoration.pos = cursor;
 
-                decoration.draw(textures, elapsed).await
+                decoration.draw(&draw_context).await
                 
             },
             SpawnerCategory::Background => {
@@ -253,20 +257,36 @@ impl Spawner {
 
                 background.pos = cursor;
 
-                background.draw(textures, camera_rect).await
+                background.draw(&draw_context).await
             },
 
             SpawnerCategory::Prop => {
                 let generic_physics_prop_save: PropSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
 
-                let mut generic_physics_prop = Prop::from_save(generic_physics_prop_save.clone(), space);
+                
 
-                generic_physics_prop.set_pos(vector![rapier_cursor.x + generic_physics_prop_save.size.x / 2., rapier_cursor.y - generic_physics_prop_save.size.y / 2.].into(), space);
+                let mut generic_physics_prop = Prop::from_save(generic_physics_prop_save.clone(), &mut self.preview_space);
 
-                generic_physics_prop.draw(space, textures).await;
+                generic_physics_prop.set_pos(vector![rapier_cursor.x + generic_physics_prop_save.size.x / 2., rapier_cursor.y - generic_physics_prop_save.size.y / 2.].into(), &mut self.preview_space);
+                
+                // need to swap the draw context's space for the spawner 'preview space'
+                let draw_context = DrawContext {
+                    space: &self.preview_space,
+                    textures: draw_context.textures,
+                    prefabs: draw_context.prefabs,
+                    fonts: draw_context.fonts,
+                    camera_rect: draw_context.camera_rect,
+                    tiles: draw_context.tiles,
+                    elapsed_time: draw_context.elapsed_time,
+                    default_camera: draw_context.default_camera,
+                };
+
+                
+
+                generic_physics_prop.draw(&draw_context).await;
 
                 // need to immedietly remove the rigid bodies from space because this is a temporary object
-                space.rigid_body_set.remove(generic_physics_prop.rigid_body_handle, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
+                self.preview_space.rigid_body_set.remove(generic_physics_prop.rigid_body_handle, &mut self.preview_space.island_manager, &mut self.preview_space.collider_set,&mut self.preview_space.impulse_joint_set, &mut self.preview_space.multibody_joint_set, true);
                  
             },
             SpawnerCategory::Tile => {
@@ -277,7 +297,7 @@ impl Spawner {
 
                 let tile: Tile = Tile::from_save(tile_save);
 
-                tile.draw(textures, Vector2::new(x_index * 50, y_index * 50));
+                tile.draw(draw_context.textures, Vector2::new(x_index * 50, y_index * 50));
             }
         }
     }

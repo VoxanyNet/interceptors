@@ -2,7 +2,7 @@ use macroquad::{color::{Color, WHITE}, shapes::draw_line};
 use nalgebra::Vector2;
 use serde::{Deserialize, Serialize};
 
-use crate::{area::AreaId, rapier_to_macroquad, uuid_u64, ClientId, ClientTickContext};
+use crate::{ClientId, ClientTickContext, area::AreaId, drawable::Drawable, rapier_to_macroquad, uuid_u64};
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct BulletTrailId {
@@ -26,13 +26,6 @@ pub struct BulletTrail {
 }
 
 impl BulletTrail {
-    pub fn draw(&self) {
-
-        let start_pos = rapier_to_macroquad(self.start);
-        let end_pos = rapier_to_macroquad(self.end);
-
-        draw_line(start_pos.x, start_pos.y, end_pos.x, end_pos.y, 5., self.color);
-    }
 
     pub fn client_tick(&mut self, ctx: &ClientTickContext) {
         self.color.a -= 0.3 * ctx.last_tick_duration.as_secs_f32();
@@ -79,6 +72,19 @@ impl BulletTrail {
     
 }
 
+#[async_trait::async_trait]
+impl Drawable for BulletTrail {
+    async fn draw(&mut self, draw_context: &crate::drawable::DrawContext) {
+        let start_pos = rapier_to_macroquad(self.start);
+        let end_pos = rapier_to_macroquad(self.end);
+
+        draw_line(start_pos.x, start_pos.y, end_pos.x, end_pos.y, 5., self.color);
+    }
+
+    fn draw_layer(&self) -> u32 {
+        todo!()
+    }
+}
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct BulletTrailSave {
     start: Vector2<f32>,

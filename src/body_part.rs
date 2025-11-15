@@ -53,7 +53,7 @@ impl BodyPart {
 
     }
 
-    pub async fn draw(&self, textures: &mut TextureLoader, space: &Space, flip_x: bool) {
+    pub async fn draw(&self, textures: &TextureLoader, space: &Space, flip_x: bool) {
         draw_texture_onto_physics_body(
             self.body_handle, 
             self.collider_handle, 

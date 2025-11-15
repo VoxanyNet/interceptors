@@ -103,7 +103,7 @@ impl WeaponType {
         }
     }
 
-    pub async fn draw(&self, space: &Space, textures: &mut TextureLoader, facing: Facing) {
+    pub async fn draw(&self, space: &Space, textures: &TextureLoader, facing: Facing) {
         match self {
             WeaponType::Shotgun(shotgun) => shotgun.draw(space, textures, facing).await,
             WeaponType::LMG(lmg) => lmg.draw(space, textures, facing).await

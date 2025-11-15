@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use macroquad::{color::WHITE, math::Vec2, texture::{draw_texture_ex, DrawTextureParams}};
 use serde::{Deserialize, Serialize};
 
-use crate::texture_loader::TextureLoader;
+use crate::{drawable::Drawable, texture_loader::TextureLoader};
 
 // literally just a sprite with position and size
 #[derive(Clone, PartialEq)]
@@ -12,7 +12,8 @@ pub struct Decoration {
     pub sprite_path: Option<PathBuf>,
     pub size: Vec2,
     pub frame_duration: Option<web_time::Duration>,
-    pub animated_sprite_paths: Option<Vec<PathBuf>>
+    pub animated_sprite_paths: Option<Vec<PathBuf>>,
+    pub layer: u32
 }
 
 impl Decoration {
@@ -28,7 +29,8 @@ impl Decoration {
             sprite_path: save.sprite_path,
             animated_sprite_paths: save.animated_sprite_paths,
             size: save.size,
-            frame_duration
+            frame_duration,
+            layer: save.layer
         }
     }
 
@@ -44,17 +46,20 @@ impl Decoration {
             size: self.size,
             sprite_path: self.sprite_path.clone(),
             animated_sprite_paths: self.animated_sprite_paths.clone(),
-            frame_duration: frame_duration
+            frame_duration: frame_duration,
+            layer: self.layer
         }
     }
     
-    pub async fn draw(&self, textures: &mut TextureLoader, elapsed_time: web_time::Duration) {
-
+}
+#[async_trait::async_trait]
+impl Drawable for Decoration {
+    async fn draw(&mut self, draw_context: &crate::drawable::DrawContext) {
         let sprite_path = match &self.frame_duration {
             Some(frame_duration) => {
                 let current_frame = (
                     (
-                        elapsed_time.as_secs_f32() % (frame_duration.as_secs_f32() * self.animated_sprite_paths.as_ref().unwrap().len() as f32)
+                        draw_context.elapsed_time.as_secs_f32() % (frame_duration.as_secs_f32() * self.animated_sprite_paths.as_ref().unwrap().len() as f32)
                     ) / frame_duration.as_secs_f32()
                 ) as usize;
 
@@ -65,7 +70,7 @@ impl Decoration {
             },
         };
 
-        let texture = textures.get(sprite_path);
+        let texture = draw_context.textures.get(sprite_path);
 
         draw_texture_ex(
             texture, 
@@ -82,8 +87,11 @@ impl Decoration {
             }
         );
     }
-}
 
+    fn draw_layer(&self) -> u32 {
+        self.layer
+    }
+}
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DecorationSave {
     pub pos: Vec2,
@@ -93,5 +101,7 @@ pub struct DecorationSave {
     #[serde(default)]
     pub animated_sprite_paths: Option<Vec<PathBuf>>,
     #[serde(default)]
-    pub frame_duration: Option<f32>
+    pub frame_duration: Option<f32>,
+    #[serde(default)]
+    pub layer: u32
 }

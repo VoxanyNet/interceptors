@@ -7,7 +7,7 @@ use noise::{NoiseFn, Perlin};
 use rapier2d::prelude::RigidBodyVelocity;
 use serde::{Deserialize, Serialize};
 
-use crate::{ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, tile::{self, Tile, TileSave}, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::weapon::Shotgun, weapon_type::WeaponType}, ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter};
+use crate::{ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, tile::{self, Tile, TileSave}, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::weapon::Shotgun, weapon_type::WeaponType}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -170,59 +170,67 @@ impl Area {
 
     pub async fn draw(&mut self, textures: &mut TextureLoader, camera_rect: &Rect, prefabs: &Prefabs, camera: &Camera2D, fonts: &FontLoader, elapsed: web_time::Duration) {
 
-        for background in &self.backgrounds {
-            background.draw(textures, camera_rect).await
+        let mut drawable_objects: Vec<&mut dyn Drawable> = vec![];
+        
+        for background in &mut self.backgrounds {
+            drawable_objects.push(background);
         }
-
-        for decoration in &self.decorations {
-            decoration.draw(textures, elapsed).await
+        for decoration in &mut self.decorations {
+            drawable_objects.push(decoration);
         }
-
-        for generic_physics_prop in &self.props {
-            generic_physics_prop.draw(&self.space, textures).await;
+        for prop in &mut self.props {
+            drawable_objects.push(prop);
         }
-
-        for dropped_item in &self.dropped_items {
-            dropped_item.draw(&self.space, textures, prefabs);
+        for dropped_item in &mut self.dropped_items {
+            drawable_objects.push(dropped_item);
         }
         if let Some(computer) = &mut self.computer {
-            computer.draw(textures, &self.space, prefabs, camera, fonts).await;
+            drawable_objects.push(computer);
         }
-
-        for player in &self.players {
-            player.draw(&self.space, textures, prefabs, fonts, camera_rect, &self.tiles).await;
+        for player in &mut self.players {
+            drawable_objects.push(player);
         }
-
-        for enemy in &self.enemies {
-            enemy.draw(&self.space, textures).await;
+        for enemy in &mut self.enemies {
+            drawable_objects.push(enemy);
         }
-
-        for car in &self.cars {
-            car.draw(&self.space);
+        for pixel in &mut self.dissolved_pixels {
+            drawable_objects.push(pixel);
         }
-
-        for pixel in &self.dissolved_pixels {
-            pixel.draw(&self.space);
-        }
-
-        for bullet_trail in &self.bullet_trails {
-            bullet_trail.draw();
-        }
-
-        for compound_test in &self.compound_test {
-            compound_test.draw(&self.space, textures);
+        for bullet_trail in &mut self.bullet_trails {
+            drawable_objects.push(bullet_trail);
         }
 
         
-        for (x, row) in self.tiles.iter().enumerate() {
-            for (y, tile) in row.iter().enumerate() {
+        drawable_objects.sort_by_key(|o| o.draw_layer());
 
-                if let Some(tile) = tile {
-                    tile.draw(textures, Vector2::new(x * 50, y * 50))
-                }
-                
-            }
+        
+
+        let draw_context = DrawContext {
+            space: &self.space,
+            textures: &textures,
+            prefabs,
+            fonts,
+            camera_rect,
+            tiles: &self.tiles,
+            elapsed_time: &elapsed,
+            default_camera: camera,
+        };
+
+        for object in drawable_objects {
+            object.draw(&draw_context).await;
         }
+
+
+        
+        // for (x, row) in self.tiles.iter().enumerate() {
+        //     for (y, tile) in row.iter().enumerate() {
+
+        //         if let Some(tile) = tile {
+        //             tile.draw(textures, Vector2::new(x * 50, y * 50))
+        //         }
+                
+        //     }
+        // }
 
 
 

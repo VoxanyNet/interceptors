@@ -6,7 +6,7 @@ use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, prop::{DissolvedPixel, Prop}, rapier_mouse_world_pos, rapier_to_macroquad, round_to_nearest, space::Space, texture_loader::TextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}, ClientId, ClientTickContext, Prefabs};
+use crate::{ClientId, ClientTickContext, Prefabs, angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, prop::{DissolvedPixel, Prop}, rapier_mouse_world_pos, rapier_to_macroquad, round_to_nearest, space::Space, texture_loader::TextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -791,32 +791,8 @@ impl Player {
 
     }
 
-    pub async fn draw(&self, space: &Space, textures:&mut crate::texture_loader::TextureLoader, prefabs: &Prefabs, fonts: &FontLoader, camera_rect: &Rect, tiles: &Vec<Vec<Option<Tile>>>) {
-        
-        let flip_x = match self.facing {
-            Facing::Right => false,
-            Facing::Left => true,
-        };
 
-        self.body.draw(textures, space, flip_x).await;
-        self.head.draw(textures, space, flip_x).await;
-
-        self.draw_selected_item(space, textures).await;
-
-
-
-        self.draw_inventory(textures, space, prefabs, fonts);
-
-        let pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation.vector;
-
-        draw_text(&format!("{:?}", pos), camera_rect.x + 40., camera_rect.y + 40., 20., WHITE);
-
-    
-        
-        
-    }
-
-    pub async fn draw_selected_item(&self, space: &Space, textures: &mut TextureLoader) {
+    pub async fn draw_selected_item(&self, space: &Space, textures: &TextureLoader) {
         match &self.inventory.items[self.selected_item] {
             Some(item_slot) => {
                 match &item_slot.item {
@@ -1047,6 +1023,33 @@ impl Player {
             owner: self.owner.clone(),
             items
         }
+    }
+}
+
+#[async_trait::async_trait]
+impl Drawable for Player {
+    async fn draw(&mut self, draw_context: &DrawContext) {
+        let flip_x = match self.facing {
+            Facing::Right => false,
+            Facing::Left => true,
+        };
+
+        self.body.draw(draw_context.textures, draw_context.space, flip_x).await;
+        self.head.draw(draw_context.textures, draw_context.space, flip_x).await;
+
+        self.draw_selected_item(draw_context.space, draw_context.textures).await;
+
+
+
+        self.draw_inventory(draw_context.textures, draw_context.space, draw_context.prefabs, draw_context.fonts);
+
+        let pos = draw_context.space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation.vector;
+
+        draw_text(&format!("{:?}", pos), draw_context.camera_rect.x + 40., draw_context.camera_rect.y + 40., 20., WHITE);
+    }
+
+    fn draw_layer(&self) -> u32 {
+        todo!()
     }
 }
 
