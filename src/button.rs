@@ -5,7 +5,7 @@ use macroquad::{color::{Color, WHITE}, input::{is_mouse_button_down, is_mouse_bu
 use crate::texture_loader::TextureLoader;
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Button {
     pub hovered: bool,
     pub down: bool,

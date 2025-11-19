@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
-use macroquad::{color::WHITE, math::Vec2, texture::{draw_texture_ex, DrawTextureParams}};
+use macroquad::{color::WHITE, math::{Rect, Vec2}, texture::{DrawTextureParams, draw_texture_ex}};
 use serde::{Deserialize, Serialize};
 
-use crate::{drawable::Drawable, texture_loader::TextureLoader};
+use crate::{drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, texture_loader::TextureLoader};
 
 // literally just a sprite with position and size
 #[derive(Clone, PartialEq)]
@@ -13,10 +13,19 @@ pub struct Decoration {
     pub size: Vec2,
     pub frame_duration: Option<web_time::Duration>,
     pub animated_sprite_paths: Option<Vec<PathBuf>>,
-    pub layer: u32
+    pub layer: u32,
+    pub editor_context_menu: Option<EditorContextMenuData>
 }
 
 impl Decoration {
+
+    pub fn editor_tick(&mut self) {
+        self.update_menu();
+    }
+
+    pub fn editor_draw(&self) {
+        self.draw_editor_context_menu();
+    }
     pub fn from_save(save: DecorationSave) -> Self {
 
         let frame_duration = match save.frame_duration {
@@ -30,7 +39,8 @@ impl Decoration {
             animated_sprite_paths: save.animated_sprite_paths,
             size: save.size,
             frame_duration,
-            layer: save.layer
+            layer: save.layer,
+            editor_context_menu: None
         }
     }
 
@@ -52,6 +62,25 @@ impl Decoration {
     }
     
 }
+
+impl EditorContextMenu for Decoration {
+    fn context_menu_data_mut(&mut self) -> &mut Option<crate::editor_context_menu::EditorContextMenuData> {
+        &mut self.editor_context_menu
+    }
+
+    fn layer(&mut self) -> Option<&mut u32> {
+        Some(&mut self.layer)
+    }
+
+    fn object_bounding_box(&self) -> macroquad::prelude::Rect {
+        Rect::new(self.pos.x, self.pos.y, self.size.x, self.size.y)
+    }
+
+    fn context_menu_data(&self) -> &Option<EditorContextMenuData> {
+        &self.editor_context_menu
+    }
+}
+
 #[async_trait::async_trait]
 impl Drawable for Decoration {
     async fn draw(&mut self, draw_context: &crate::drawable::DrawContext) {

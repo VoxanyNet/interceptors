@@ -495,11 +495,13 @@ impl AreaEditor {
         let mut camera = Camera2D::from_display_rect(self.camera_rect);
         camera.zoom.y = -camera.zoom.y;
 
-
-
         set_camera(&camera);
 
         self.area.draw(&mut self.textures, &self.camera_rect, &self.prefab_data, &camera, &self.fonts, self.start.elapsed()).await;
+
+        for decoration in &self.area.decorations {
+            decoration.editor_draw();
+        }
 
         let draw_context = DrawContext {
             space: &self.area.space,
@@ -518,25 +520,15 @@ impl AreaEditor {
             
             self.spawner.draw_preview_spawn(&draw_context, self.cursor, rapier_cursor).await;
         }
-
-        
-        
         
         self.draw_cursor();
-
         self.draw_clip_points();
-
         self.draw_clips();
-
         self.highlight_hovered_object();
-
         self.highlight_selected_object();
-        
+
         set_default_camera();
-
         self.ui.draw(&self.textures);
-
-        
 
         if self.current_mode() == EditorMode::PrefabPlacement {
             self.spawner.draw_menu(&self.camera_rect, &mut self.textures, self.cursor).await;
@@ -722,6 +714,8 @@ impl AreaEditor {
     pub fn update_last_mouse_pos(&mut self) {
         self.last_mouse_pos = mouse_world_pos(&self.camera_rect);
     }
+
+    
     pub fn tick(&mut self) {    
 
         self.update_input_context();
@@ -731,6 +725,10 @@ impl AreaEditor {
         self.update_cursor();
         self.change_mode();
         self.update_camera();
+
+        for decoration in &mut self.area.decorations {
+            decoration.editor_tick();
+        }
         
 
         if is_key_down(KeyCode::LeftControl) {
