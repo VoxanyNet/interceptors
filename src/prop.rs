@@ -244,7 +244,10 @@ impl Prop {
     }
     pub fn from_prefab(prefab_path: String, space: &mut Space) -> Self {
 
-        let prop_save: PropSave = serde_json::from_str(&read_to_string(prefab_path).unwrap()).unwrap();
+        #[cfg(target_os = "linux")]
+        let prefab_path = prefab_path.replace("\\", "/");
+
+        let prop_save: PropSave = serde_json::from_str(&read_to_string(prefab_path.to_string()).unwrap()).unwrap();
 
         let prop = Prop::from_save(prop_save, space);
 

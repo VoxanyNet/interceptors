@@ -1,3 +1,5 @@
+use std::{fs::{self, File}, process::Command, time::SystemTime};
+
 use macroquad::{color::{DARKGRAY, GRAY, WHITE}, input::{is_mouse_button_released, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle, text::draw_text};
 
 use crate::button::Button;
@@ -11,8 +13,8 @@ pub trait EditorContextMenu {
     fn open_menu(&mut self, position: Vec2) {
 
         let menu = self.build_menu(position);
-        let context_menu = self.context_menu_data_mut();
-        *context_menu = Some(menu);
+        *self.context_menu_data_mut() = Some(menu);
+        
         
     }
 
@@ -22,6 +24,21 @@ pub trait EditorContextMenu {
         }
     }
 
+    fn open_data_editor(&mut self) {
+        let json_string = self.data_editor_export().unwrap();
+
+        fs::write("./data_editor_temp.json", json_string).unwrap();
+
+        let menu_data = self.context_menu_data_mut().as_mut().unwrap();
+
+        menu_data.data_editor_last_edit = Some(fs::metadata("./data_editor_temp.json").unwrap().created().unwrap());
+
+        Command::new("code")
+            //.arg("--new-window")
+            .arg("./data_editor_temp.json")
+            .spawn().unwrap();
+    }
+
     fn handle_buttons(&mut self) {
         if let Some(data) = self.context_menu_data_mut() {
             for entry in data.entries.clone() {
@@ -29,6 +46,7 @@ pub trait EditorContextMenu {
                     match entry.field_type {
                         EntryType::IncreaseLayer => *self.layer().unwrap() += 1,
                         EntryType::DecreaseLayer => *self.layer().unwrap() -= 1,
+                        EntryType::DataEditor => self.open_data_editor(),
                     }
                 }
             }
@@ -42,7 +60,38 @@ pub trait EditorContextMenu {
             }
         }
     }
+    
+    fn apply_data_editor_updates(&mut self) {
+        // someday i will come back to this code and look on in horror
+        match self.context_menu_data_mut() {
+            Some(data) => {
 
+                match data.data_editor_last_edit {
+
+                    Some(last_edit) => {
+
+                        if fs::metadata("./data_editor_temp.json").unwrap().modified().unwrap() > last_edit {
+
+                            println!("object updated!");
+
+                            // need to preserve the context menu data lololol!
+                            let old_editor_context_menu_data = self.context_menu_data().as_ref().unwrap().clone();
+
+                            self.data_editor_import(fs::read_to_string("./data_editor_temp.json").unwrap());
+
+                            *self.context_menu_data_mut() = Some(old_editor_context_menu_data);
+
+                            self.context_menu_data_mut().as_mut().unwrap().data_editor_last_edit = Some(fs::metadata("./data_editor_temp.json").unwrap().modified().unwrap());
+                        }
+                    },
+                    // object is not open in editor
+                    None => {},
+                }
+            },
+            // object doesnt have data for some reason
+            None => {},
+        }
+    }
     fn update_menu(&mut self) {
 
         if is_mouse_button_released(macroquad::input::MouseButton::Right) && self.object_bounding_box().contains(mouse_position().into()) {
@@ -54,6 +103,8 @@ pub trait EditorContextMenu {
             println!("close");
             self.close_menu();
         }
+
+        self.apply_data_editor_updates();
 
         self.update_buttons();
         self.handle_buttons();
@@ -75,6 +126,14 @@ pub trait EditorContextMenu {
         rect
     }
 
+    fn data_editor_export(&self) -> Option<String> {
+        None
+    }
+
+    fn data_editor_import(&mut self, json: String) {
+        // just do nothing by default
+    }
+
     fn object_bounding_box(&self) -> Rect;
 
     fn build_menu(&mut self, position: Vec2) -> EditorContextMenuData {
@@ -82,6 +141,18 @@ pub trait EditorContextMenu {
 
         let mut entry_index = 0;
 
+        if self.data_editor_export().is_some() {
+            entries.push(
+                MenuEntry {
+                    button: Button::new(
+                        Rect::new(position.x, position.y + (20. * entry_index as f32), 150., 20.), None
+                    ),
+                    field_type: EntryType::DataEditor,
+                }
+            );
+
+            entry_index += 1;
+        }
         if self.layer().is_some() {
 
             entries.push(
@@ -109,19 +180,24 @@ pub trait EditorContextMenu {
 
         EditorContextMenuData {
             entries,
+            data_editor_last_edit: None,
+            
         }
     }
     fn context_menu_data_mut(&mut self) -> &mut Option<EditorContextMenuData>;
     fn context_menu_data(&self) -> &Option<EditorContextMenuData>;
 
     fn close_menu(&mut self) {
+        
         *self.context_menu_data_mut() = None;
     }
 }
 
 #[derive(Clone, PartialEq)]
 pub struct EditorContextMenuData {
-    entries: Vec<MenuEntry>
+    entries: Vec<MenuEntry>,
+    pub data_editor_last_edit: Option<SystemTime>, // this also indicates that the object is open in the data editor at all. we delete the file when the menu closes
+
 }
 
 impl EditorContextMenuData {
@@ -151,5 +227,6 @@ pub struct MenuEntry {
 #[derive(strum::Display, Clone, PartialEq)]
 pub enum EntryType {
     IncreaseLayer,
-    DecreaseLayer
+    DecreaseLayer,
+    DataEditor
 }

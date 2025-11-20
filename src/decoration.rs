@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
 use macroquad::{color::WHITE, math::{Rect, Vec2}, texture::{DrawTextureParams, draw_texture_ex}};
 use serde::{Deserialize, Serialize};
@@ -66,6 +66,24 @@ impl Decoration {
 impl EditorContextMenu for Decoration {
     fn context_menu_data_mut(&mut self) -> &mut Option<crate::editor_context_menu::EditorContextMenuData> {
         &mut self.editor_context_menu
+    }
+
+    fn data_editor_export(&self) -> Option<String> {
+        let json_string = serde_json::to_string_pretty(&self.save()).unwrap();
+        
+        Some(json_string)
+    }
+
+    fn data_editor_import(&mut self, json: String) {
+        
+        
+        match serde_json::from_str(&json) {
+            Ok(decoration_save) => {
+                *self = Decoration::from_save(decoration_save);
+            },
+            Err(_) => {return;},
+        }
+
     }
 
     fn layer(&mut self) -> Option<&mut u32> {

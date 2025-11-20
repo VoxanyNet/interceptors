@@ -673,11 +673,17 @@ impl Prefabs {
         }
     }
     pub fn get_prefab_data(&self, path: impl ToString) -> String {
+
+        #[cfg(target_os = "linux")]
+        let path = path.to_string().replace("\\", "/");
         
         self.prefabs.get(&path.to_string()).unwrap().clone()
     }
 
     pub async fn load_prefab_data(&mut self, path: impl ToString) {
+
+
+    
 
         let data = load_string(&path.to_string()).await.unwrap();
 
@@ -687,7 +693,6 @@ impl Prefabs {
     pub fn load_prefab_data_blocking(&mut self, path: impl ToString) {
 
         let data = read_to_string(path.to_string()).unwrap();
-
         self.prefabs.insert(path.to_string(), data);
     }
 }

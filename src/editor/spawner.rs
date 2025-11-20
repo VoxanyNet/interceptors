@@ -123,7 +123,6 @@ impl Spawner {
         }
         for (button, index) in &self.prefab_buttons {
             if button.released {
-                println!("yes");
                 self.selected_prefab = *index;
                 self.change = true;
             }

@@ -1,0 +1,14 @@
+{
+  "pos": [
+    365.0,
+    326.99997
+  ],
+  "size": [
+    50.0,
+    50.0
+  ],
+  "sprite_path": "assets/grass_topleft.png",
+  "animated_sprite_paths": null,
+  "frame_duration": null,
+  "layer": 0
+}
