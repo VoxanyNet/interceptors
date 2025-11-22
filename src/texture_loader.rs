@@ -21,7 +21,6 @@ impl TextureLoader {
 
     pub async fn load(&mut self, texture_path: PathBuf) {
 
-        // this can probably be optimized with a match statement but i cant figure it out the borrowing stuff
         if !self.cache.contains_key(&texture_path) {
 
             let texture = load_texture(&texture_path.to_string_lossy()).await.unwrap();

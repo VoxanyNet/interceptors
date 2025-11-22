@@ -46,7 +46,8 @@ pub struct AreaEditor {
     selection_rect: Option<Rect>,
     selected_released_flag: bool,
     last_mouse_pos: Vec2,
-    dragging_object: bool
+    dragging_object: bool,
+    simulate_space: bool
 }
 
 impl AreaEditor {
@@ -106,7 +107,7 @@ impl AreaEditor {
         if self.current_mode() != EditorMode::Select {return};
         if !is_mouse_button_down(MouseButton::Left) {return};
         if self.get_hovered_object().is_none() {return};
-        if self.selection_rect.is_some() {return};
+        if self.selection_rect.is_some() && !self.selected_released_flag {return};
 
         self.dragging_object = true;
         
@@ -242,7 +243,8 @@ impl AreaEditor {
             selection_rect: None,
             selected_released_flag: false,
             last_mouse_pos: Vec2::ZERO,
-            dragging_object: false
+            dragging_object: false,
+            simulate_space: false
         }
     }
 
@@ -526,6 +528,7 @@ impl AreaEditor {
         self.draw_clips();
         self.highlight_hovered_object();
         self.highlight_selected_object();
+        self.step_space();
 
         set_default_camera();
         self.ui.draw(&self.textures);
@@ -543,6 +546,10 @@ impl AreaEditor {
     }
 
     pub fn draw_selection_rect(&self) {
+
+        if self.selected_released_flag {
+            return
+        }
 
         match self.selection_rect {
             Some(selection_rect) => {
@@ -682,8 +689,10 @@ impl AreaEditor {
         self.drag_object();
         self.select_object();
         self.rectangle_select();
-        self.select_objects_in_rectangle();
+        self.select_objects_in_rectangle(); 
     }
+
+    
 
     fn select_objects_in_rectangle(&mut self) {
 
@@ -715,13 +724,19 @@ impl AreaEditor {
         self.last_mouse_pos = mouse_world_pos(&self.camera_rect);
     }
 
-    
+    pub fn step_space(&mut self) {
+
+        if self.simulate_space {
+            self.area.space.step(web_time::Duration::from_secs_f64(0.016));
+        }
+        
+    }
     pub fn tick(&mut self) {    
 
         self.update_input_context();
-        self.ui.update(&mut EditorUITickContext { selected_mode: &mut self.selected_mode, input_context: self.input_context });
+        self.ui.update(&mut EditorUITickContext { selected_mode: &mut self.selected_mode, input_context: self.input_context, simulate_space: &mut self.simulate_space });
         self.editor_mode_tick();
-        self.area.space.step(web_time::Duration::from_secs_f64(0.016));
+        
         self.update_cursor();
         self.change_mode();
         self.update_camera();

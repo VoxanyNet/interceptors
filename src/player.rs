@@ -1049,7 +1049,7 @@ impl Drawable for Player {
     }
 
     fn draw_layer(&self) -> u32 {
-        todo!()
+        1
     }
 }
 

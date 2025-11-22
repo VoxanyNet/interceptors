@@ -1,13 +1,13 @@
 {
   "pos": [
-    365.0,
-    326.99997
+    597.0,
+    128.0
   ],
   "size": [
-    50.0,
-    50.0
+    122.0,
+    88.0
   ],
-  "sprite_path": "assets/grass_topleft.png",
+  "sprite_path": "assets/bridge_center.png",
   "animated_sprite_paths": null,
   "frame_duration": null,
   "layer": 0

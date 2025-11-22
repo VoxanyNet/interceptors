@@ -196,7 +196,7 @@ pub trait EditorContextMenu {
 #[derive(Clone, PartialEq)]
 pub struct EditorContextMenuData {
     entries: Vec<MenuEntry>,
-    pub data_editor_last_edit: Option<SystemTime>, // this also indicates that the object is open in the data editor at all. we delete the file when the menu closes
+    pub data_editor_last_edit: Option<SystemTime>, // this also indicates that the object is open in the data editor at all
 
 }
 

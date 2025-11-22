@@ -8,6 +8,7 @@ use crate::{editor_input_context::EditorInputContext, editor_ui_tick_context::Ed
 pub struct EditorModeSelectUI {
    select_mode_toggle: Button,
    prefab_mode_toggle: Button,
+   simulate_space_toggle: Button
 
 }
 
@@ -17,9 +18,12 @@ impl EditorModeSelectUI {
         let select_mode_toggle = Button::new(Rect::new(screen_width() - 32., 32., 32., 32.), None);
         let prefab_mode_toggle = Button::new(Rect::new(screen_width() - 32., 64., 32., 32.), None);
         
+        let simulate_space_toggle = Button::new(Rect::new(screen_width() - 32., 128., 32., 32.), None);
+        
         Self {
             select_mode_toggle,
-            prefab_mode_toggle
+            prefab_mode_toggle,
+            simulate_space_toggle
         }
     }
     
@@ -28,7 +32,10 @@ impl EditorModeSelectUI {
             true
         } else if self.prefab_mode_toggle.hovered {
             true
-        } else {
+        } else if self.simulate_space_toggle.hovered {
+            true
+        }
+         else {
             false
         }
     }
@@ -38,6 +45,8 @@ impl EditorModeSelectUI {
 
         self.select_mode_toggle.update(mouse_pos);
         self.prefab_mode_toggle.update(mouse_pos);
+
+        self.simulate_space_toggle.update(mouse_pos);
     }
 
     pub fn handle_buttons(&mut self, ctx: &mut EditorUITickContext) {
@@ -54,6 +63,12 @@ impl EditorModeSelectUI {
         if self.prefab_mode_toggle.released {
             *ctx.selected_mode = 1;
         }
+
+        if self.simulate_space_toggle.released {
+            *ctx.simulate_space = !*ctx.simulate_space;
+        }
+
+
     }
 
     pub fn update(&mut self, ctx: &mut EditorUITickContext) {
@@ -75,6 +90,7 @@ impl EditorModeSelectUI {
 
         self.draw_button(textures, &self.select_mode_toggle, "assets/ui/cursor.png");
         self.draw_button(textures, &self.prefab_mode_toggle, "assets/ui/spawner.png");
+        self.draw_button(textures, &self.simulate_space_toggle, "assets/ui/simulate_space.png");
 
     }
 
