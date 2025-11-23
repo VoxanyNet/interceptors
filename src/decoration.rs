@@ -3,7 +3,7 @@ use std::{fs, path::PathBuf};
 use macroquad::{color::WHITE, math::{Rect, Vec2}, texture::{DrawTextureParams, draw_texture_ex}};
 use serde::{Deserialize, Serialize};
 
-use crate::{drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, texture_loader::TextureLoader};
+use crate::{drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, space::{self, Space}, texture_loader::TextureLoader};
 
 // literally just a sprite with position and size
 #[derive(Clone, PartialEq)]
@@ -19,8 +19,8 @@ pub struct Decoration {
 
 impl Decoration {
 
-    pub fn editor_tick(&mut self) {
-        self.update_menu();
+    pub fn editor_tick(&mut self, space: &Space) {
+        self.update_menu(space);
     }
 
     pub fn editor_draw(&self) {
@@ -90,7 +90,7 @@ impl EditorContextMenu for Decoration {
         Some(&mut self.layer)
     }
 
-    fn object_bounding_box(&self) -> macroquad::prelude::Rect {
+    fn object_bounding_box(&self, space: Option<&Space>) -> macroquad::prelude::Rect {
         Rect::new(self.pos.x, self.pos.y, self.size.x, self.size.y)
     }
 

@@ -2,11 +2,15 @@ use std::{fs::{self, File}, process::Command, time::SystemTime};
 
 use macroquad::{color::{DARKGRAY, GRAY, WHITE}, input::{is_mouse_button_released, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle, text::draw_text};
 
-use crate::button::Button;
+use crate::{button::Button, space::Space};
 
 // implementors of this trait can expose their variables to be edited by the context menu 
 pub trait EditorContextMenu {
     fn layer(&mut self) -> Option<&mut u32> {
+        None
+    }
+
+    fn despawn(&mut self) -> Option<&mut bool> {
         None
     }
 
@@ -92,14 +96,14 @@ pub trait EditorContextMenu {
             None => {},
         }
     }
-    fn update_menu(&mut self) {
+    fn update_menu(&mut self, space: &Space) {
 
-        if is_mouse_button_released(macroquad::input::MouseButton::Right) && self.object_bounding_box().contains(mouse_position().into()) {
+        if is_mouse_button_released(macroquad::input::MouseButton::Right) && self.object_bounding_box(Some(space)).contains(mouse_position().into()) {
             println!("open");
             self.open_menu(mouse_position().into());
         }
 
-        if (is_mouse_button_released(macroquad::input::MouseButton::Left) || is_mouse_button_released(macroquad::input::MouseButton::Right)) && !self.object_bounding_box().contains(mouse_position().into()) {
+        if (is_mouse_button_released(macroquad::input::MouseButton::Left) || is_mouse_button_released(macroquad::input::MouseButton::Right)) && !self.object_bounding_box(Some(space)).contains(mouse_position().into()) {
             println!("close");
             self.close_menu();
         }
@@ -134,7 +138,7 @@ pub trait EditorContextMenu {
         // just do nothing by default
     }
 
-    fn object_bounding_box(&self) -> Rect;
+    fn object_bounding_box(&self, space: Option<&Space>) -> Rect;
 
     fn build_menu(&mut self, position: Vec2) -> EditorContextMenuData {
         let mut entries: Vec<MenuEntry> = vec![];

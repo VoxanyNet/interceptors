@@ -285,7 +285,7 @@ impl Area {
     }
 
 
-    pub fn spawn_prop(&mut self, ctx: &mut ClientTickContext) {
+    pub fn debug_spawn_prop(&mut self, ctx: &mut ClientTickContext) {
 
         if is_key_released(KeyCode::E) {
             
@@ -314,7 +314,11 @@ impl Area {
         }
     }
 
-    pub fn spawn_enemy(&mut self, ctx: &mut ClientTickContext) {
+    pub fn debug_spawn_enemy(&mut self, ctx: &mut ClientTickContext) {
+
+        if !is_key_released(KeyCode::T) {
+            return;
+        }
         let mouse_pos = rapier_mouse_world_pos(&ctx.camera_rect);
         
         let enemy = Enemy::new( Isometry2::new(mouse_pos, 0.), *ctx.client_id, &mut self.space, None);
@@ -427,16 +431,6 @@ impl Area {
         }
     }
 
-    pub fn stop_ambiance(&mut self) {
-        if is_key_released(KeyCode::J) {
-            for ambiance in &mut self.ambiance {
-                stop_sound(ambiance.sound.as_ref().unwrap());
-
-                
-            }
-        }
-    }
-
 
     pub fn wave_logic(&mut self, ctx: &mut ClientTickContext) {
 
@@ -502,63 +496,17 @@ impl Area {
         }
     }
 
-    pub fn client_tick(&mut self, ctx: &mut ClientTickContext) {
-
-        if is_key_released(KeyCode::M) {
-            self.cars.push(
-                Car::new(&mut self.space, rapier_mouse_world_pos(&ctx.camera_rect).into())
-            );
-        }
-
-        if is_key_released(KeyCode::I) {
-            self.compound_test.push(
-                CompoundTest::new(&mut self.space, ctx, PathBuf::from("assets\\stone1.png"), 0., 0., rapier_mouse_world_pos(&ctx.camera_rect))
-            );
-        }
-
-
-        //self.wave_logic(ctx);
-
-        self.start_ambiance(ctx);
-
-        self.stop_ambiance();
-
-        self.spawn_player_if_not_in_game(ctx);
-
-        if is_key_released(KeyCode::T) {
-            self.spawn_enemy(ctx);
-        }
-
-
-        self.spawn_prop(ctx);
-
-
-        // if is_key_down(KeyCode::J) {
-        //     self.space.step(Duration::from_secs_f32(1./60.));
-        // }
-
-        //let then = Instant::now();
-        self.space.step(*ctx.last_tick_duration);
-        //dbg!(then.elapsed());
-
-
-        for prop in &mut self.props {
-            prop.client_tick(&mut self.space, self.id, ctx, &mut self.dissolved_pixels);
-        }
-
+    pub fn despawn_entities(&mut self) {
         self.props.retain(|prop| {prop.despawn == false});
+        self.enemies.retain(|enemy| {enemy.despawn == false});
+        self.dissolved_pixels.retain(|pixel| {pixel.despawn == false});
+    }
 
+    pub fn tick_enemies(&mut self, ctx: &mut ClientTickContext) {
         let mut enemy_iter = SwapIter::new(&mut self.enemies);
-
-        let then = Instant::now();
 
         while enemy_iter.not_done() {
             let (enemies, mut enemy) = enemy_iter.next();
-
-            
-
-            
-
             enemy.client_tick(
                 &mut self.space, 
                 ctx, 
@@ -572,35 +520,36 @@ impl Area {
             );
 
             enemy_iter.restore(enemy);
-
-            
-
-           
         }
+    }
 
+    pub fn tick_props(&mut self, ctx: &mut ClientTickContext) {
+        for prop in &mut self.props {
+            prop.client_tick(&mut self.space, self.id, ctx, &mut self.dissolved_pixels);
+        }
+    }
 
-        //dbg!(then.elapsed());
-
-        
-
-
-        self.enemies.retain(|enemy| {enemy.despawn == false});
-
+    pub fn tick_dissolved_pixels(&mut self, ctx: &mut ClientTickContext) {
         for dissolved_pixel in &mut self.dissolved_pixels {
             dissolved_pixel.client_tick(&mut self.space, ctx);
         }
+    }
 
-        self.dissolved_pixels.retain(|pixel| {pixel.despawn == false});
-
-
+    pub fn tick_bullet_trails(&mut self, ctx: &mut ClientTickContext) {
         for bullet_trail in &mut self.bullet_trails {
             bullet_trail.client_tick(ctx);
         }
+    } 
+    pub fn tick_entities(&mut self, ctx: &mut ClientTickContext) {
+        self.tick_enemies(ctx);
+        self.tick_props(ctx);
+        self.tick_dissolved_pixels(ctx);
+        self.tick_bullet_trails(ctx);
+        self.tick_players(ctx); 
+        self.tick_computer(ctx);
+    }
 
-        if is_key_released(KeyCode::F) {
-            self.spawn_player(ctx);
-        }   
-
+    pub fn tick_players(&mut self, ctx: &mut ClientTickContext) {
         let average_enemy_pos = self.average_enemy_pos(&self.space); 
 
         let mut players_iter = SwapIter::new(&mut self.players);
@@ -627,11 +576,23 @@ impl Area {
 
             players_iter.restore(player);
         }
+    }
 
-
+    pub fn tick_computer(&mut self, ctx: &mut ClientTickContext) {
         if let Some(computer) = &mut self.computer {
             computer.tick(ctx, &mut self.players, &self.space);
         }
+    }
+
+
+    pub fn client_tick(&mut self, ctx: &mut ClientTickContext) {
+        self.space.step(*ctx.last_tick_duration);
+        self.start_ambiance(ctx);
+        self.spawn_player_if_not_in_game(ctx);
+        self.debug_spawn_prop(ctx);
+        self.debug_spawn_enemy(ctx);
+        self.tick_entities(ctx);
+        self.despawn_entities();
     }
 
     pub fn find_prop_mut(&mut self, id: PropId) -> Option<&mut Prop> {

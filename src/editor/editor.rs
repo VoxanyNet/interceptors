@@ -19,7 +19,6 @@ include!(concat!(env!("OUT_DIR"), "/assets.rs"));
 #[derive(Display, PartialEq, Clone, Copy)]
 pub enum EditorMode {
     PrefabPlacement,
-    ClipDefine,
     SetSpawnPoint,
     TilePlacement, 
     Select
@@ -227,7 +226,7 @@ impl AreaEditor {
             textures,
             spawner,
             selected_mode: 0,
-            mode_options: vec![EditorMode::Select, EditorMode::PrefabPlacement, EditorMode::ClipDefine, EditorMode::SetSpawnPoint, EditorMode::TilePlacement],
+            mode_options: vec![EditorMode::Select, EditorMode::PrefabPlacement, EditorMode::SetSpawnPoint, EditorMode::TilePlacement],
             camera_rect,
             cursor: Vec2::ZERO,
             clip_point_1: None,
@@ -389,12 +388,21 @@ impl AreaEditor {
 
     pub fn create_clip(&mut self) {
 
-        if !(self.clip_point_1.is_some() && self.clip_point_2.is_some()) {
+        if !is_key_released(KeyCode::Space) {
             return;
         }
 
-        let rapier_clip_point_1 =  &self.clip_point_1.unwrap();
-        let rapier_clip_point_2 = &self.clip_point_2.unwrap();
+        if self.selection_rect.is_none() {
+            return;
+        }
+
+        let selection_rect = self.selection_rect.unwrap();
+
+        let clip_point_1 =  Vec2::new(selection_rect.x, selection_rect.y);
+        let clip_point_2 = Vec2::new(selection_rect.x + selection_rect.w, selection_rect.y + selection_rect.h);
+
+        let rapier_clip_point_1 = macroquad_to_rapier(&clip_point_1);
+        let rapier_clip_point_2 = macroquad_to_rapier(&clip_point_2);
 
         let x_hx = (rapier_clip_point_2.x - rapier_clip_point_1.x) / 2.;
         let y_hx = (rapier_clip_point_1.y - rapier_clip_point_2.y) / 2.;
@@ -411,7 +419,9 @@ impl AreaEditor {
         self.area.clips.push(
             Clip {
                 collider_handle: collider,
-                rigid_body_handle: rigid_body
+                rigid_body_handle: rigid_body,
+                context_menu_data: None,
+                despawn: false
             }
         );
 
@@ -581,27 +591,6 @@ impl AreaEditor {
         self.spawner.tick(&mut self.area, &self.camera_rect, self.cursor, rapier_cursor, self.input_context);
     }
 
-    fn mode_clip_define_tick(&mut self) {
-        if is_key_down(KeyCode::LeftControl) {
-            if is_key_released(KeyCode::Space) {
-                self.create_clip();
-            }
-        }
-
-        if !is_key_released(KeyCode::Space) {
-            return;
-        }
-
-        if self.clip_point_1.is_none() {
-            self.clip_point_1 = Some(self.rapier_cursor())
-        } else if self.clip_point_1.is_some() && self.clip_point_2.is_none() {
-            self.clip_point_2 = Some(self.rapier_cursor())
-        } else {
-            self.clip_point_1 = Some(self.rapier_cursor());
-
-            self.clip_point_2 = None
-        }
-    }
 
     fn mode_set_spawnpoint_tick(&mut self) {
 
@@ -713,7 +702,6 @@ impl AreaEditor {
     pub fn editor_mode_tick(&mut self) {
         match self.current_mode() {
             EditorMode::PrefabPlacement => self.mode_prefab_placement_tick(),
-            EditorMode::ClipDefine => self.mode_clip_define_tick(),
             EditorMode::SetSpawnPoint => self.mode_set_spawnpoint_tick(),
             EditorMode::TilePlacement => self.mode_tile_placement_tick(),
             EditorMode::Select => self.mode_select_tick(),
@@ -726,9 +714,7 @@ impl AreaEditor {
 
     pub fn step_space(&mut self) {
 
-        if self.simulate_space {
-            self.area.space.step(web_time::Duration::from_secs_f64(0.016));
-        }
+        self.area.space.step(web_time::Duration::from_secs_f64(0.016));
         
     }
     pub fn tick(&mut self) {    
@@ -742,8 +728,11 @@ impl AreaEditor {
         self.update_camera();
 
         for decoration in &mut self.area.decorations {
-            decoration.editor_tick();
+            decoration.editor_tick(&self.area.space);
         }
+
+        self.create_clip();
+
         
 
         if is_key_down(KeyCode::LeftControl) {
