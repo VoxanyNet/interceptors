@@ -511,9 +511,7 @@ impl AreaEditor {
 
         self.area.draw(&mut self.textures, &self.camera_rect, &self.prefab_data, &camera, &self.fonts, self.start.elapsed()).await;
 
-        for decoration in &self.area.decorations {
-            decoration.editor_draw();
-        }
+        
 
         let draw_context = DrawContext {
             space: &self.area.space,
@@ -542,6 +540,10 @@ impl AreaEditor {
 
         set_default_camera();
         self.ui.draw(&self.textures);
+
+        for decoration in &self.area.decorations {
+            decoration.editor_draw();
+        }
 
         if self.current_mode() == EditorMode::PrefabPlacement {
             self.spawner.draw_menu(&self.camera_rect, &mut self.textures, self.cursor).await;
@@ -728,7 +730,7 @@ impl AreaEditor {
         self.update_camera();
 
         for decoration in &mut self.area.decorations {
-            decoration.editor_tick(&self.area.space);
+            decoration.editor_tick(&self.area.space, &self.camera_rect);
         }
 
         self.create_clip();

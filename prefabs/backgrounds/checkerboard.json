@@ -1,0 +1,13 @@
+{
+  "repeat": true,
+  "pos": [
+    0.0,
+    -1000.0
+  ],
+  "sprite_path": "assets/checkerboard.png",
+  "size": [
+    1000.0,
+    650.0
+  ],
+  "parallax": 0.25
+}

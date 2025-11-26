@@ -3,22 +3,56 @@
     100.0,
     600.0
   ],
-  "decorations": [],
+  "decorations": [
+    {
+      "pos": [
+        828.2395,
+        132.18533
+      ],
+      "size": [
+        1631.0,
+        780.0
+      ],
+      "sprite_path": "assets/house/front.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 1
+    },
+    {
+      "pos": [
+        828.2048,
+        132.51282
+      ],
+      "size": [
+        1631.0,
+        780.0
+      ],
+      "sprite_path": "assets/house/back.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    }
+  ],
   "clips": [],
   "players": [],
-  "backgrounds": [],
+  "backgrounds": [
+    {
+      "repeat": true,
+      "pos": [
+        474.0,
+        204.99998
+      ],
+      "sprite_path": "assets/checkerboard.png",
+      "size": [
+        1000.0,
+        650.0
+      ],
+      "parallax": 0.25
+    }
+  ],
   "generic_physics_props": [],
   "enemies": [],
-  "computer_pos": {
-    "rotation": [
-      1.0,
-      0.0
-    ],
-    "translation": [
-      650.0,
-      -6233559.5
-    ]
-  },
+  "computer_pos": null,
   "dropped_items": [],
   "max_camera_y": 720.0,
   "minimum_camera_width": 1200.0,
@@ -26,6 +60,5 @@
   "despawn_y": -200.0,
   "master": null,
   "ambiance": [],
-  "tiles": [
-  ]
+  "tiles": []
 }

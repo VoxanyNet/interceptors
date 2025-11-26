@@ -46,10 +46,11 @@ impl Drawable for Background {
 
         //set_default_camera();
 
+        //draw_context.camera_rect.y - texture.height(), 
         draw_texture_ex(
             texture, 
             self.pos.x + draw_context.camera_rect.x * self.parallax, 
-            draw_context.camera_rect.y - texture.height(), 
+            self.pos.y * self.parallax, 
             WHITE, 
             DrawTextureParams {
                 dest_size: Some(self.size),
@@ -63,10 +64,12 @@ impl Drawable for Background {
 
         if self.repeat {
             for x in -20..20 {
-                draw_texture_ex(
+
+                for y in -5..5 {
+                    draw_texture_ex(
                     texture, 
                     (self.pos.x + (x as f32 * self.size.x)) + draw_context.camera_rect.x * self.parallax, 
-                    draw_context.camera_rect.y - texture.height(), 
+                    (self.pos.y + (y as f32 * self.size.y)) + draw_context.camera_rect.y * self.parallax, 
                     WHITE, 
                     DrawTextureParams {
                         dest_size: Some(self.size),
@@ -77,6 +80,10 @@ impl Drawable for Background {
                         pivot: None,
                     }
                 );
+                }
+                
+
+                
             }
         }
 

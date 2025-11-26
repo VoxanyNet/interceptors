@@ -2,7 +2,7 @@ use std::{fs::{self, File}, process::Command, time::SystemTime};
 
 use macroquad::{color::{DARKGRAY, GRAY, WHITE}, input::{is_mouse_button_released, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle, text::draw_text};
 
-use crate::{button::Button, space::Space};
+use crate::{ClientTickContext, button::Button, mouse_world_pos, space::Space};
 
 // implementors of this trait can expose their variables to be edited by the context menu 
 pub trait EditorContextMenu {
@@ -49,7 +49,7 @@ pub trait EditorContextMenu {
                 if entry.button.released {
                     match entry.field_type {
                         EntryType::IncreaseLayer => *self.layer().unwrap() += 1,
-                        EntryType::DecreaseLayer => *self.layer().unwrap() -= 1,
+                        EntryType::DecreaseLayer => * self.layer().unwrap() = self.layer().unwrap().saturating_sub(1),
                         EntryType::DataEditor => self.open_data_editor(),
                     }
                 }
@@ -96,14 +96,14 @@ pub trait EditorContextMenu {
             None => {},
         }
     }
-    fn update_menu(&mut self, space: &Space) {
+    fn update_menu(&mut self, space: &Space, camera_rect: &Rect) {
 
-        if is_mouse_button_released(macroquad::input::MouseButton::Right) && self.object_bounding_box(Some(space)).contains(mouse_position().into()) {
+        if is_mouse_button_released(macroquad::input::MouseButton::Right) && self.object_bounding_box(Some(space)).contains(mouse_world_pos(camera_rect)) {
             println!("open");
             self.open_menu(mouse_position().into());
         }
 
-        if (is_mouse_button_released(macroquad::input::MouseButton::Left) || is_mouse_button_released(macroquad::input::MouseButton::Right)) && !self.object_bounding_box(Some(space)).contains(mouse_position().into()) {
+        if (is_mouse_button_released(macroquad::input::MouseButton::Left) || is_mouse_button_released(macroquad::input::MouseButton::Right)) && !self.object_bounding_box(Some(space)).contains(mouse_world_pos(camera_rect)) {
             println!("close");
             self.close_menu();
         }
@@ -206,6 +206,9 @@ pub struct EditorContextMenuData {
 
 impl EditorContextMenuData {
     pub fn draw(&self) {
+
+        dbg!("drawing");
+
         for entry in &self.entries {
 
             let rect = entry.button.rect;
