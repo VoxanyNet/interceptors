@@ -15,6 +15,7 @@ pub mod spawner_category;
 pub mod selectable_object_id;
 pub mod editor_mode_select_ui;
 pub mod editor_ui_tick_context;
+pub mod layer_toggle_ui;
 
 pub fn list_dir_entries<P: AsRef<Path>>(path: P) -> std::io::Result<Vec<String>> {
     let path = path.as_ref(); // keep the original path reference

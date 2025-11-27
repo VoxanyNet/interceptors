@@ -31,15 +31,17 @@ pub trait EditorContextMenu {
     fn open_data_editor(&mut self) {
         let json_string = self.data_editor_export().unwrap();
 
-        fs::write("./data_editor_temp.json", json_string).unwrap();
+        fs::write("data_editor_temp.json", json_string).unwrap();
 
         let menu_data = self.context_menu_data_mut().as_mut().unwrap();
 
-        menu_data.data_editor_last_edit = Some(fs::metadata("./data_editor_temp.json").unwrap().created().unwrap());
+        menu_data.data_editor_last_edit = Some(fs::metadata("data_editor_temp.json").unwrap().created().unwrap());
 
-        Command::new("code")
+        Command::new("powershell")
             //.arg("--new-window")
-            .arg("./data_editor_temp.json")
+            .arg("-Command")
+            .arg("code")
+            .arg("data_editor_temp.json")
             .spawn().unwrap();
     }
 
@@ -98,15 +100,19 @@ pub trait EditorContextMenu {
     }
     fn update_menu(&mut self, space: &Space, camera_rect: &Rect) {
 
+        
+        if (is_mouse_button_released(macroquad::input::MouseButton::Left) || is_mouse_button_released(macroquad::input::MouseButton::Right)) && !self.menu_rect().contains(mouse_world_pos(camera_rect)) {
+            println!("close");
+            self.close_menu();
+        }
+        
         if is_mouse_button_released(macroquad::input::MouseButton::Right) && self.object_bounding_box(Some(space)).contains(mouse_world_pos(camera_rect)) {
             println!("open");
             self.open_menu(mouse_position().into());
         }
 
-        if (is_mouse_button_released(macroquad::input::MouseButton::Left) || is_mouse_button_released(macroquad::input::MouseButton::Right)) && !self.object_bounding_box(Some(space)).contains(mouse_world_pos(camera_rect)) {
-            println!("close");
-            self.close_menu();
-        }
+        
+        
 
         self.apply_data_editor_updates();
 
@@ -207,7 +213,6 @@ pub struct EditorContextMenuData {
 impl EditorContextMenuData {
     pub fn draw(&self) {
 
-        dbg!("drawing");
 
         for entry in &self.entries {
 

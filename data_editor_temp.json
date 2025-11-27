@@ -1,14 +1,14 @@
 {
   "pos": [
-    597.0,
-    128.0
+    -167.55493,
+    210.134
   ],
   "size": [
-    122.0,
-    88.0
+    1631.0,
+    780.0
   ],
-  "sprite_path": "assets/bridge_center.png",
+  "sprite_path": "assets/house/front.png",
   "animated_sprite_paths": null,
   "frame_duration": null,
-  "layer": 0
+  "layer": 1
 }

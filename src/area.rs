@@ -168,42 +168,117 @@ impl Area {
         }
     }
 
-    pub async fn draw(&mut self, textures: &mut TextureLoader, camera_rect: &Rect, prefabs: &Prefabs, camera: &Camera2D, fonts: &FontLoader, elapsed: web_time::Duration) {
-
-        let mut drawable_objects: Vec<&mut dyn Drawable> = vec![];
+    pub fn get_drawable_objects_self(&self) -> Vec<&dyn Drawable> {
+        // there are some situations in which we need to maintain ownership of self so thats why these methods are split
+        Self::get_drawable_objects(
+            &self.backgrounds, 
+            &self.decorations, 
+            &self.props, 
+            &self.dropped_items, 
+            &self.computer, 
+            &self.players, 
+            &self.enemies, 
+            &self.dissolved_pixels, 
+            &self.bullet_trails
+        )
+    }
+    pub fn get_drawable_objects<'a> (
+        backgrounds: &'a Vec<Background>,
+        decorations: &'a Vec<Decoration>,
+        props: &'a Vec<Prop>,
+        dropped_items: &'a Vec<DroppedItem>,
+        computer: &'a Option<Computer>,
+        players: &'a Vec<Player>,
+        enemies: &'a Vec<Enemy>,
+        dissolved_pixels: &'a Vec<DissolvedPixel>,
+        bullet_trails: &'a Vec<BulletTrail>
+    ) -> Vec<&'a dyn Drawable> {
+        let mut drawable_objects: Vec<&dyn Drawable> = vec![];
         
-        for background in &mut self.backgrounds {
+        for background in backgrounds {
             drawable_objects.push(background);
         }
-        for decoration in &mut self.decorations {
+        for decoration in decorations {
             drawable_objects.push(decoration);
         }
-        for prop in &mut self.props {
+        for prop in props {
             drawable_objects.push(prop);
         }
-        for dropped_item in &mut self.dropped_items {
+        for dropped_item in dropped_items {
             drawable_objects.push(dropped_item);
         }
-        if let Some(computer) = &mut self.computer {
+        if let Some(computer) = computer {
             drawable_objects.push(computer);
         }
-        for player in &mut self.players {
+        for player in players {
             drawable_objects.push(player);
         }
-        for enemy in &mut self.enemies {
+        for enemy in enemies {
             drawable_objects.push(enemy);
         }
-        for pixel in &mut self.dissolved_pixels {
+        for pixel in dissolved_pixels {
             drawable_objects.push(pixel);
         }
-        for bullet_trail in &mut self.bullet_trails {
+        for bullet_trail in bullet_trails {
             drawable_objects.push(bullet_trail);
         }
 
+        drawable_objects
+    }
+    pub fn get_drawable_objects_mut<'a> (
+        decorations: &'a mut Vec<Decoration>,
+        props: &'a mut Vec<Prop>,
+        dropped_items: &'a mut Vec<DroppedItem>,
+        computer: &'a mut Option<Computer>,
+        players: &'a mut Vec<Player>,
+        enemies: &'a mut Vec<Enemy>,
+        dissolved_pixels: &'a mut Vec<DissolvedPixel>,
+        bullet_trails: &'a mut Vec<BulletTrail>
+    ) -> Vec<&'a mut dyn Drawable> {
+        let mut drawable_objects: Vec<&mut dyn Drawable> = vec![];
         
-        drawable_objects.sort_by_key(|o| o.draw_layer());
+        for decoration in decorations {
+            drawable_objects.push(decoration);
+        }
+        for prop in props {
+            drawable_objects.push(prop);
+        }
+        for dropped_item in dropped_items {
+            drawable_objects.push(dropped_item);
+        }
+        if let Some(computer) = computer {
+            drawable_objects.push(computer);
+        }
+        for player in players {
+            drawable_objects.push(player);
+        }
+        for enemy in enemies {
+            drawable_objects.push(enemy);
+        }
+        for pixel in dissolved_pixels {
+            drawable_objects.push(pixel);
+        }
+        for bullet_trail in bullet_trails {
+            drawable_objects.push(bullet_trail);
+        }
 
-        
+        drawable_objects
+    }
+
+    pub async fn draw(
+        &mut self, 
+        textures: &mut TextureLoader, 
+        camera_rect: &Rect, 
+        prefabs: &Prefabs, 
+        camera: &Camera2D, 
+        fonts: &FontLoader, 
+        elapsed: web_time::Duration,
+        exclude_layers: Vec<u32>
+    ) {
+
+        let mut drawable_objects = Self::get_drawable_objects_mut( &mut self.decorations, &mut self.props, &mut self.dropped_items, &mut self.computer, &mut self.players, &mut self.enemies, &mut self.dissolved_pixels, &mut self.bullet_trails);
+
+        drawable_objects.sort_by_key(|o| o.draw_layer());
 
         let draw_context = DrawContext {
             space: &self.space,
@@ -216,21 +291,18 @@ impl Area {
             default_camera: camera,
         };
 
-        for object in drawable_objects {
-            object.draw(&draw_context).await;
+        // backgrounds are handled seperately because they are always drawn below everything and dont have a layer
+        for background in &mut self.backgrounds {
+            background.draw(&draw_context).await
         }
 
+        for object in drawable_objects {
 
-        
-        // for (x, row) in self.tiles.iter().enumerate() {
-        //     for (y, tile) in row.iter().enumerate() {
-
-        //         if let Some(tile) = tile {
-        //             tile.draw(textures, Vector2::new(x * 50, y * 50))
-        //         }
-                
-        //     }
-        // }
+            if exclude_layers.contains(&object.draw_layer()) {
+                continue;;
+            }
+            object.draw(&draw_context).await;
+        }
 
 
 

@@ -38,7 +38,7 @@ impl World {
 
 
         for area in &mut self.areas {
-            area.draw(textures, camera_rect, prefabs, camera, fonts, elapsed).await
+            area.draw(textures, camera_rect, prefabs, camera, fonts, elapsed, vec![]).await
         }
     } 
 }

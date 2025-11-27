@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}, str::FromStr, time::Instant};
 
-use interceptors_lib::{Prefabs, area::{Area, AreaSave}, background::{Background, BackgroundSave}, button::Button, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, drawable::DrawContext, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::{Tile, TileId, TileSave}};
+use interceptors_lib::{Prefabs, area::{Area, AreaSave}, background::{Background, BackgroundSave}, button::Button, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, drawable::DrawContext, editor_context_menu::EditorContextMenu, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::{Tile, TileId, TileSave}};
 use ldtk2::When;
 use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, LIGHTGRAY, RED, WHITE}, input::{self, KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_position, mouse_wheel}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, texture::{DrawTextureParams, draw_texture_ex}, window::{next_frame, screen_height, screen_width}};
 use nalgebra::{vector, Isometry, Isometry2, Vector2};
@@ -8,7 +8,7 @@ use rapier2d::{math::Point, parry::shape::Cuboid, prelude::{ColliderBuilder, Poi
 use serde::{de, Deserialize, Serialize};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use crate::{editor_input_context::EditorInputContext, editor_mode_select_ui::EditorModeSelectUI, editor_ui_tick_context::EditorUITickContext, selectable_object_id::{self, SelectableObject, SelectableObjectId}, spawner::Spawner};
+use crate::{editor_input_context::EditorInputContext, editor_mode_select_ui::EditorModeSelectUI, editor_ui_tick_context::EditorUITickContext, layer_toggle_ui::LayerToggleUI, selectable_object_id::{self, SelectableObject, SelectableObjectId}, spawner::Spawner};
 
 include!(concat!(env!("OUT_DIR"), "/prefabs.rs"));
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
@@ -41,6 +41,7 @@ pub struct AreaEditor {
     start: web_time::Instant,
     selected_objects: Vec<SelectableObjectId>,
     ui: EditorModeSelectUI,
+    layer_toggle_ui: LayerToggleUI,
     input_context: EditorInputContext,
     selection_rect: Option<Rect>,
     selected_released_flag: bool,
@@ -243,7 +244,8 @@ impl AreaEditor {
             selected_released_flag: false,
             last_mouse_pos: Vec2::ZERO,
             dragging_object: false,
-            simulate_space: false
+            simulate_space: false,
+            layer_toggle_ui: LayerToggleUI::new()
         }
     }
 
@@ -509,7 +511,7 @@ impl AreaEditor {
 
         set_camera(&camera);
 
-        self.area.draw(&mut self.textures, &self.camera_rect, &self.prefab_data, &camera, &self.fonts, self.start.elapsed()).await;
+        self.area.draw(&mut self.textures, &self.camera_rect, &self.prefab_data, &camera, &self.fonts, self.start.elapsed(), self.layer_toggle_ui.get_disabled_layers()).await;
 
         
 
@@ -540,6 +542,7 @@ impl AreaEditor {
 
         set_default_camera();
         self.ui.draw(&self.textures);
+        self.layer_toggle_ui.draw(&self.fonts);
 
         for decoration in &self.area.decorations {
             decoration.editor_draw();
@@ -719,19 +722,25 @@ impl AreaEditor {
         self.area.space.step(web_time::Duration::from_secs_f64(0.016));
         
     }
+
+    pub fn update_context_menus(&mut self) {
+        for decoration in &mut self.area.decorations {
+            decoration.update_menu(&self.area.space, &self.camera_rect);
+        }
+    }
     pub fn tick(&mut self) {    
 
         self.update_input_context();
         self.ui.update(&mut EditorUITickContext { selected_mode: &mut self.selected_mode, input_context: self.input_context, simulate_space: &mut self.simulate_space });
+        self.layer_toggle_ui.update(self.area.get_drawable_objects_self());
         self.editor_mode_tick();
         
         self.update_cursor();
         self.change_mode();
         self.update_camera();
+        self.update_context_menus();
 
-        for decoration in &mut self.area.decorations {
-            decoration.editor_tick(&self.area.space, &self.camera_rect);
-        }
+
 
         self.create_clip();
 
