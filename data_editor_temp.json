@@ -1,14 +1,14 @@
 {
   "pos": [
-    -167.55493,
-    210.134
+    828.2048,
+    132.51282
   ],
   "size": [
     1631.0,
     780.0
   ],
-  "sprite_path": "assets/house/front.png",
+  "sprite_path": "assets/house/back.png",
   "animated_sprite_paths": null,
   "frame_duration": null,
-  "layer": 1
+  "layer": 0
 }

@@ -1,8 +1,8 @@
-use std::{fs::{self, File}, process::Command, time::SystemTime};
+use std::{env::temp_dir, fs::{self, File}, path::{Path, PathBuf}, process::Command, str::FromStr, time::SystemTime};
 
 use macroquad::{color::{DARKGRAY, GRAY, WHITE}, input::{is_mouse_button_released, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle, text::draw_text};
 
-use crate::{ClientTickContext, button::Button, mouse_world_pos, space::Space};
+use crate::{ClientTickContext, button::Button, mouse_world_pos, space::Space, uuid_string};
 
 // implementors of this trait can expose their variables to be edited by the context menu 
 pub trait EditorContextMenu {
@@ -23,6 +23,7 @@ pub trait EditorContextMenu {
     }
 
     fn draw_editor_context_menu(&self) {
+
         if let Some(menu) = self.context_menu_data() {
             menu.draw();
         }
@@ -31,17 +32,19 @@ pub trait EditorContextMenu {
     fn open_data_editor(&mut self) {
         let json_string = self.data_editor_export().unwrap();
 
-        fs::write("data_editor_temp.json", json_string).unwrap();
-
         let menu_data = self.context_menu_data_mut().as_mut().unwrap();
 
-        menu_data.data_editor_last_edit = Some(fs::metadata("data_editor_temp.json").unwrap().created().unwrap());
+
+        fs::write(&menu_data.data_editor_file_path, json_string).unwrap();
+
+        
+        menu_data.data_editor_last_edit = Some(fs::metadata(&menu_data.data_editor_file_path).unwrap().created().unwrap());
 
         Command::new("powershell")
             //.arg("--new-window")
             .arg("-Command")
             .arg("code")
-            .arg("data_editor_temp.json")
+            .arg(&menu_data.data_editor_file_path)
             .spawn().unwrap();
     }
 
@@ -76,18 +79,20 @@ pub trait EditorContextMenu {
 
                     Some(last_edit) => {
 
-                        if fs::metadata("./data_editor_temp.json").unwrap().modified().unwrap() > last_edit {
+                    
+
+                        if fs::metadata(&data.data_editor_file_path).unwrap().modified().unwrap() > last_edit {
 
                             println!("object updated!");
 
                             // need to preserve the context menu data lololol!
                             let old_editor_context_menu_data = self.context_menu_data().as_ref().unwrap().clone();
 
-                            self.data_editor_import(fs::read_to_string("./data_editor_temp.json").unwrap());
+                            self.data_editor_import(fs::read_to_string(&old_editor_context_menu_data.data_editor_file_path).unwrap());
 
-                            *self.context_menu_data_mut() = Some(old_editor_context_menu_data);
+                            *self.context_menu_data_mut() = Some(old_editor_context_menu_data.clone());
 
-                            self.context_menu_data_mut().as_mut().unwrap().data_editor_last_edit = Some(fs::metadata("./data_editor_temp.json").unwrap().modified().unwrap());
+                            self.context_menu_data_mut().as_mut().unwrap().data_editor_last_edit = Some(fs::metadata(old_editor_context_menu_data.data_editor_file_path).unwrap().modified().unwrap());
                         }
                     },
                     // object is not open in editor
@@ -101,7 +106,8 @@ pub trait EditorContextMenu {
     fn update_menu(&mut self, space: &Space, camera_rect: &Rect) {
 
         
-        if (is_mouse_button_released(macroquad::input::MouseButton::Left) || is_mouse_button_released(macroquad::input::MouseButton::Right)) && !self.menu_rect().contains(mouse_world_pos(camera_rect)) {
+        
+        if (is_mouse_button_released(macroquad::input::MouseButton::Left) || is_mouse_button_released(macroquad::input::MouseButton::Right)) && !self.contains_point(mouse_position().into()) {
             println!("close");
             self.close_menu();
         }
@@ -124,16 +130,28 @@ pub trait EditorContextMenu {
 
     }
 
-    fn menu_rect(&mut self) -> Rect {
+    fn menu_rect(&self) -> Rect {
 
         let mut rect = Rect::default();
-        if let Some(data) = self.context_menu_data_mut() {
+        if let Some(data) = self.context_menu_data() {
             for entry in &data.entries {
                 rect = rect.combine_with(entry.button.rect)
             }
         }
 
         rect
+    }
+
+    fn contains_point(&self, point: Vec2) -> bool {
+        if let Some(data) = self.context_menu_data() {
+            for entry in &data.entries {
+                if entry.button.rect.contains(point) {
+                    return true
+                }
+            }
+        }
+
+        false
     }
 
     fn data_editor_export(&self) -> Option<String> {
@@ -191,7 +209,7 @@ pub trait EditorContextMenu {
         EditorContextMenuData {
             entries,
             data_editor_last_edit: None,
-            
+            data_editor_file_path: temp_dir().join("editor_".to_string() + &uuid_string() + ".json").into()
         }
     }
     fn context_menu_data_mut(&mut self) -> &mut Option<EditorContextMenuData>;
@@ -207,6 +225,7 @@ pub trait EditorContextMenu {
 pub struct EditorContextMenuData {
     entries: Vec<MenuEntry>,
     pub data_editor_last_edit: Option<SystemTime>, // this also indicates that the object is open in the data editor at all
+    pub data_editor_file_path: PathBuf
 
 }
 
@@ -227,6 +246,8 @@ impl EditorContextMenuData {
             draw_text(&entry.field_type.to_string(), rect.x, rect.y + 12., 20., WHITE);
 
         }
+
+        
     }
 }
 
