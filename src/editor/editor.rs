@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}, str::FromStr, time::Instant};
 
-use interceptors_lib::{Prefabs, area::{Area, AreaSave}, background::{Background, BackgroundSave}, button::Button, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, drawable::DrawContext, editor_context_menu::EditorContextMenu, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::{Tile, TileId, TileSave}};
+use interceptors_lib::{Prefabs, area::{Area, AreaSave}, background::{Background, BackgroundSave}, button::Button, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, drawable::DrawContext, editor_context_menu::EditorContextMenu, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, space::Space, texture_loader::TextureLoader, tile::{Tile, TileId, TileSave}};
 use ldtk2::When;
 use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, LIGHTGRAY, RED, WHITE}, input::{self, KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_position, mouse_wheel}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, texture::{DrawTextureParams, draw_texture_ex}, window::{next_frame, screen_height, screen_width}};
 use nalgebra::{vector, Isometry, Isometry2, Vector2};
@@ -8,7 +8,7 @@ use rapier2d::{math::Point, parry::shape::Cuboid, prelude::{ColliderBuilder, Poi
 use serde::{de, Deserialize, Serialize};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use crate::{editor_input_context::EditorInputContext, editor_mode_select_ui::EditorModeSelectUI, editor_ui_tick_context::EditorUITickContext, layer_toggle_ui::LayerToggleUI, selectable_object_id::{self, SelectableObject, SelectableObjectId}, spawner::Spawner};
+use crate::{editor_input_context::EditorInputContext, editor_mode_select_ui::EditorModeSelectUI, editor_ui_tick_context::EditorUITickContext, layer_toggle_ui::LayerToggleUI, spawner::Spawner};
 
 include!(concat!(env!("OUT_DIR"), "/prefabs.rs"));
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
@@ -91,8 +91,15 @@ impl AreaEditor {
             self.selected_objects.clear();
         }
 
-        if let Some(hovered_object) = self.get_hovered_object() {
-            self.selected_objects.push(hovered_object);
+        if let Some(hovered_object_id) = self.get_hovered_object() {
+
+            let hovered_object = self.area.get_selectable_object_mut(hovered_object_id).unwrap();
+
+            if self.layer_toggle_ui.get_disabled_layers().contains(&hovered_object.get_layer()) {
+                return;
+            }
+
+            self.selected_objects.push(hovered_object_id);
         }
 
         
@@ -115,10 +122,10 @@ impl AreaEditor {
         let delta = mouse_world_pos(&self.camera_rect) - self.last_mouse_pos;
 
         for selected_object_id in &self.selected_objects {
-            if let Some(selected_object) = selected_object_id.get_object(&mut self.area.props, &mut self.area.tiles, &mut self.area.decorations) {
+            if let Some(selected_object) = selected_object_id.get_object(&mut self.area.props, &mut self.area.tiles, &mut self.area.decorations, &mut self.area.clips) {
                 match selected_object {
                     SelectableObject::Decoration(decoration) => {
-                        
+    
                         decoration.pos += delta;
                     },
                     SelectableObject::Tile(tile) => {
@@ -126,6 +133,14 @@ impl AreaEditor {
                     },
                     SelectableObject::Prop(prop) => {
                         let body = self.area.space.rigid_body_set.get_mut(prop.rigid_body_handle).unwrap();
+
+                        body.set_position(
+                            vector![body.translation().x + delta.x, body.translation().y + delta.y].into(), 
+                            true
+                        );
+                    },
+                    SelectableObject::Clip(clip) => {
+                        let body = self.area.space.rigid_body_set.get_mut(clip.rigid_body_handle).unwrap();
 
                         body.set_position(
                             vector![body.translation().x + delta.x, body.translation().y + delta.y].into(), 
@@ -141,38 +156,40 @@ impl AreaEditor {
 
     pub fn highlight_object(&mut self, item: SelectableObjectId) {
 
+        let object = item.get_object(&mut self.area.props, &mut self.area.tiles, &mut self.area.decorations, &mut self.area.clips).unwrap();
 
-        match item {
-            SelectableObjectId::Decoration(decoration_index) => {
-                let decoration = self.area.decorations.get(decoration_index).unwrap();
+        match object {
+            SelectableObject::Decoration(decoration) => {
+
 
                 let decoration_rect = Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y);
 
                 draw_rectangle_lines(decoration_rect.x, decoration_rect.y, decoration_rect.w, decoration_rect.h, 3., WHITE);
             },
 
-            SelectableObjectId::Tile(tile_index) => {
-                let tile = self.area.get_tile_index(tile_index);
+            SelectableObject::Tile(tile) => {
 
+                // the tile itself does not contain its own position so we just do this
+                let tile_index = if let SelectableObjectId::Tile(tile_index) = item {
+                    tile_index
+                } else {
+                    panic!("failed to get tile positon")
+                };
 
+                let macroquad_pos = rapier_to_macroquad(Vector2::new(tile_index.x as f32 * 50., tile_index.y as f32 * 50.));
 
-                if let Some(tile) = tile {
+                let tile_rect = Rect::new(
+                    macroquad_pos.x - 25., 
+                    macroquad_pos.y - 25., 
+                    50., 
+                    50.
+                );
 
-                    let macroquad_pos = rapier_to_macroquad(Vector2::new(tile_index.x as f32 * 50., tile_index.y as f32 * 50.));
+                draw_rectangle_lines(tile_rect.x, tile_rect.y, tile_rect.w, tile_rect.h, 3., WHITE);
 
-                    let tile_rect = Rect::new(
-                        macroquad_pos.x - 25., 
-                        macroquad_pos.y - 25., 
-                        50., 
-                        50.
-                    );
-
-                    draw_rectangle_lines(tile_rect.x, tile_rect.y, tile_rect.w, tile_rect.h, 3., WHITE);
-                }
             },
 
-            SelectableObjectId::Prop(prop_id) => {
-                let prop = self.area.props.iter().find(|prop| {prop_id == prop.id}).unwrap();
+            SelectableObject::Prop(prop) => {
 
                 let prop_pos = self.area.space.rigid_body_set.get(prop.rigid_body_handle).unwrap().position();
 
@@ -184,6 +201,20 @@ impl AreaEditor {
 
                 draw_rectangle_lines(prop_rect.x, prop_rect.y, prop_rect.w, prop_rect.h, 3., WHITE);
             },  
+            SelectableObject::Clip(clip) => {
+                
+                let clip_pos = self.area.space.rigid_body_set.get(clip.rigid_body_handle).unwrap().position();
+
+                let shape = self.area.space.collider_set.get(clip.collider_handle).unwrap().shape().as_cuboid().unwrap();
+
+                let macroquad_clip_pos = rapier_to_macroquad(clip_pos.translation.vector);
+
+                let clip_rect = Rect::new(macroquad_clip_pos.x - shape.half_extents.x, macroquad_clip_pos.y - shape.half_extents.y,  shape.half_extents.x * 2., shape.half_extents.y * 2.);
+
+                draw_rectangle_lines(clip_rect.x, clip_rect.y, clip_rect.w, clip_rect.h, 3., WHITE);
+
+
+            }
         }
     }
 
@@ -295,8 +326,16 @@ impl AreaEditor {
     }
 
     pub fn highlight_hovered_object(&mut self) {
-        if let Some(hovered_object) = self.get_hovered_object() {
-            self.highlight_object(hovered_object);
+        if let Some(hovered_object_id) = self.get_hovered_object() {
+
+            let hovered_object = self.area.get_selectable_object_mut(hovered_object_id).unwrap();
+
+            if self.layer_toggle_ui.get_disabled_layers().contains(
+                &hovered_object.get_layer()
+            ) {
+                return;
+            }
+            self.highlight_object(hovered_object_id);
         }
     }
 
@@ -423,7 +462,8 @@ impl AreaEditor {
                 collider_handle: collider,
                 rigid_body_handle: rigid_body,
                 context_menu_data: None,
-                despawn: false
+                despawn: false,
+                layer: self.layer_toggle_ui.active_layer
             }
         );
 
@@ -542,7 +582,7 @@ impl AreaEditor {
 
         set_default_camera();
         self.ui.draw(&self.textures);
-        self.layer_toggle_ui.draw(&self.fonts);
+        self.layer_toggle_ui.draw(&self.fonts, &self.textures);
 
         for decoration in &self.area.decorations {
             decoration.editor_draw();
@@ -691,10 +731,20 @@ impl AreaEditor {
     fn select_objects_in_rectangle(&mut self) {
 
         let mut new_selected_objects = Vec::new();
-        for selected_object in self.get_objects_in_selection_rectangle() {
-            if !self.selected_objects.contains(&selected_object) {
-                new_selected_objects.push(selected_object);
+
+        for selected_object_id in self.get_objects_in_selection_rectangle() {
+
+            if self.selected_objects.contains(&selected_object_id) {
+                continue;
             }
+
+            let selected_object = self.area.get_selectable_object_mut(selected_object_id).unwrap();
+
+            if self.layer_toggle_ui.get_disabled_layers().contains(&selected_object.get_layer()) {
+                continue;
+            }
+            
+            new_selected_objects.push(selected_object_id);
         }
 
 

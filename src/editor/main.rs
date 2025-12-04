@@ -12,7 +12,6 @@ pub mod editor_input_context;
 pub mod spawner;
 pub mod spawner_menu;
 pub mod spawner_category;
-pub mod selectable_object_id;
 pub mod editor_mode_select_ui;
 pub mod editor_ui_tick_context;
 pub mod layer_toggle_ui;

@@ -1,11 +1,12 @@
 use std::{path::{Path, PathBuf}, str::FromStr};
 
-use interceptors_lib::{button::Button, drawable::Drawable, font_loader::FontLoader};
-use macroquad::{color::{GRAY, LIGHTGRAY, WHITE}, input::mouse_position, math::{Rect, Vec2}, shapes::draw_rectangle, text::{TextParams, draw_text, draw_text_ex}, window::{screen_height, screen_width}};
+use interceptors_lib::{button::Button, drawable::Drawable, font_loader::FontLoader, texture_loader::TextureLoader};
+use macroquad::{color::{GRAY, LIGHTGRAY, WHITE}, input::mouse_position, math::{Rect, Vec2}, shapes::draw_rectangle, text::{TextParams, draw_text, draw_text_ex}, texture::draw_texture, window::{screen_height, screen_width}};
 
 struct LayerToggle {
     layer: u32,
-    button: Button,
+    toggle_button: Button, // toggle visibility
+    pub active_button: Button, // toggle as active layer
     enabled: bool
 }
 
@@ -17,12 +18,12 @@ impl LayerToggle {
             false => GRAY,
         };
 
-        draw_rectangle(self.button.rect.x, self.button.rect.y, self.button.rect.w, self.button.rect.h, color);
+        draw_rectangle(self.toggle_button.rect.x, self.toggle_button.rect.y, self.toggle_button.rect.w, self.toggle_button.rect.h, color);
 
         draw_text_ex(
             &format!("{}", self.layer), 
-            self.button.rect.x + 16., 
-            self.button.rect.y + 16., 
+            self.toggle_button.rect.x + 16., 
+            self.toggle_button.rect.y + 16., 
             TextParams {
                 font: Some(&fonts.get(PathBuf::from_str("assets/fonts/CutePixel.ttf").unwrap())),
                 font_size: 20,
@@ -35,6 +36,7 @@ impl LayerToggle {
 pub struct LayerToggleUI {
     position: Vec2,
     toggles: Vec<LayerToggle>,
+    pub active_layer: u32,
     previous_update_layers: Vec<u32> // we use this to check if we need to rebuild the ui
 }
 
@@ -46,7 +48,8 @@ impl LayerToggleUI {
         Self {
             toggles: Vec::new(),
             position: Vec2::ZERO,
-            previous_update_layers: Vec::new()
+            previous_update_layers: Vec::new(),
+            active_layer: 0
         }
 
     }
@@ -63,11 +66,17 @@ impl LayerToggleUI {
     }
 
     fn update_toggles(&mut self) {
-        for toggle in &mut self.toggles {
-            toggle.button.update(mouse_position().into());
+        for (index, toggle) in self.toggles.iter_mut().rev().enumerate() {
 
-            if toggle.button.released {
+            toggle.toggle_button.update(mouse_position().into());
+            toggle.active_button.update(mouse_position().into());
+
+            if toggle.toggle_button.released {
                 toggle.enabled = !toggle.enabled;
+            }
+
+            if toggle.active_button.released {
+                self.active_layer = index as u32
             }
 
         }
@@ -94,10 +103,17 @@ impl LayerToggleUI {
 
     }
 
-    pub fn draw(&self, fonts: &FontLoader) {
+    pub fn draw(&self, fonts: &FontLoader, textures: &TextureLoader) {
         for toggle in &self.toggles {
             toggle.draw(fonts);
         }
+
+        draw_texture(
+            textures.get(&PathBuf::from_str("assets/ui/arrow_right.png").unwrap()), 
+            screen_width() - 64., 
+            screen_height() - 32. * self.active_layer as f32, 
+            WHITE
+        );
     }
 
     fn reposition_elements(&mut self) {
@@ -105,8 +121,8 @@ impl LayerToggleUI {
         self.position.y = screen_height() - (32. * self.toggles.len() as f32);
 
         for (index, toggle) in self.toggles.iter_mut().enumerate() {
-            toggle.button.rect.x = self.position.x;
-            toggle.button.rect.y = (self.position.y) + (index as f32 * 32.);
+            toggle.toggle_button.rect.x = self.position.x;
+            toggle.toggle_button.rect.y = (self.position.y) + (index as f32 * 32.);
         }
     }
 
@@ -121,9 +137,18 @@ impl LayerToggleUI {
             self.toggles.push(
                 LayerToggle {
                     layer: *layer,
-                    button: Button::new(
+                    toggle_button: Button::new(
                         Rect::new(
                             self.position.x, 
+                            (self.position.y) + (index as f32 * 32.), 
+                            32., 
+                            32.
+                        ), 
+                        None
+                    ),
+                    active_button: Button::new(
+                        Rect::new(
+                            self.position.x - 32., 
                             (self.position.y) + (index as f32 * 32.), 
                             32., 
                             32.

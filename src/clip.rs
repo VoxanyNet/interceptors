@@ -10,7 +10,8 @@ pub struct Clip {
     pub collider_handle: ColliderHandle,
     pub rigid_body_handle: RigidBodyHandle,
     pub despawn: bool,
-    pub context_menu_data: Option<EditorContextMenuData>
+    pub context_menu_data: Option<EditorContextMenuData>,
+    pub layer: u32
 }
 
 impl Clip {
@@ -34,7 +35,8 @@ impl Clip {
             rigid_body_handle,
             collider_handle,
             despawn: false,
-            context_menu_data: None
+            context_menu_data: None,
+            layer: save.layer
         }
     }
 
@@ -48,6 +50,7 @@ impl Clip {
         ClipSave {
             size: Vec2::new(shape.half_extents.x * 2., shape.half_extents.y * 2.),
             pos: Vec2::new(position.translation.x, position.translation.y),
+            layer: self.layer
         }
     }
 }
@@ -81,4 +84,5 @@ impl EditorContextMenu for Clip {
 pub struct ClipSave {
     pub size: Vec2,
     pub pos: Vec2,
+    pub layer: u32
 }

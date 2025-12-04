@@ -44,6 +44,7 @@ pub mod weapons;
 pub mod tile;
 pub mod drawable;
 pub mod editor_context_menu;
+pub mod selectable_object_id;
 
 pub fn angle_weapon_to_mouse(
     space: &mut Space, 

@@ -7,7 +7,7 @@ use noise::{NoiseFn, Perlin};
 use rapier2d::prelude::RigidBodyVelocity;
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, space::Space, texture_loader::TextureLoader, tile::{self, Tile, TileSave}, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::weapon::Shotgun, weapon_type::WeaponType}};
+use crate::{ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave, NewDroppedItemUpdate}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, selectable_object_id::{SelectableObject, SelectableObjectId}, space::Space, texture_loader::TextureLoader, tile::{self, Tile, TileSave}, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::weapon::Shotgun, weapon_type::WeaponType}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -76,7 +76,191 @@ impl WaveData {
     }
 }
 
-impl Area {
+impl Area { 
+
+    pub fn client_tick(&mut self, ctx: &mut ClientTickContext) {
+        self.space.step(*ctx.last_tick_duration);
+        self.start_ambiance(ctx);
+        self.spawn_player_if_not_in_game(ctx);
+        self.debug_spawn_prop(ctx);
+        self.debug_spawn_enemy(ctx);
+        self.tick_entities(ctx);
+        self.despawn_entities();
+    }
+
+    pub fn server_tick(&mut self, io: &mut ServerIO, dt: web_time::Duration) {
+        self.space.step(dt);
+
+        self.designate_master(io);
+    }
+
+
+    pub fn tick_entities(&mut self, ctx: &mut ClientTickContext) {
+        self.tick_enemies(ctx);
+        self.tick_props(ctx);
+        self.tick_dissolved_pixels(ctx);
+        self.tick_bullet_trails(ctx);
+        self.tick_players(ctx); 
+        self.tick_computer(ctx);
+    }
+
+    
+    pub async fn draw(
+        &mut self, 
+        textures: &mut TextureLoader, 
+        camera_rect: &Rect, 
+        prefabs: &Prefabs, 
+        camera: &Camera2D, 
+        fonts: &FontLoader, 
+        elapsed: web_time::Duration,
+        exclude_layers: Vec<u32>
+    ) {
+
+        let mut drawable_objects = Self::get_drawable_objects_mut( &mut self.decorations, &mut self.props, &mut self.dropped_items, &mut self.computer, &mut self.players, &mut self.enemies, &mut self.dissolved_pixels, &mut self.bullet_trails);
+
+        drawable_objects.sort_by_key(|o| o.draw_layer());
+
+        let draw_context = DrawContext {
+            space: &self.space,
+            textures: &textures,
+            prefabs,
+            fonts,
+            camera_rect,
+            tiles: &self.tiles,
+            elapsed_time: &elapsed,
+            default_camera: camera,
+        };
+
+        // backgrounds are handled seperately because they are always drawn below everything and dont have a layer
+        for background in &mut self.backgrounds {
+            background.draw(&draw_context).await
+        }
+
+        for object in drawable_objects {
+
+            if exclude_layers.contains(&object.draw_layer()) {
+                continue;
+            }
+            object.draw(&draw_context).await;
+        }
+
+
+
+    }
+
+    pub fn draw_hud(&self, textures: &TextureLoader) {
+        for player in &self.players {
+            player.draw_hud(textures);
+        }
+    }
+
+    pub fn tick_enemies(&mut self, ctx: &mut ClientTickContext) {
+        let mut enemy_iter = SwapIter::new(&mut self.enemies);
+
+        while enemy_iter.not_done() {
+            let (enemies, mut enemy) = enemy_iter.next();
+            enemy.client_tick(
+                &mut self.space, 
+                ctx, 
+                &mut self.players, 
+                self.despawn_y,
+                &mut self.props,
+                &mut self.bullet_trails,
+                self.id,
+                &mut self.dissolved_pixels,
+                enemies
+            );
+
+            enemy_iter.restore(enemy);
+        }
+    }
+
+    pub fn tick_props(&mut self, ctx: &mut ClientTickContext) {
+        for prop in &mut self.props {
+            prop.client_tick(&mut self.space, self.id, ctx, &mut self.dissolved_pixels);
+        }
+    }
+
+    pub fn tick_dissolved_pixels(&mut self, ctx: &mut ClientTickContext) {
+        for dissolved_pixel in &mut self.dissolved_pixels {
+            dissolved_pixel.client_tick(&mut self.space, ctx);
+        }
+    }
+
+    pub fn tick_bullet_trails(&mut self, ctx: &mut ClientTickContext) {
+        for bullet_trail in &mut self.bullet_trails {
+            bullet_trail.client_tick(ctx);
+        }
+    } 
+    
+    pub fn tick_players(&mut self, ctx: &mut ClientTickContext) {
+        let average_enemy_pos = self.average_enemy_pos(&self.space); 
+
+        let mut players_iter = SwapIter::new(&mut self.players);
+        
+        while players_iter.not_done() {
+            let (players, mut player) = players_iter.next();
+
+            player.client_tick(
+                ctx, 
+                &mut self.space, 
+                self.id, 
+                players, 
+                &mut self.enemies,
+                &mut self.props, 
+                &mut self.bullet_trails,
+                &mut self.dissolved_pixels, 
+                &mut self.dropped_items,
+                self.max_camera_y, 
+                average_enemy_pos, 
+                self.minimum_camera_width, 
+                self.minimum_camera_height,
+                &mut self.tiles
+            );
+
+            players_iter.restore(player);
+        }
+    }
+
+    pub fn tick_computer(&mut self, ctx: &mut ClientTickContext) {
+        if let Some(computer) = &mut self.computer {
+            computer.tick(ctx, &mut self.players, &self.space);
+        }
+    }
+
+
+    pub fn get_selectable_object_mut(&mut self, selectable_object_id: SelectableObjectId) -> Option<SelectableObject> {
+        match selectable_object_id {
+            SelectableObjectId::Decoration(decoration_index) => {
+                if let Some(decoration) = self.decorations.get_mut(decoration_index) {
+                    Some(
+                        SelectableObject::Decoration(decoration)
+                    )
+                } else {
+                    None
+                }
+            },
+            SelectableObjectId::Tile(location) => {
+                None
+            },
+            SelectableObjectId::Prop(prop_id) => {
+                if let Some(prop) = self.props.iter_mut().find(|prop| {prop.id == prop_id}) {
+                    Some(SelectableObject::Prop(prop))
+                } else {
+                    None
+                }
+            },
+            SelectableObjectId::Clip(clip_index) => {
+                if let Some(clip) = self.clips.get_mut(clip_index) {
+                    Some(
+                        SelectableObject::Clip(clip)
+                    )
+                } else {
+                    None
+                }
+            },
+                    }
+    }
 
     pub fn get_tile_at_position_mut(&mut self, tile_pos: Vector2<f32>) -> Option<&mut Tile> {
         let tile_index_x = (tile_pos.x / 50.) as usize;
@@ -265,61 +449,6 @@ impl Area {
         drawable_objects
     }
 
-    pub async fn draw(
-        &mut self, 
-        textures: &mut TextureLoader, 
-        camera_rect: &Rect, 
-        prefabs: &Prefabs, 
-        camera: &Camera2D, 
-        fonts: &FontLoader, 
-        elapsed: web_time::Duration,
-        exclude_layers: Vec<u32>
-    ) {
-
-        let mut drawable_objects = Self::get_drawable_objects_mut( &mut self.decorations, &mut self.props, &mut self.dropped_items, &mut self.computer, &mut self.players, &mut self.enemies, &mut self.dissolved_pixels, &mut self.bullet_trails);
-
-        drawable_objects.sort_by_key(|o| o.draw_layer());
-
-        let draw_context = DrawContext {
-            space: &self.space,
-            textures: &textures,
-            prefabs,
-            fonts,
-            camera_rect,
-            tiles: &self.tiles,
-            elapsed_time: &elapsed,
-            default_camera: camera,
-        };
-
-        // backgrounds are handled seperately because they are always drawn below everything and dont have a layer
-        for background in &mut self.backgrounds {
-            background.draw(&draw_context).await
-        }
-
-        for object in drawable_objects {
-
-            if exclude_layers.contains(&object.draw_layer()) {
-                continue;;
-            }
-            object.draw(&draw_context).await;
-        }
-
-
-
-    }
-
-    pub fn draw_hud(&self, textures: &TextureLoader) {
-        for player in &self.players {
-            player.draw_hud(textures);
-        }
-    }
-
-
-    pub fn server_tick(&mut self, io: &mut ServerIO, dt: web_time::Duration) {
-        self.space.step(dt);
-
-        self.designate_master(io);
-    }
 
     pub fn designate_master(&mut self, server_io: &mut ServerIO) {
         if self.master == None {
@@ -355,7 +484,6 @@ impl Area {
 
         self.players.push(player);
     }
-
 
     pub fn debug_spawn_prop(&mut self, ctx: &mut ClientTickContext) {
 
@@ -503,7 +631,6 @@ impl Area {
         }
     }
 
-
     pub fn wave_logic(&mut self, ctx: &mut ClientTickContext) {
 
         // end wave
@@ -574,99 +701,6 @@ impl Area {
         self.dissolved_pixels.retain(|pixel| {pixel.despawn == false});
     }
 
-    pub fn tick_enemies(&mut self, ctx: &mut ClientTickContext) {
-        let mut enemy_iter = SwapIter::new(&mut self.enemies);
-
-        while enemy_iter.not_done() {
-            let (enemies, mut enemy) = enemy_iter.next();
-            enemy.client_tick(
-                &mut self.space, 
-                ctx, 
-                &mut self.players, 
-                self.despawn_y,
-                &mut self.props,
-                &mut self.bullet_trails,
-                self.id,
-                &mut self.dissolved_pixels,
-                enemies
-            );
-
-            enemy_iter.restore(enemy);
-        }
-    }
-
-    pub fn tick_props(&mut self, ctx: &mut ClientTickContext) {
-        for prop in &mut self.props {
-            prop.client_tick(&mut self.space, self.id, ctx, &mut self.dissolved_pixels);
-        }
-    }
-
-    pub fn tick_dissolved_pixels(&mut self, ctx: &mut ClientTickContext) {
-        for dissolved_pixel in &mut self.dissolved_pixels {
-            dissolved_pixel.client_tick(&mut self.space, ctx);
-        }
-    }
-
-    pub fn tick_bullet_trails(&mut self, ctx: &mut ClientTickContext) {
-        for bullet_trail in &mut self.bullet_trails {
-            bullet_trail.client_tick(ctx);
-        }
-    } 
-    pub fn tick_entities(&mut self, ctx: &mut ClientTickContext) {
-        self.tick_enemies(ctx);
-        self.tick_props(ctx);
-        self.tick_dissolved_pixels(ctx);
-        self.tick_bullet_trails(ctx);
-        self.tick_players(ctx); 
-        self.tick_computer(ctx);
-    }
-
-    pub fn tick_players(&mut self, ctx: &mut ClientTickContext) {
-        let average_enemy_pos = self.average_enemy_pos(&self.space); 
-
-        let mut players_iter = SwapIter::new(&mut self.players);
-        
-        while players_iter.not_done() {
-            let (players, mut player) = players_iter.next();
-
-            player.client_tick(
-                ctx, 
-                &mut self.space, 
-                self.id, 
-                players, 
-                &mut self.enemies,
-                &mut self.props, 
-                &mut self.bullet_trails,
-                &mut self.dissolved_pixels, 
-                &mut self.dropped_items,
-                self.max_camera_y, 
-                average_enemy_pos, 
-                self.minimum_camera_width, 
-                self.minimum_camera_height,
-                &mut self.tiles
-            );
-
-            players_iter.restore(player);
-        }
-    }
-
-    pub fn tick_computer(&mut self, ctx: &mut ClientTickContext) {
-        if let Some(computer) = &mut self.computer {
-            computer.tick(ctx, &mut self.players, &self.space);
-        }
-    }
-
-
-    pub fn client_tick(&mut self, ctx: &mut ClientTickContext) {
-        self.space.step(*ctx.last_tick_duration);
-        self.start_ambiance(ctx);
-        self.spawn_player_if_not_in_game(ctx);
-        self.debug_spawn_prop(ctx);
-        self.debug_spawn_enemy(ctx);
-        self.tick_entities(ctx);
-        self.despawn_entities();
-    }
-
     pub fn find_prop_mut(&mut self, id: PropId) -> Option<&mut Prop> {
         if let Some(p) = self.props.iter_mut().find(|p| p.id == id) {
             return Some(p);
@@ -680,7 +714,6 @@ impl Area {
         }
         None
     }
-
 
     pub fn from_save(save: AreaSave, id: Option<AreaId>, prefabs: &Prefabs) -> Self {
 
@@ -891,7 +924,6 @@ impl Area {
 
         }
     }
-
 
 }
 
