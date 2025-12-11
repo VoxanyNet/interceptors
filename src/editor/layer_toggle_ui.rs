@@ -1,29 +1,49 @@
 use std::{path::{Path, PathBuf}, str::FromStr};
 
 use interceptors_lib::{button::Button, drawable::Drawable, font_loader::FontLoader, texture_loader::TextureLoader};
-use macroquad::{color::{GRAY, LIGHTGRAY, WHITE}, input::mouse_position, math::{Rect, Vec2}, shapes::draw_rectangle, text::{TextParams, draw_text, draw_text_ex}, texture::draw_texture, window::{screen_height, screen_width}};
+use macroquad::{color::{GRAY, LIGHTGRAY, WHITE}, input::mouse_position, math::{Rect, Vec2}, shapes::draw_rectangle, text::{TextParams, draw_text, draw_text_ex}, texture::{DrawTextureParams, draw_texture, draw_texture_ex}, window::{screen_height, screen_width}};
 
 struct LayerToggle {
     layer: u32,
-    toggle_button: Button, // toggle visibility
-    pub active_button: Button, // toggle as active layer
-    enabled: bool
+    pub active_toggle: Button, 
+    visibility_toggle: Button, 
+    visible: bool
 }
 
 impl LayerToggle {
-    pub fn draw(&self, fonts: &FontLoader) {
+    pub fn draw(
+        &self, 
+        fonts: &FontLoader, 
+        textures: &TextureLoader,
+        active: bool // the layer toggle's 'active' state is managed from the outside
+    ) { 
 
-        let color = match self.enabled {
-            true => LIGHTGRAY,
-            false => GRAY,
+        let color = match active {
+            true => GRAY,
+            false => LIGHTGRAY,
         };
 
-        draw_rectangle(self.toggle_button.rect.x, self.toggle_button.rect.y, self.toggle_button.rect.w, self.toggle_button.rect.h, color);
+        draw_rectangle(self.active_toggle.rect.x, self.active_toggle.rect.y, self.active_toggle.rect.w, self.active_toggle.rect.h, color);
+        
+        draw_rectangle(self.visibility_toggle.rect.x, self.visibility_toggle.rect.y, self.visibility_toggle.rect.w, self.visibility_toggle.rect.h, GRAY);
+
+        if self.visible {
+            draw_texture_ex(
+                textures.get(&PathBuf::from_str("assets/ui/eye.png").unwrap()), 
+                self.visibility_toggle.rect.x, 
+                self.visibility_toggle.rect.y, 
+                WHITE, 
+                DrawTextureParams {
+                    dest_size: Some(Vec2::new(32., 32.)),
+                    ..Default::default()
+                }
+            );
+        }
 
         draw_text_ex(
             &format!("{}", self.layer), 
-            self.toggle_button.rect.x + 16., 
-            self.toggle_button.rect.y + 16., 
+            self.active_toggle.rect.x + 16., 
+            self.active_toggle.rect.y + 16., 
             TextParams {
                 font: Some(&fonts.get(PathBuf::from_str("assets/fonts/CutePixel.ttf").unwrap())),
                 font_size: 20,
@@ -68,14 +88,14 @@ impl LayerToggleUI {
     fn update_toggles(&mut self) {
         for (index, toggle) in self.toggles.iter_mut().rev().enumerate() {
 
-            toggle.toggle_button.update(mouse_position().into());
-            toggle.active_button.update(mouse_position().into());
+            toggle.active_toggle.update(mouse_position().into());
+            toggle.visibility_toggle.update(mouse_position().into());
 
-            if toggle.toggle_button.released {
-                toggle.enabled = !toggle.enabled;
+            if toggle.visibility_toggle.released {
+                toggle.visible = !toggle.visible;
             }
 
-            if toggle.active_button.released {
+            if toggle.active_toggle.released {
                 self.active_layer = index as u32
             }
 
@@ -86,7 +106,7 @@ impl LayerToggleUI {
 
         let mut disabled_layers = Vec::new();
         for toggle in &self.toggles {
-            if !toggle.enabled {
+            if !toggle.visible {
                 disabled_layers.push(toggle.layer);
             }
         }
@@ -104,16 +124,17 @@ impl LayerToggleUI {
     }
 
     pub fn draw(&self, fonts: &FontLoader, textures: &TextureLoader) {
-        for toggle in &self.toggles {
-            toggle.draw(fonts);
+        for (index, toggle) in self.toggles.iter().enumerate() {
+            toggle.draw(fonts, textures, self.active_layer == index as u32);
         }
 
-        draw_texture(
-            textures.get(&PathBuf::from_str("assets/ui/arrow_right.png").unwrap()), 
-            screen_width() - 64., 
-            screen_height() - 32. * self.active_layer as f32, 
-            WHITE
-        );
+
+        // draw_texture_ex(
+        //     textures.get(&PathBuf::from_str("assets/ui/arrow_right.png").unwrap()), 
+        //     screen_width() - 64., 
+        //     screen_height() - (32. * self.active_layer as f32) - 16., 
+        //     WHITE
+        // );
     }
 
     fn reposition_elements(&mut self) {
@@ -121,8 +142,10 @@ impl LayerToggleUI {
         self.position.y = screen_height() - (32. * self.toggles.len() as f32);
 
         for (index, toggle) in self.toggles.iter_mut().enumerate() {
-            toggle.toggle_button.rect.x = self.position.x;
-            toggle.toggle_button.rect.y = (self.position.y) + (index as f32 * 32.);
+            toggle.active_toggle.rect.x = self.position.x;
+            toggle.active_toggle.rect.y = (self.position.y) + (index as f32 * 32.);
+            toggle.visibility_toggle.rect.x = self.position.x - 32.;
+            toggle.visibility_toggle.rect.y = (self.position.y) + (index as f32 * 32.);
         }
     }
 
@@ -137,7 +160,7 @@ impl LayerToggleUI {
             self.toggles.push(
                 LayerToggle {
                     layer: *layer,
-                    toggle_button: Button::new(
+                    active_toggle: Button::new(
                         Rect::new(
                             self.position.x, 
                             (self.position.y) + (index as f32 * 32.), 
@@ -146,7 +169,7 @@ impl LayerToggleUI {
                         ), 
                         None
                     ),
-                    active_button: Button::new(
+                    visibility_toggle: Button::new(
                         Rect::new(
                             self.position.x - 32., 
                             (self.position.y) + (index as f32 * 32.), 
@@ -155,7 +178,7 @@ impl LayerToggleUI {
                         ), 
                         None
                     ),
-                    enabled: true
+                    visible: true
                 }
             );
         }

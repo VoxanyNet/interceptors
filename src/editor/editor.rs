@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}, str::FromStr, time::Instant};
 
-use interceptors_lib::{Prefabs, area::{Area, AreaSave}, background::{Background, BackgroundSave}, button::Button, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, drawable::DrawContext, editor_context_menu::EditorContextMenu, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, space::Space, texture_loader::TextureLoader, tile::{Tile, TileId, TileSave}};
+use interceptors_lib::{Prefabs, area::{Area, AreaSave}, background::{Background, BackgroundSave}, button::Button, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, drawable::DrawContext, editor_context_menu::{DataEditorContext, EditorContextMenu}, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, space::Space, texture_loader::TextureLoader, tile::{Tile, TileId, TileSave}};
 use ldtk2::When;
 use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, LIGHTGRAY, RED, WHITE}, input::{self, KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_position, mouse_wheel}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, texture::{DrawTextureParams, draw_texture_ex}, window::{next_frame, screen_height, screen_width}};
 use nalgebra::{vector, Isometry, Isometry2, Vector2};
@@ -52,8 +52,25 @@ pub struct AreaEditor {
 
 impl AreaEditor {
 
+    pub fn draw_coords(&self, cursor: Vec2) {
+
+        let rapier_coords = macroquad_to_rapier(&cursor);
+
+        draw_text(&format!("macroquad: {:?}", cursor), 0., screen_height() - 20., 24., WHITE);
+        draw_text(&format!("rapier: {:?}", rapier_coords), 0., screen_height() - 40., 24., WHITE);
+
+    }
+
     pub fn get_hovered_object(&mut self) -> Option<SelectableObjectId> {
 
+        for (clip_index, clip) in self.area.clips.iter().enumerate() { 
+            let clip_collider = self.area.space.collider_set.get(clip.collider_handle).unwrap();
+
+            if clip_collider.shape().as_cuboid().unwrap().contains_point(clip_collider.position(), &Point::new(self.rapier_cursor().x, self.rapier_cursor().y)) {
+                return Some(SelectableObjectId::Clip(clip_index))
+            }
+        }
+        
         for (decoration_index, decoration) in self.area.decorations.iter().enumerate() {
             let decoration_rect = Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y);
 
@@ -143,7 +160,7 @@ impl AreaEditor {
                         let body = self.area.space.rigid_body_set.get_mut(clip.rigid_body_handle).unwrap();
 
                         body.set_position(
-                            vector![body.translation().x + delta.x, body.translation().y + delta.y].into(), 
+                            vector![body.translation().x + delta.x, body.translation().y - delta.y].into(), 
                             true
                         );
                     },
@@ -540,6 +557,10 @@ impl AreaEditor {
 
         for clip in &self.area.clips {
 
+            if self.layer_toggle_ui.get_disabled_layers().contains(&clip.layer) {
+                continue;
+            }
+
             draw_hitbox(&self.area.space, clip.rigid_body_handle, clip.collider_handle, color);
         }
     }
@@ -576,28 +597,40 @@ impl AreaEditor {
         self.draw_cursor();
         self.draw_clip_points();
         self.draw_clips();
+        self.draw_selection_rect();
         self.highlight_hovered_object();
         self.highlight_selected_object();
         self.step_space();
+        
 
         set_default_camera();
         self.ui.draw(&self.textures);
         self.layer_toggle_ui.draw(&self.fonts, &self.textures);
 
-        for decoration in &self.area.decorations {
-            decoration.editor_draw();
-        }
+        self.draw_context_menus();
 
         if self.current_mode() == EditorMode::PrefabPlacement {
             self.spawner.draw_menu(&self.camera_rect, &mut self.textures, self.cursor).await;
         }
 
-        self.draw_selection_rect();
+        
 
 
         self.draw_selected_mode();
 
+        self.draw_coords(self.cursor);
+
         next_frame().await
+    }
+
+    pub fn draw_context_menus(&self) {
+        for decoration in &self.area.decorations {
+            decoration.draw_editor_context_menu();
+        }
+
+        for clip in &self.area.clips {
+            clip.draw_editor_context_menu();
+        }
     }
 
     pub fn draw_selection_rect(&self) {
@@ -667,14 +700,14 @@ impl AreaEditor {
 
             // new selection rect
             if self.selected_released_flag {
-                self.selection_rect = Some(Rect::new(mouse_position().0, mouse_position().1, 0., 0.));
+                self.selection_rect = Some(Rect::new(mouse_world_pos(&self.camera_rect).x, mouse_world_pos(&self.camera_rect).y, 0., 0.));
                 self.selected_released_flag = false;    
             }
 
             match &mut self.selection_rect {
                 Some(selection_rect) => {
-                    selection_rect.w = mouse_position().0 - selection_rect.x;
-                    selection_rect.h = mouse_position().1 - selection_rect.y;
+                    selection_rect.w = mouse_world_pos(&self.camera_rect).x - selection_rect.x;
+                    selection_rect.h = mouse_world_pos(&self.camera_rect).y - selection_rect.y;
                 },
                 None => {
                     // NOT POSSIBLE (meme)
@@ -774,8 +807,15 @@ impl AreaEditor {
     }
 
     pub fn update_context_menus(&mut self) {
+
         for decoration in &mut self.area.decorations {
-            decoration.update_menu(&self.area.space, &self.camera_rect);
+            decoration.update_menu(&mut self.area.space, &self.camera_rect);
+        }
+
+        for clip in &mut self.area.clips {
+            clip.update_menu(&mut self.area.space, &self.camera_rect);
+
+            
         }
     }
     pub fn tick(&mut self) {    

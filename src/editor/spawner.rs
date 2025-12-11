@@ -137,14 +137,7 @@ impl Spawner {
         }
     }
 
-    pub fn draw_coords(&self, cursor: Vec2) {
-
-        let rapier_coords = macroquad_to_rapier(&cursor);
-
-        draw_text(&format!("macroquad: {:?}", cursor), 0., screen_height() - 20., 24., WHITE);
-        draw_text(&format!("rapier: {:?}", rapier_coords), 0., screen_height() - 40., 24., WHITE);
-
-    }
+    
 
     pub fn delete_selected_object(&mut self) {
 
@@ -400,7 +393,7 @@ impl Spawner {
             draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 2., WHITE);
         }
 
-        self.draw_coords(cursor);
+        
 
     }
 }

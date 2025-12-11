@@ -4,6 +4,9 @@ use macroquad::{color::{DARKGRAY, GRAY, WHITE}, input::{is_mouse_button_released
 
 use crate::{ClientTickContext, button::Button, mouse_world_pos, space::Space, uuid_string};
 
+pub struct DataEditorContext<'a> {
+    pub space: &'a mut Space
+}
 // implementors of this trait can expose their variables to be edited by the context menu 
 pub trait EditorContextMenu {
     fn layer(&mut self) -> Option<&mut u32> {
@@ -14,9 +17,9 @@ pub trait EditorContextMenu {
         None
     }
 
-    fn open_menu(&mut self, position: Vec2) {
+    fn open_menu(&mut self, position: Vec2, ctx: &DataEditorContext) {
 
-        let menu = self.build_menu(position);
+        let menu = self.build_menu(position, ctx);
         *self.context_menu_data_mut() = Some(menu);
         
         
@@ -29,8 +32,8 @@ pub trait EditorContextMenu {
         }
     }
 
-    fn open_data_editor(&mut self) {
-        let json_string = self.data_editor_export().unwrap();
+    fn open_data_editor(&mut self, ctx: &DataEditorContext) {
+        let json_string = self.data_editor_export(ctx).unwrap();
 
         let menu_data = self.context_menu_data_mut().as_mut().unwrap();
 
@@ -48,14 +51,14 @@ pub trait EditorContextMenu {
             .spawn().unwrap();
     }
 
-    fn handle_buttons(&mut self) {
+    fn handle_buttons(&mut self, ctx: DataEditorContext) {
         if let Some(data) = self.context_menu_data_mut() {
             for entry in data.entries.clone() {
                 if entry.button.released {
                     match entry.field_type {
                         EntryType::IncreaseLayer => *self.layer().unwrap() += 1,
                         EntryType::DecreaseLayer => * self.layer().unwrap() = self.layer().unwrap().saturating_sub(1),
-                        EntryType::DataEditor => self.open_data_editor(),
+                        EntryType::DataEditor => self.open_data_editor(&ctx),
                     }
                 }
             }
@@ -70,7 +73,7 @@ pub trait EditorContextMenu {
         }
     }
     
-    fn apply_data_editor_updates(&mut self) {
+    fn apply_data_editor_updates(&mut self, ctx: &mut DataEditorContext) {
         // someday i will come back to this code and look on in horror
         match self.context_menu_data_mut() {
             Some(data) => {
@@ -88,7 +91,7 @@ pub trait EditorContextMenu {
                             // need to preserve the context menu data lololol!
                             let old_editor_context_menu_data = self.context_menu_data().as_ref().unwrap().clone();
 
-                            self.data_editor_import(fs::read_to_string(&old_editor_context_menu_data.data_editor_file_path).unwrap());
+                            self.data_editor_import(fs::read_to_string(&old_editor_context_menu_data.data_editor_file_path).unwrap(), ctx);
 
                             *self.context_menu_data_mut() = Some(old_editor_context_menu_data.clone());
 
@@ -103,27 +106,32 @@ pub trait EditorContextMenu {
             None => {},
         }
     }
-    fn update_menu(&mut self, space: &Space, camera_rect: &Rect) {
+    fn update_menu(&mut self, space: &mut Space, camera_rect: &Rect) {
 
-        
         
         if (is_mouse_button_released(macroquad::input::MouseButton::Left) || is_mouse_button_released(macroquad::input::MouseButton::Right)) && !self.contains_point(mouse_position().into()) {
             println!("close");
             self.close_menu();
         }
+
         
         if is_mouse_button_released(macroquad::input::MouseButton::Right) && self.object_bounding_box(Some(space)).contains(mouse_world_pos(camera_rect)) {
+
             println!("open");
-            self.open_menu(mouse_position().into());
+            self.open_menu(mouse_position().into(), &DataEditorContext { space });
         }
 
         
         
 
-        self.apply_data_editor_updates();
+        self.apply_data_editor_updates(&mut DataEditorContext { space });
 
         self.update_buttons();
-        self.handle_buttons();
+        self.handle_buttons(
+            DataEditorContext {
+                space,
+            }
+        );
 
 
 
@@ -154,22 +162,22 @@ pub trait EditorContextMenu {
         false
     }
 
-    fn data_editor_export(&self) -> Option<String> {
+    fn data_editor_export(&self, ctx: &DataEditorContext) -> Option<String> {
         None
     }
 
-    fn data_editor_import(&mut self, json: String) {
+    fn data_editor_import(&mut self, json: String, ctx: &mut DataEditorContext) {
         // just do nothing by default
     }
 
     fn object_bounding_box(&self, space: Option<&Space>) -> Rect;
 
-    fn build_menu(&mut self, position: Vec2) -> EditorContextMenuData {
+    fn build_menu(&mut self, position: Vec2, ctx: &DataEditorContext) -> EditorContextMenuData {
         let mut entries: Vec<MenuEntry> = vec![];
 
         let mut entry_index = 0;
 
-        if self.data_editor_export().is_some() {
+        if self.data_editor_export(ctx).is_some() {
             entries.push(
                 MenuEntry {
                     button: Button::new(

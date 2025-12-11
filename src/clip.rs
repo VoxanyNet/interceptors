@@ -3,7 +3,7 @@ use nalgebra::vector;
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 
-use crate::{editor_context_menu::{EditorContextMenu, EditorContextMenuData}, rapier_to_macroquad, space::Space};
+use crate::{drawable::{DrawContext, Drawable}, editor_context_menu::{DataEditorContext, EditorContextMenu, EditorContextMenuData}, rapier_to_macroquad, space::Space};
 
 
 pub struct Clip {
@@ -65,7 +65,7 @@ impl EditorContextMenu for Clip {
 
         let mpos = rapier_to_macroquad(*pos);
 
-        Rect::new(mpos.x, mpos.y, size.x, size.y)
+        Rect::new(mpos.x - size.x, mpos.y - size.y, size.x * 2., size.y * 2.)
     }
 
     fn context_menu_data_mut(&mut self) -> &mut Option<crate::editor_context_menu::EditorContextMenuData> {
@@ -79,10 +79,30 @@ impl EditorContextMenu for Clip {
     fn despawn(&mut self) -> Option<&mut bool> {
         Some(&mut self.despawn)
     }
+
+    fn data_editor_export(&self, ctx: &DataEditorContext) -> Option<String> {
+        Some(serde_json::to_string_pretty(&self.save(&ctx.space)).unwrap())
+    }
+
+    fn data_editor_import(&mut self, json: String, ctx: &mut DataEditorContext) {
+        let clip_save: ClipSave = serde_json::from_str(&json).unwrap();
+
+        *self = Self::from_save(clip_save, &mut ctx.space)
+    }   
 }
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ClipSave {
     pub size: Vec2,
     pub pos: Vec2,
     pub layer: u32
+}
+#[async_trait::async_trait]
+impl Drawable for Clip {
+    async fn draw(&mut self, draw_context: &DrawContext) {
+        
+    }
+
+    fn draw_layer(&self) -> u32 {
+        self.layer
+    }
 }

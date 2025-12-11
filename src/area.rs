@@ -116,7 +116,17 @@ impl Area {
         exclude_layers: Vec<u32>
     ) {
 
-        let mut drawable_objects = Self::get_drawable_objects_mut( &mut self.decorations, &mut self.props, &mut self.dropped_items, &mut self.computer, &mut self.players, &mut self.enemies, &mut self.dissolved_pixels, &mut self.bullet_trails);
+        let mut drawable_objects = Self::get_drawable_objects_mut(
+            &mut self.decorations, 
+            &mut self.props, 
+            &mut self.dropped_items, 
+            &mut self.computer, 
+            &mut self.players, 
+            &mut self.enemies, 
+            &mut self.dissolved_pixels, 
+            &mut self.bullet_trails, 
+            &mut self.clips
+        );
 
         drawable_objects.sort_by_key(|o| o.draw_layer());
 
@@ -363,7 +373,8 @@ impl Area {
             &self.players, 
             &self.enemies, 
             &self.dissolved_pixels, 
-            &self.bullet_trails
+            &self.bullet_trails,
+            &self.clips
         )
     }
     pub fn get_drawable_objects<'a> (
@@ -375,7 +386,8 @@ impl Area {
         players: &'a Vec<Player>,
         enemies: &'a Vec<Enemy>,
         dissolved_pixels: &'a Vec<DissolvedPixel>,
-        bullet_trails: &'a Vec<BulletTrail>
+        bullet_trails: &'a Vec<BulletTrail>,
+        clips: &'a Vec<Clip>
     ) -> Vec<&'a dyn Drawable> {
         let mut drawable_objects: Vec<&dyn Drawable> = vec![];
         
@@ -406,6 +418,9 @@ impl Area {
         for bullet_trail in bullet_trails {
             drawable_objects.push(bullet_trail);
         }
+        for clip in clips {
+            drawable_objects.push(clip);
+        }
 
         drawable_objects
     }
@@ -417,7 +432,8 @@ impl Area {
         players: &'a mut Vec<Player>,
         enemies: &'a mut Vec<Enemy>,
         dissolved_pixels: &'a mut Vec<DissolvedPixel>,
-        bullet_trails: &'a mut Vec<BulletTrail>
+        bullet_trails: &'a mut Vec<BulletTrail>,
+        clips: &'a mut Vec<Clip>
     ) -> Vec<&'a mut dyn Drawable> {
         let mut drawable_objects: Vec<&mut dyn Drawable> = vec![];
         
@@ -444,6 +460,9 @@ impl Area {
         }
         for bullet_trail in bullet_trails {
             drawable_objects.push(bullet_trail);
+        }
+        for clip in clips {
+            drawable_objects.push(clip);
         }
 
         drawable_objects

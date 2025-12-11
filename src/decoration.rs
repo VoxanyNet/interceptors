@@ -2,8 +2,9 @@ use std::{fs, path::PathBuf};
 
 use macroquad::{color::WHITE, math::{Rect, Vec2}, texture::{DrawTextureParams, draw_texture_ex}};
 use serde::{Deserialize, Serialize};
+use tungstenite::protocol::frame::coding::Data;
 
-use crate::{ClientTickContext, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, space::{self, Space}, texture_loader::TextureLoader};
+use crate::{ClientTickContext, drawable::Drawable, editor_context_menu::{DataEditorContext, EditorContextMenu, EditorContextMenuData}, space::{self, Space}, texture_loader::TextureLoader};
 
 // literally just a sprite with position and size
 #[derive(Clone, PartialEq)]
@@ -18,10 +19,6 @@ pub struct Decoration {
 }
 
 impl Decoration {
-
-    pub fn editor_tick(&mut self, space: &Space, camera_rect: &Rect) {
-        self.update_menu(space, camera_rect);
-    }
 
     pub fn editor_draw(&self) {
         
@@ -69,13 +66,13 @@ impl EditorContextMenu for Decoration {
         &mut self.editor_context_menu
     }
 
-    fn data_editor_export(&self) -> Option<String> {
+    fn data_editor_export(&self, _ctx: &DataEditorContext) -> Option<String> {
         let json_string = serde_json::to_string_pretty(&self.save()).unwrap();
         
         Some(json_string)
     }
 
-    fn data_editor_import(&mut self, json: String) {
+    fn data_editor_import(&mut self, json: String, _ctx: &mut DataEditorContext) {
         
         
         match serde_json::from_str(&json) {
