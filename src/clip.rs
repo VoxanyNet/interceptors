@@ -90,7 +90,7 @@ impl EditorContextMenu for Clip {
         *self = Self::from_save(clip_save, &mut ctx.space)
     }   
 }
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ClipSave {
     pub size: Vec2,
     pub pos: Vec2,

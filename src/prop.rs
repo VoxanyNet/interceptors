@@ -525,7 +525,7 @@ impl Drawable for Prop {
         1
     }
 }
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct PropSave {
     pub size: Vec2,
     pub pos: Isometry2<f32>,

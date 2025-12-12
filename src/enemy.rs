@@ -860,7 +860,7 @@ impl Drawable for Enemy {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct EnemySave {
     pos: Isometry2<f32>,
     owner: ClientId,

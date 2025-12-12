@@ -175,7 +175,7 @@ impl Drawable for DroppedItem {
         1
     }
 }
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct DroppedItemSave {
     pos: Isometry2<f32>,
     item: ItemSave,

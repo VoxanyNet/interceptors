@@ -946,7 +946,7 @@ impl Area {
 
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AreaSave {
     spawn_point: Vector2<f32>,
     decorations: Vec<DecorationSave>,

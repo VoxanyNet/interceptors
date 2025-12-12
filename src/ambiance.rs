@@ -10,7 +10,7 @@ pub struct Ambiance {
     pub sound: Option<Sound>
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AmbianceSave {
     path: PathBuf,
     pos: Vec2,

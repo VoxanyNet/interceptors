@@ -97,7 +97,7 @@ impl Drawable for Background {
         0
     }
 }
-#[derive(Serialize, Deserialize, Default, Debug, Clone)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq)]
 pub struct BackgroundSave {
     repeat: bool,
     pos: Vec2,

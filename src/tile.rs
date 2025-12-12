@@ -99,7 +99,7 @@ impl Tile {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct TileSave {
     pub sprite_path: PathBuf,
     #[serde(default)]

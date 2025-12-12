@@ -55,5 +55,6 @@ async fn main() {
 
     let mut area_editor = AreaEditor::new().await;
 
+    
     area_editor.run().await;
 }

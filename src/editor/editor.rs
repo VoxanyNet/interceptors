@@ -1,8 +1,8 @@
-use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}, str::FromStr, time::Instant};
+use std::{collections::HashMap, fs::{self, read_to_string}, hash::Hash, path::{Path, PathBuf}, str::FromStr, time::{Duration, Instant}};
 
 use interceptors_lib::{Prefabs, area::{Area, AreaSave}, background::{Background, BackgroundSave}, button::Button, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, drawable::DrawContext, editor_context_menu::{DataEditorContext, EditorContextMenu}, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, space::Space, texture_loader::TextureLoader, tile::{Tile, TileId, TileSave}};
 use ldtk2::When;
-use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, LIGHTGRAY, RED, WHITE}, input::{self, KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_position, mouse_wheel}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, texture::{DrawTextureParams, draw_texture_ex}, window::{next_frame, screen_height, screen_width}};
+use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, LIGHTGRAY, RED, WHITE}, input::{self, KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_position, mouse_wheel}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, texture::{DrawTextureParams, draw_texture_ex}, time::draw_fps, window::{next_frame, screen_height, screen_width}};
 use nalgebra::{vector, Isometry, Isometry2, Vector2};
 use rapier2d::{math::Point, parry::shape::Cuboid, prelude::{ColliderBuilder, PointQuery, RigidBodyBuilder}};
 use serde::{de, Deserialize, Serialize};
@@ -47,12 +47,19 @@ pub struct AreaEditor {
     selected_released_flag: bool,
     last_mouse_pos: Vec2,
     dragging_object: bool,
-    simulate_space: bool
+    simulate_space: bool,
+    undo_checkpoints: Vec<AreaSave>,
+    last_checkpoint_save: Instant,
+    last_undo: Instant,
+    modifying: bool,
+    last_area_save: AreaSave
 }
 
 impl AreaEditor {
 
     pub fn draw_coords(&self, cursor: Vec2) {
+
+        
 
         let rapier_coords = macroquad_to_rapier(&cursor);
 
@@ -173,7 +180,10 @@ impl AreaEditor {
 
     pub fn highlight_object(&mut self, item: SelectableObjectId) {
 
-        let object = item.get_object(&mut self.area.props, &mut self.area.tiles, &mut self.area.decorations, &mut self.area.clips).unwrap();
+        let object = match item.get_object(&mut self.area.props, &mut self.area.tiles, &mut self.area.decorations, &mut self.area.clips) {
+            Some(object) => object,
+            None => return,
+        };
 
         match object {
             SelectableObject::Decoration(decoration) => {
@@ -271,7 +281,7 @@ impl AreaEditor {
         let area_save: AreaSave = serde_json::from_str(&area_json).unwrap();
 
         Self {
-            area: Area::from_save(area_save, None, &prefabs),
+            area: Area::from_save(area_save.clone(), None, &prefabs),
             textures,
             spawner,
             selected_mode: 0,
@@ -293,7 +303,12 @@ impl AreaEditor {
             last_mouse_pos: Vec2::ZERO,
             dragging_object: false,
             simulate_space: false,
-            layer_toggle_ui: LayerToggleUI::new()
+            layer_toggle_ui: LayerToggleUI::new(),
+            undo_checkpoints: vec![area_save.clone()],
+            last_checkpoint_save: Instant::now() - Duration::from_secs(50),
+            last_undo: Instant::now(),
+            modifying: false,
+            last_area_save: area_save
         }
     }
 
@@ -620,6 +635,8 @@ impl AreaEditor {
 
         self.draw_coords(self.cursor);
 
+        draw_fps();
+
         next_frame().await
     }
 
@@ -818,6 +835,73 @@ impl AreaEditor {
             
         }
     }
+    
+    pub fn update_modifying_status(&mut self) {
+        if self.last_area_save != self.area.save(){
+            self.modifying = true;
+        } else {
+            self.modifying = false;
+        }
+
+        self.last_area_save = self.area.save()
+
+        
+    }
+    pub fn add_undo_checkpoint(&mut self) {
+        let current_area_save = self.area.save();
+
+        // dont create new checkpoints if we undid in the last 1 second so we can spam undo without it constantly creating new checkpoints
+        if self.last_undo.elapsed().as_secs() < 1 {
+            return;
+        }
+
+        if let Some(last_checkpoint) = self.undo_checkpoints.last() {
+            
+            
+
+            if *last_checkpoint != current_area_save && self.modifying == false {
+                self.last_checkpoint_save = Instant::now();
+
+                self.undo_checkpoints.push(current_area_save);
+
+                println!("adding checkpoint: {}", self.undo_checkpoints.len());
+                
+            }
+        } else {
+            // insert the first checkpoint
+            self.undo_checkpoints.push(current_area_save);
+        }
+
+        
+        if self.undo_checkpoints.len() > 500 {
+            let excess = self.undo_checkpoints.len() - 500;
+            self.undo_checkpoints.drain(0..excess);
+        };
+
+    }
+
+    pub fn undo(&mut self) {
+
+        if is_key_down(KeyCode::LeftControl) && is_key_released(KeyCode::Z) {
+            println!("undoing");
+
+            self.last_undo = Instant::now();
+            
+            let area_id = self.area.id.clone();
+
+            if let Some(checkpoint) = self.undo_checkpoints.pop() {
+                self.area = Area::from_save(
+                    checkpoint, 
+                    Some(area_id), 
+                    &self.prefab_data
+                );
+            }
+            
+        }   
+
+        
+    }
+
     pub fn tick(&mut self) {    
 
         self.update_input_context();
@@ -829,6 +913,7 @@ impl AreaEditor {
         self.change_mode();
         self.update_camera();
         self.update_context_menus();
+        
 
 
 
@@ -846,6 +931,10 @@ impl AreaEditor {
         }
 
         self.update_last_mouse_pos();
+
+        self.update_modifying_status();
+        self.undo();
+        self.add_undo_checkpoint();
         
         
     }

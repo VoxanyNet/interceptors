@@ -50,7 +50,7 @@ impl ItemSlot {
     } 
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct ItemSlotSave {
     quantity: u32,
     item: ItemSave
@@ -1053,7 +1053,7 @@ impl Drawable for Player {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct PlayerSave {
     pos: Isometry2<f32>,
     owner: ClientId,

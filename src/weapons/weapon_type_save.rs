@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::weapons::{lmg::weapon_save::LMGSave, shotgun::weapon_save::ShotgunSave};
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum WeaponTypeSave {
     Shotgun(ShotgunSave),
     LMG(LMGSave)
