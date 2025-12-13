@@ -3,10 +3,9 @@ use std::{collections::HashMap, fs::{self, read_to_string}, hash::Hash, path::{P
 use interceptors_lib::{Prefabs, area::{Area, AreaSave}, background::{Background, BackgroundSave}, button::Button, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, drawable::DrawContext, editor_context_menu::{DataEditorContext, EditorContextMenu}, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, space::Space, texture_loader::TextureLoader, tile::{Tile, TileId, TileSave}};
 use ldtk2::When;
 use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, LIGHTGRAY, RED, WHITE}, input::{self, KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_position, mouse_wheel}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, texture::{DrawTextureParams, draw_texture_ex}, time::draw_fps, window::{next_frame, screen_height, screen_width}};
-use nalgebra::{vector, Isometry, Isometry2, Vector2};
-use rapier2d::{math::Point, parry::shape::Cuboid, prelude::{ColliderBuilder, PointQuery, RigidBodyBuilder}};
-use serde::{de, Deserialize, Serialize};
-use strum::{Display, EnumIter, IntoEnumIterator};
+use nalgebra::{vector, Vector2};
+use rapier2d::{math::Point, prelude::{ColliderBuilder, PointQuery, RigidBodyBuilder}};
+use strum::Display;
 
 use crate::{editor_input_context::EditorInputContext, editor_mode_select_ui::EditorModeSelectUI, editor_ui_tick_context::EditorUITickContext, layer_toggle_ui::LayerToggleUI, spawner::Spawner};
 

@@ -20,15 +20,9 @@ pub struct ScreenShakeParameters {
 impl ScreenShakeParameters {
     pub fn default(x_seed: Option<u32>, y_seed: Option<u32>) -> Self {
 
-        let x_seed = match x_seed {
-            Some(seed) => seed,
-            None => 69420,
-        };
+        let x_seed = x_seed.unwrap_or_else(|| 69420);
 
-        let y_seed = match y_seed {
-            Some(seed) => seed,
-            None => 42069,
-        };
+        let y_seed = y_seed.unwrap_or_else(|| 42069);
 
 
         Self {

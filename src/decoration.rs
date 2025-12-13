@@ -1,10 +1,9 @@
-use std::{fs, path::PathBuf};
+use std::path::PathBuf;
 
-use macroquad::{color::WHITE, math::{Rect, Vec2}, texture::{DrawTextureParams, draw_texture_ex}};
+use macroquad::{color::WHITE, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams}};
 use serde::{Deserialize, Serialize};
-use tungstenite::protocol::frame::coding::Data;
 
-use crate::{ClientTickContext, drawable::Drawable, editor_context_menu::{DataEditorContext, EditorContextMenu, EditorContextMenuData}, space::{self, Space}, texture_loader::TextureLoader};
+use crate::{drawable::Drawable, editor_context_menu::{DataEditorContext, EditorContextMenu, EditorContextMenuData}, space::Space};
 
 // literally just a sprite with position and size
 #[derive(Clone, PartialEq)]
