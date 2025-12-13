@@ -1,14 +1,11 @@
-use std::{collections::HashMap, fs::{self, read_to_string}, path::{Path, PathBuf}, str::FromStr, time::Instant};
+use std::fs::read_to_string;
 
-use interceptors_lib::{Prefabs, area::{Area, AreaSave}, background::{Background, BackgroundSave}, button::Button, clip::Clip, decoration::{Decoration, DecorationSave}, draw_hitbox, drawable::{DrawContext, Drawable}, font_loader::FontLoader, is_key_released_exclusive, macroquad_to_rapier, mouse_world_pos, prop::{Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::{Tile, TileId, TileSave}};
-use ldtk2::When;
-use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, LIGHTGRAY, RED, WHITE}, input::{self, KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_position, mouse_wheel}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, texture::{DrawTextureParams, draw_texture_ex}, window::{next_frame, screen_height, screen_width}};
-use nalgebra::{vector, Isometry, Isometry2, Vector2};
-use rapier2d::{math::Point, parry::shape::Cuboid, prelude::{ColliderBuilder, PointQuery, RigidBodyBuilder}};
-use serde::{de, Deserialize, Serialize};
-use strum::{Display, EnumIter, IntoEnumIterator};
+use interceptors_lib::{area::Area, background::{Background, BackgroundSave}, button::Button, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, prop::{Prop, PropSave}, space::Space, texture_loader::TextureLoader, tile::{Tile, TileSave}};
+use macroquad::{color::{GREEN, LIGHTGRAY, WHITE}, input::{MouseButton, is_mouse_button_released, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle_lines, text::draw_text};
+use nalgebra::{vector, Vector2};
+use strum::IntoEnumIterator;
 
-use crate::{editor_input_context::EditorInputContext, spawner_category::{self, SpawnerCategory}, spawner_menu::SpawnerMenu};
+use crate::{editor_input_context::EditorInputContext, spawner_category::SpawnerCategory, spawner_menu::SpawnerMenu};
 
 
 pub struct Spawner {

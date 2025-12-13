@@ -1,10 +1,9 @@
-use std::{path::PathBuf, time::Duration};
 
-use macroquad::{color::WHITE, math::Vec2};
+use macroquad::color::WHITE;
 use nalgebra::{vector, Vector2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle};
 
-use crate::{draw_hitbox, player::Facing, space::Space, texture_loader::TextureLoader, weapons::{lmg::{ weapon_save::LMGSave}, sledge::weapon_save::SledgeSave, weapon::weapon::Weapon, weapon_fire_context::WeaponFireContext}, ClientId};
+use crate::{draw_hitbox, player::Facing, space::Space, texture_loader::TextureLoader, weapons::{lmg::{ weapon_save::LMGSave}, sledge::weapon_save::SledgeSave}, ClientId};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct Sledge {

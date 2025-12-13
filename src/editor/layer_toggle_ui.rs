@@ -1,7 +1,7 @@
-use std::{path::{Path, PathBuf}, str::FromStr};
+use std::{path::PathBuf, str::FromStr};
 
 use interceptors_lib::{button::Button, drawable::Drawable, font_loader::FontLoader, texture_loader::TextureLoader};
-use macroquad::{color::{GRAY, LIGHTGRAY, WHITE}, input::mouse_position, math::{Rect, Vec2}, shapes::draw_rectangle, text::{TextParams, draw_text, draw_text_ex}, texture::{DrawTextureParams, draw_texture, draw_texture_ex}, window::{screen_height, screen_width}};
+use macroquad::{color::{GRAY, LIGHTGRAY, WHITE}, input::mouse_position, math::{Rect, Vec2}, shapes::draw_rectangle, text::{TextParams, draw_text_ex}, texture::{DrawTextureParams, draw_texture_ex}, window::{screen_height, screen_width}};
 
 struct LayerToggle {
     layer: u32,

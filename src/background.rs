@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
-use macroquad::{color::WHITE, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams}};
+use macroquad::{color::WHITE, math::Vec2, texture::{draw_texture_ex, DrawTextureParams}};
 use serde::{Deserialize, Serialize};
 
-use crate::{drawable::{DrawContext, Drawable}, texture_loader::TextureLoader};
+use crate::drawable::{DrawContext, Drawable};
 
 #[derive(Clone)]
 pub struct Background {

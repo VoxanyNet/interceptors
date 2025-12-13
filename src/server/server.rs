@@ -1,4 +1,4 @@
-use std::{fs::read_to_string, time::Duration};
+use std::fs::read_to_string;
 
 use interceptors_lib::{area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket}, weapons::weapon_type::WeaponType, world::World, ClientId, Prefabs, ServerIO};
 use tungstenite::Message;
@@ -34,7 +34,7 @@ impl Server {
             prefabs.load_prefab_data_blocking(prefab_path)
         }   
 
-        let mut forest = Area::from_save(forest_save, None, &prefabs);
+        let forest = Area::from_save(forest_save, None, &prefabs);
 
         //forest.generate_terrain(0);
 

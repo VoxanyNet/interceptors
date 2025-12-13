@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use macroquad::{color::{Color, WHITE}, input::{is_mouse_button_down, is_mouse_button_released}, math::{Rect, Vec2}, texture::{DrawTextureParams, draw_texture_ex}};
+use macroquad::{color::WHITE, input::{is_mouse_button_down, is_mouse_button_released}, math::{Rect, Vec2}, texture::{DrawTextureParams, draw_texture_ex}};
 
 use crate::texture_loader::TextureLoader;
 

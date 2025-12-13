@@ -1,7 +1,7 @@
 use macroquad::{color::Color, math::Vec2};
 use rapier2d::prelude::{ColliderHandle, ImpulseJointHandle, RigidBodyHandle};
 
-use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapons::{lmg::weapon::LMG, shotgun::{self, weapon::Shotgun}, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}, ClientTickContext};
+use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapons::{lmg::weapon::LMG, shotgun::weapon::Shotgun, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}, ClientTickContext};
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum WeaponType {

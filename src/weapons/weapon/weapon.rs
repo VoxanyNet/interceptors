@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use macroquad::{audio::{play_sound, PlaySoundParams}, color::Color, math::Vec2, rand::RandomRange};
 use nalgebra::{point, vector, Vector2};
-use rapier2d::{math::Vector, parry::query::Ray, prelude::{Collider, ColliderHandle, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
+use rapier2d::{math::Vector, parry::query::Ray, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 
 use crate::{area::AreaId, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, enemy::EnemyId, get_preview_resolution, player::{Facing, PlayerId}, space::Space, texture_loader::TextureLoader, weapons::{bullet_impact_data::BulletImpactData, weapon::{weapon_save::WeaponSave}, weapon_fire_context::WeaponFireContext}, ClientId, ClientTickContext};
 

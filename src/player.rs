@@ -421,7 +421,7 @@ impl Player {
 
         let body_handle = body.body_handle.clone();
 
-        let mut inventory = Inventory::new();
+        let inventory = Inventory::new();
 
 
         // items[0] = Some(ItemSlot {

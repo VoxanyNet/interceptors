@@ -1,8 +1,8 @@
-use std::{env::temp_dir, fs::{self, File}, path::{Path, PathBuf}, process::Command, str::FromStr, time::SystemTime};
+use std::{env::temp_dir, fs::{self}, path::PathBuf, process::Command, time::SystemTime};
 
 use macroquad::{color::{DARKGRAY, GRAY, WHITE}, input::{is_mouse_button_released, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle, text::draw_text};
 
-use crate::{ClientTickContext, button::Button, mouse_world_pos, space::Space, uuid_string};
+use crate::{button::Button, mouse_world_pos, space::Space, uuid_string};
 
 pub struct DataEditorContext<'a> {
     pub space: &'a mut Space

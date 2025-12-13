@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use macroquad::math::Vec2;
-use nalgebra::Isometry2;
 use serde::{Deserialize, Serialize};
 
 use crate::ClientId;

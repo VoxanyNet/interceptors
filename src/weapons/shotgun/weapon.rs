@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use macroquad::{color::Color, math::Vec2};
-use nalgebra::Vector2;
 use rapier2d::prelude::{ImpulseJointHandle, RigidBodyHandle};
 
 use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapons::{shotgun::{ weapon_save::ShotgunSave}, weapon::weapon::Weapon, weapon_fire_context::WeaponFireContext}, ClientId, ClientTickContext};

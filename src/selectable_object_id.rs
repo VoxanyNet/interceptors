@@ -1,6 +1,5 @@
-use crate::{area::Area, clip::Clip, decoration::{self, Decoration}, drawable::Drawable, prop::{Prop, PropId}, tile::Tile};
+use crate::{clip::Clip, decoration::Decoration, drawable::Drawable, prop::{Prop, PropId}, tile::Tile};
 use nalgebra::Vector2;
-use serde::de;
 
 #[derive(Clone, PartialEq, Copy)]
 pub enum SelectableObjectId {

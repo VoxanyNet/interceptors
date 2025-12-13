@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use macroquad::{color::{GRAY, WHITE}, math::Vec2, texture::{draw_texture_ex, DrawTextureParams}};
-use nalgebra::{vector, Isometry2, Vector2};
-use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBody, RigidBodyBuilder, RigidBodyHandle};
+use nalgebra::{vector, Vector2};
+use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 
 use crate::{rapier_to_macroquad, space::Space, texture_loader::TextureLoader, uuid_u64};
