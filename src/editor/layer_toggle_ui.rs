@@ -7,6 +7,7 @@ struct LayerToggle {
     layer: u32,
     pub active_toggle: Button, 
     visibility_toggle: Button, 
+    lock_toggle: Button,
     visible: bool
 }
 
@@ -26,6 +27,8 @@ impl LayerToggle {
         draw_rectangle(self.active_toggle.rect.x, self.active_toggle.rect.y, self.active_toggle.rect.w, self.active_toggle.rect.h, color);
         
         draw_rectangle(self.visibility_toggle.rect.x, self.visibility_toggle.rect.y, self.visibility_toggle.rect.w, self.visibility_toggle.rect.h, GRAY);
+
+        draw_rectangle(self.lock_toggle.rect.x, self.lock_toggle.rect.y, self.lock_toggle.rect.w, self.lock_toggle.rect.h, GRAY);
 
         if self.visible {
             draw_texture_ex(
@@ -86,7 +89,7 @@ impl LayerToggleUI {
     }
 
     fn update_toggles(&mut self) {
-        for (index, toggle) in self.toggles.iter_mut().rev().enumerate() {
+        for (index, toggle) in self.toggles.iter_mut().enumerate().rev() {
 
             toggle.active_toggle.update(mouse_position().into());
             toggle.visibility_toggle.update(mouse_position().into());
@@ -125,8 +128,10 @@ impl LayerToggleUI {
 
     pub fn draw(&self, fonts: &FontLoader, textures: &TextureLoader) {
         for (index, toggle) in self.toggles.iter().enumerate() {
+            
             toggle.draw(fonts, textures, self.active_layer == index as u32);
         }
+
 
 
         // draw_texture_ex(
@@ -172,6 +177,15 @@ impl LayerToggleUI {
                     visibility_toggle: Button::new(
                         Rect::new(
                             self.position.x - 32., 
+                            (self.position.y) + (index as f32 * 32.), 
+                            32., 
+                            32.
+                        ), 
+                        None
+                    ),
+                    lock_toggle: Button::new(
+                        Rect::new(
+                            self.position.x - 64., 
                             (self.position.y) + (index as f32 * 32.), 
                             32., 
                             32.

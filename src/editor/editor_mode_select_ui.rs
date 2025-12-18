@@ -84,6 +84,8 @@ impl EditorModeSelectUI {
         self.prefab_mode_toggle.rect.x = screen_width() - self.prefab_mode_toggle.rect.w;
         
         self.select_mode_toggle.rect.x = screen_width() - self.prefab_mode_toggle.rect.w;
+
+        self.simulate_space_toggle.rect.x = screen_width() - self.prefab_mode_toggle.rect.w;
     }
 
     pub fn draw(&self, textures: &TextureLoader) {

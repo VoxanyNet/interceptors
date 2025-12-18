@@ -71,7 +71,10 @@ impl AreaEditor {
         for (clip_index, clip) in self.area.clips.iter().enumerate() { 
             let clip_collider = self.area.space.collider_set.get(clip.collider_handle).unwrap();
 
+            
+            //dbg!(clip_collider.shape().as_cuboid().unwrap().half_extents);
             if clip_collider.shape().as_cuboid().unwrap().contains_point(clip_collider.position(), &Point::new(self.rapier_cursor().x, self.rapier_cursor().y)) {
+                
                 return Some(SelectableObjectId::Clip(clip_index))
             }
         }

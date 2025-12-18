@@ -615,23 +615,8 @@ impl Client {
 
         self.phone();
 
-        //dbg!(self.test_button);
-
-        //self.phone.update_animation();
-
-        //self.update_camera_to_match_screen_size();
-
         self.measure_latency();
 
-        // if is_key_released(KeyCode::E) {
-        //     self.camera_rect.w *= 1.2;
-        //     self.camera_rect.h *= 1.2;
-        // }
-
-        // if is_key_released(KeyCode::Q) {
-        //     self.camera_rect.w *= 0.8;
-        //     self.camera_rect.h *= 0.8;
-        // }
 
         self.ping();
 
