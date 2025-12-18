@@ -151,6 +151,8 @@ impl LayerToggleUI {
             toggle.active_toggle.rect.y = (self.position.y) + (index as f32 * 32.);
             toggle.visibility_toggle.rect.x = self.position.x - 32.;
             toggle.visibility_toggle.rect.y = (self.position.y) + (index as f32 * 32.);
+            toggle.lock_toggle.rect.x = self.position.x - 64.;
+            toggle.lock_toggle.rect.y = (self.position.y) + (index as f32 * 32.);
         }
     }
 

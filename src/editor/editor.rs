@@ -838,13 +838,15 @@ impl AreaEditor {
     }
     
     pub fn update_modifying_status(&mut self) {
-        if self.last_area_save != self.area.save(){
+
+        let area_save = self.area.save();
+        if self.last_area_save != area_save {
             self.modifying = true;
         } else {
             self.modifying = false;
         }
 
-        self.last_area_save = self.area.save()
+        self.last_area_save = area_save
 
         
     }

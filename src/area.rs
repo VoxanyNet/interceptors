@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{path::PathBuf, str::FromStr, time::Instant};
 
 use macroquad::{audio::{play_sound, PlaySoundParams}, camera::Camera2D, input::{is_key_released, KeyCode}, math::Rect};
 use nalgebra::{vector, Isometry2, Vector2};
@@ -844,6 +844,7 @@ impl Area {
 
     pub fn save(&self) -> AreaSave {
 
+       
         let mut decorations: Vec<DecorationSave> = Vec::new();
         let mut clips: Vec<ClipSave> = Vec::new();
         let mut players: Vec<PlayerSave> = Vec::new();
@@ -853,7 +854,7 @@ impl Area {
         let mut dropped_items: Vec<DroppedItemSave> = Vec::new();
         let mut ambiances: Vec<AmbianceSave> = Vec::new();
         let mut tiles: Vec<TileSave> = vec![];
-
+    
         for decoration in &self.decorations {
             decorations.push(
                 decoration.save()
@@ -896,19 +897,7 @@ impl Area {
             )
         }
 
-        for (x, row) in self.tiles.iter().enumerate() {
-
-            for (y, tile) in row.iter().enumerate() {
-
-                if let Some(tile) = tile {
-                    tiles.push(tile.save(Vector2::new(x, y)));
-                }
-
-                
-                
-            }
-            
-        }
+        
 
         let computer_pos = match &self.computer {
             Some(computer) => {
