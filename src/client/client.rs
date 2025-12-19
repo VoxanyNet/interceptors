@@ -713,7 +713,7 @@ impl Client {
 
         set_default_camera();
 
-        gl_use_material(&self.material);
+        //gl_use_material(&self.material);
 
 
 

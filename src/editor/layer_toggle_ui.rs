@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{ops::Not, path::PathBuf, str::FromStr};
 
 use interceptors_lib::{button::Button, drawable::Drawable, font_loader::FontLoader, texture_loader::TextureLoader};
 use macroquad::{color::{GRAY, LIGHTGRAY, WHITE}, input::mouse_position, math::{Rect, Vec2}, shapes::draw_rectangle, text::{TextParams, draw_text_ex}, texture::{DrawTextureParams, draw_texture_ex}, window::{screen_height, screen_width}};
@@ -8,7 +8,8 @@ struct LayerToggle {
     pub active_toggle: Button, 
     visibility_toggle: Button, 
     lock_toggle: Button,
-    visible: bool
+    visible: bool,
+    pub locked: bool
 }
 
 impl LayerToggle {
@@ -35,6 +36,19 @@ impl LayerToggle {
                 textures.get(&PathBuf::from_str("assets/ui/eye.png").unwrap()), 
                 self.visibility_toggle.rect.x, 
                 self.visibility_toggle.rect.y, 
+                WHITE, 
+                DrawTextureParams {
+                    dest_size: Some(Vec2::new(32., 32.)),
+                    ..Default::default()
+                }
+            );
+        }
+
+        if self.locked {
+            draw_texture_ex(
+                textures.get(&PathBuf::from_str("assets/ui/lock.png").unwrap()), 
+                self.lock_toggle.rect.x, 
+                self.lock_toggle.rect.y, 
                 WHITE, 
                 DrawTextureParams {
                     dest_size: Some(Vec2::new(32., 32.)),
@@ -93,28 +107,38 @@ impl LayerToggleUI {
 
             toggle.active_toggle.update(mouse_position().into());
             toggle.visibility_toggle.update(mouse_position().into());
+            toggle.lock_toggle.update(mouse_position().into());
 
             if toggle.visibility_toggle.released {
-                toggle.visible = !toggle.visible;
+                toggle.visible = toggle.visible.not();
             }
 
             if toggle.active_toggle.released {
                 self.active_layer = index as u32
             }
 
+            if toggle.lock_toggle.released {
+                
+                toggle.locked = toggle.locked.not();
+                
+            }
+
         }
     }
 
+    pub fn get_invisible_layers(&self) -> Vec<u32> {
+        self.toggles
+            .iter()
+            .filter(|toggle| !toggle.visible)
+            .map(|toggle| toggle.layer)
+            .collect()
+    }
     pub fn get_disabled_layers(&self) -> Vec<u32> {
 
-        let mut disabled_layers = Vec::new();
-        for toggle in &self.toggles {
-            if !toggle.visible {
-                disabled_layers.push(toggle.layer);
-            }
-        }
-
-        disabled_layers
+        self.toggles.iter()
+            .filter(|toggle| toggle.locked || !toggle.visible)
+            .map(|toggle| toggle.layer)
+            .collect()
     }
 
     pub fn update(&mut self, drawable_objects: Vec<&dyn Drawable>) {
@@ -194,7 +218,8 @@ impl LayerToggleUI {
                         ), 
                         None
                     ),
-                    visible: true
+                    visible: true,
+                    locked: false
                 }
             );
         }

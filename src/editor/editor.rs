@@ -1,6 +1,6 @@
 use std::{fs::read_to_string, path::PathBuf, time::{Duration, Instant}};
 
-use interceptors_lib::{Prefabs, area::{Area, AreaSave}, clip::Clip, decoration::Decoration, draw_hitbox, drawable::DrawContext, editor_context_menu::EditorContextMenu, font_loader::FontLoader, macroquad_to_rapier, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, texture_loader::TextureLoader};
+use interceptors_lib::{Prefabs, area::{Area, AreaSave}, clip::Clip, decoration::Decoration, draw_hitbox, drawable::{DrawContext, Drawable}, editor_context_menu::EditorContextMenu, font_loader::FontLoader, macroquad_to_rapier, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, texture_loader::TextureLoader};
 use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{GREEN, RED, WHITE}, input::{KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, time::draw_fps, window::{next_frame, screen_height, screen_width}};
 use nalgebra::{vector, Vector2};
 use rapier2d::{math::Point, prelude::{ColliderBuilder, PointQuery, RigidBodyBuilder}};
@@ -66,9 +66,12 @@ impl AreaEditor {
 
     }
 
-    pub fn get_hovered_object(&mut self) -> Option<SelectableObjectId> {
+    pub fn get_hovered_object(&mut self, disabled_layers: &Vec<u32>) -> Option<SelectableObjectId> {
 
         for (clip_index, clip) in self.area.clips.iter().enumerate() { 
+
+            if disabled_layers.contains(&clip.layer) {continue;}
+
             let clip_collider = self.area.space.collider_set.get(clip.collider_handle).unwrap();
 
             
@@ -80,6 +83,8 @@ impl AreaEditor {
         }
         
         for (decoration_index, decoration) in self.area.decorations.iter().enumerate() {
+            if disabled_layers.contains(&decoration.layer) {continue;}
+
             let decoration_rect = Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y);
 
             if decoration_rect.contains(mouse_world_pos(&self.camera_rect)) || decoration_rect.contains(self.cursor) {
@@ -88,6 +93,8 @@ impl AreaEditor {
         }
 
         for prop in &self.area.props {
+            if disabled_layers.contains(&prop.draw_layer()) {continue;}
+
             let prop_collider = self.area.space.collider_set.get(prop.collider_handle).unwrap();
 
             if prop_collider.shape().as_cuboid().unwrap().contains_point(prop_collider.position(), &Point::new(self.rapier_cursor().x, self.rapier_cursor().y)) {
@@ -116,29 +123,46 @@ impl AreaEditor {
             self.selected_objects.clear();
         }
 
-        if let Some(hovered_object_id) = self.get_hovered_object() {
+        let disabled_layers = self.layer_toggle_ui.get_disabled_layers();
+
+        if let Some(hovered_object_id) = self.get_hovered_object(&disabled_layers) {
 
             let hovered_object = self.area.get_selectable_object_mut(hovered_object_id).unwrap();
 
-            if self.layer_toggle_ui.get_disabled_layers().contains(&hovered_object.get_layer()) {
+            if disabled_layers.contains(&hovered_object.get_layer()) {
                 return;
             }
 
             self.selected_objects.push(hovered_object_id);
-        }
-
-        
-
-        
+        } 
     }
 
-    pub fn drag_object(&mut self) {
+    pub fn update_active_layer_to_selected_object(&mut self) {
+        
+        // only if one object is selected
+        if self.selected_objects.len() != 1 {
+            return;
+        }
+
+        // dirty hack to only run this when we are selecting a new object
+        if !is_mouse_button_released(MouseButton::Left) {
+            return;
+        }
+
+        // might not be a good idea to be controlling this variable from outside the structure
+        self.layer_toggle_ui.active_layer = self.area.get_selectable_object_mut(self.selected_objects[0]).unwrap().get_layer();
+
+
+
+    }
+
+    pub fn drag_object(&mut self, disabled_layers: &Vec<u32>) {
 
         self.dragging_object = false;  
 
         if self.current_mode() != EditorMode::Select {return};
         if !is_mouse_button_down(MouseButton::Left) {return};
-        if self.get_hovered_object().is_none() {return};
+        if self.get_hovered_object(disabled_layers).is_none() {return};
         if self.selection_rect.is_some() && !self.selected_released_flag {return};
 
         self.dragging_object = true;
@@ -359,7 +383,7 @@ impl AreaEditor {
     }
 
     pub fn highlight_hovered_object(&mut self) {
-        if let Some(hovered_object_id) = self.get_hovered_object() {
+        if let Some(hovered_object_id) = self.get_hovered_object(&self.layer_toggle_ui.get_disabled_layers()) {
 
             let hovered_object = self.area.get_selectable_object_mut(hovered_object_id).unwrap();
 
@@ -565,21 +589,7 @@ impl AreaEditor {
         }
     }
 
-    pub fn draw_clips(&self) {
-
-        let mut color = WHITE;
-
-        color.a = 0.2;
-
-        for clip in &self.area.clips {
-
-            if self.layer_toggle_ui.get_disabled_layers().contains(&clip.layer) {
-                continue;
-            }
-
-            draw_hitbox(&self.area.space, clip.rigid_body_handle, clip.collider_handle, color);
-        }
-    }
+    
 
     pub async fn draw(&mut self) {
 
@@ -588,7 +598,15 @@ impl AreaEditor {
 
         set_camera(&camera);
 
-        self.area.draw(&mut self.textures, &self.camera_rect, &self.prefab_data, &camera, &self.fonts, self.start.elapsed(), self.layer_toggle_ui.get_disabled_layers()).await;
+        self.area.draw(
+            &mut self.textures, 
+            &self.camera_rect, 
+            &self.prefab_data, 
+            &camera, 
+            &self.fonts, 
+            self.start.elapsed(), 
+            self.layer_toggle_ui.get_invisible_layers()
+        ).await;
 
         
 
@@ -612,7 +630,7 @@ impl AreaEditor {
         
         self.draw_cursor();
         self.draw_clip_points();
-        self.draw_clips();
+        
         self.draw_selection_rect();
         self.highlight_hovered_object();
         self.highlight_selected_object();
@@ -712,6 +730,7 @@ impl AreaEditor {
             }
         }
 
+        
         if self.dragging_object {return;}
         
         if is_mouse_button_down(MouseButton::Left) {
@@ -771,7 +790,7 @@ impl AreaEditor {
     }
 
     fn mode_select_tick(&mut self) {
-        self.drag_object();
+        self.drag_object(&self.layer_toggle_ui.get_disabled_layers());
         self.select_object();
         self.rectangle_select();
         self.select_objects_in_rectangle(); 
@@ -832,8 +851,6 @@ impl AreaEditor {
 
         for clip in &mut self.area.clips {
             clip.update_menu(&mut self.area.space, &self.camera_rect);
-
-            
         }
     }
     
@@ -916,6 +933,7 @@ impl AreaEditor {
         self.change_mode();
         self.update_camera();
         self.update_context_menus();
+        self.update_active_layer_to_selected_object();
         
 
 

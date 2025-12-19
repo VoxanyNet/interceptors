@@ -1,9 +1,9 @@
-use macroquad::math::{Rect, Vec2};
+use macroquad::{color::WHITE, math::{Rect, Vec2}};
 use nalgebra::vector;
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 
-use crate::{drawable::{DrawContext, Drawable}, editor_context_menu::{DataEditorContext, EditorContextMenu, EditorContextMenuData}, rapier_to_macroquad, space::Space};
+use crate::{draw_hitbox, drawable::{DrawContext, Drawable}, editor_context_menu::{DataEditorContext, EditorContextMenu, EditorContextMenuData}, rapier_to_macroquad, space::Space};
 
 
 pub struct Clip {
@@ -99,7 +99,11 @@ pub struct ClipSave {
 #[async_trait::async_trait]
 impl Drawable for Clip {
     async fn draw(&mut self, draw_context: &DrawContext) {
-        
+        let mut color = WHITE;
+
+        color.a = 0.2;
+
+        draw_hitbox(&draw_context.space, self.rigid_body_handle, self.collider_handle, color);
     }
 
     fn draw_layer(&self) -> u32 {

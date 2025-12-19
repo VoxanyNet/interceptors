@@ -82,7 +82,7 @@ impl Drawable for BulletTrail {
     }
 
     fn draw_layer(&self) -> u32 {
-        todo!()
+        2
     }
 }
 #[derive(Serialize, Deserialize, Clone, Copy)]

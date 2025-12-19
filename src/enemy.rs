@@ -856,7 +856,7 @@ impl Drawable for Enemy {
     }
 
     fn draw_layer(&self) -> u32 {
-        todo!()
+        3
     }
 }
 

@@ -6,7 +6,7 @@ use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, prop::{DissolvedPixel, Prop}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}, ClientId, ClientTickContext, Prefabs};
+use crate::{ClientId, ClientTickContext, Prefabs, angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, mouse_world_pos, prop::{DissolvedPixel, Prop}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -316,65 +316,51 @@ impl Player {
         let distance_y = (our_player_pos.translation.y - average_enemy_pos.y).abs();
 
         
-        let camera_x = our_player_pos.translation.x.min(average_enemy_pos.x) - 200.; // add some padding
-        let camera_y = our_player_pos.translation.y.max(average_enemy_pos.y) + 200.;
+        let rapier_camera_x = our_player_pos.translation.x.min(average_enemy_pos.x) - 200.; // add some padding
+        let rapier_camera_y = our_player_pos.translation.y.min(average_enemy_pos.y) + 200.;
+
+        let macroquad_camera = rapier_to_macroquad(vector![rapier_camera_x, rapier_camera_y].into());
 
         
         let ratio = screen_height() / screen_width();
 
 
-        ctx.camera_rect.x = camera_x;
-        ctx.camera_rect.y = camera_y;
+        ctx.camera_rect.x = macroquad_camera.x;
+        ctx.camera_rect.y = macroquad_camera.y;
         ctx.camera_rect.w = (distance_x + 400.).max(minimum_camera_width);
         ctx.camera_rect.h = (ctx.camera_rect.w) * ratio;
 
         // clamp max camera y pos so we dont go below the level
         let max_camera_y = max_camera_y - ctx.camera_rect.h;
-        ctx.camera_rect.y = ctx.camera_rect.y.min(max_camera_y);
+        //ctx.camera_rect.y = ctx.camera_rect.y.min(max_camera_y);
 
 
     }
 
     pub fn move_camera(&mut self, space: &Space, max_camera_y: f32, average_enemy_pos: Option<Vector2<f32>>, ctx: &mut ClientTickContext, minimum_camera_width: f32, minimum_camera_height: f32) {
 
-        // there are two modes for the camera. One where there are enemies and one where there are none
-        match average_enemy_pos {
-            Some(average_enemy_pos) => {
-                self.move_camera_enemies(ctx, minimum_camera_width, minimum_camera_height, space, average_enemy_pos, max_camera_y);
-            },
-            None => {
+        let position = space.rigid_body_set.get(self.body.body_handle).unwrap().translation();
 
-                let position = space.rigid_body_set.get(self.body.body_handle).unwrap().translation();
+        let macroquad_position = rapier_to_macroquad(*position);
 
-                let macroquad_position = rapier_to_macroquad(*position);
+        // center camera on player
+        ctx.camera_rect.x = macroquad_position.x - (ctx.camera_rect.w / 2.);
+        ctx.camera_rect.y = macroquad_position.y - (ctx.camera_rect.h / 2.);
 
-                
-                if macroquad_position.x > ctx.camera_rect.right() - 200. {
-                    ctx.camera_rect.x = (macroquad_position.x - ctx.camera_rect.w) + 200.;
-                }
+        let mouse_world_pos = mouse_world_pos(&ctx.camera_rect);
 
-                if macroquad_position.x < ctx.camera_rect.left() + 200. {
-                    
-                    ctx.camera_rect.x = macroquad_position.x - 200.
-                }
+        ctx.camera_rect.x += (mouse_world_pos.x - macroquad_position.x);
+        ctx.camera_rect.y += (mouse_world_pos.y - macroquad_position.y);
 
-                if macroquad_position.y > ctx.camera_rect.bottom() - 100. {
-                
 
-                    ctx.camera_rect.y = (macroquad_position.y - ctx.camera_rect.h) + 100.;
-                }
+        let ratio = screen_height() / screen_width();
 
-                if macroquad_position.y < ctx.camera_rect.top() + 100. {
-                
+        ctx.camera_rect.w = 1280.;
 
-                    ctx.camera_rect.y = macroquad_position.y - 100.
-                }
+        ctx.camera_rect.h = ctx.camera_rect.w * ratio;
+        //let max_camera_y = max_camera_y - ctx.camera_rect.h;
 
-                //let max_camera_y = max_camera_y - ctx.camera_rect.h;
-
-                //ctx.camera_rect.y = ctx.camera_rect.y.min(max_camera_y);                
-            },
-        }
+        //ctx.camera_rect.y = ctx.camera_rect.y.min(max_camera_y);           
         
 
 
