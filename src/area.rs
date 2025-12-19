@@ -716,6 +716,8 @@ impl Area {
         self.props.retain(|prop| {prop.despawn == false});
         self.enemies.retain(|enemy| {enemy.despawn == false});
         self.dissolved_pixels.retain(|pixel| {pixel.despawn == false});
+        self.decorations.retain(|decoration| decoration.despawn == false);
+        self.clips.retain(|clip| clip.despawn == false);
     }
 
     pub fn find_prop_mut(&mut self, id: PropId) -> Option<&mut Prop> {

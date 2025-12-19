@@ -1,7 +1,7 @@
 use crate::{clip::Clip, decoration::Decoration, drawable::Drawable, prop::{Prop, PropId}, tile::Tile};
 use nalgebra::Vector2;
 
-#[derive(Clone, PartialEq, Copy)]
+#[derive(Clone, PartialEq, Copy, Debug)]
 pub enum SelectableObjectId {
     Decoration(usize), // index into vec
     Tile(Vector2<usize>), // coordinates

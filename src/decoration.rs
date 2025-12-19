@@ -14,7 +14,8 @@ pub struct Decoration {
     pub frame_duration: Option<web_time::Duration>,
     pub animated_sprite_paths: Option<Vec<PathBuf>>,
     pub layer: u32,
-    pub editor_context_menu: Option<EditorContextMenuData>
+    pub editor_context_menu: Option<EditorContextMenuData>,
+    pub despawn: bool
 }
 
 impl Decoration {
@@ -37,7 +38,8 @@ impl Decoration {
             size: save.size,
             frame_duration,
             layer: save.layer,
-            editor_context_menu: None
+            editor_context_menu: None,
+            despawn: false
         }
     }
 
@@ -93,6 +95,10 @@ impl EditorContextMenu for Decoration {
 
     fn context_menu_data(&self) -> &Option<EditorContextMenuData> {
         &self.editor_context_menu
+    }
+    
+    fn despawn(&mut self) -> Option<&mut bool> {
+        Some(&mut self.despawn)
     }
 }
 

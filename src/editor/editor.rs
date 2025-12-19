@@ -845,12 +845,21 @@ impl AreaEditor {
 
     pub fn update_context_menus(&mut self) {
 
-        for decoration in &mut self.area.decorations {
-            decoration.update_menu(&mut self.area.space, &self.camera_rect);
+        for (index, decoration) in self.area.decorations.iter_mut().enumerate() {
+
+            
+            let selected = self.selected_objects.contains(&SelectableObjectId::Decoration(index));
+        
+
+            decoration.update_menu(&mut self.area.space, &self.camera_rect, selected);
         }
 
-        for clip in &mut self.area.clips {
-            clip.update_menu(&mut self.area.space, &self.camera_rect);
+        for (index, clip) in self.area.clips.iter_mut().enumerate() {
+
+            let selected = self.selected_objects.contains(&SelectableObjectId::Clip(index));
+
+            
+            clip.update_menu(&mut self.area.space, &self.camera_rect, selected);
         }
     }
     
@@ -934,6 +943,7 @@ impl AreaEditor {
         self.update_camera();
         self.update_context_menus();
         self.update_active_layer_to_selected_object();
+        self.area.despawn_entities();
         
 
 

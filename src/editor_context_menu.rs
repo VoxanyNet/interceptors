@@ -2,7 +2,7 @@ use std::{env::temp_dir, fs::{self}, path::PathBuf, process::Command, time::Syst
 
 use macroquad::{color::{DARKGRAY, GRAY, WHITE}, input::{is_mouse_button_released, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle, text::draw_text};
 
-use crate::{button::Button, mouse_world_pos, space::Space, uuid_string};
+use crate::{button::Button, mouse_world_pos, selectable_object_id::SelectableObjectId, space::Space, uuid_string};
 
 pub struct DataEditorContext<'a> {
     pub space: &'a mut Space
@@ -59,6 +59,7 @@ pub trait EditorContextMenu {
                         EntryType::IncreaseLayer => *self.layer().unwrap() += 1,
                         EntryType::DecreaseLayer => * self.layer().unwrap() = self.layer().unwrap().saturating_sub(1),
                         EntryType::DataEditor => self.open_data_editor(&ctx),
+                        EntryType::Despawn => *self.despawn().unwrap() = true
                     }
                 }
             }
@@ -106,18 +107,19 @@ pub trait EditorContextMenu {
             None => {},
         }
     }
-    fn update_menu(&mut self, space: &mut Space, camera_rect: &Rect) {
+
+    fn update_menu(&mut self, space: &mut Space, camera_rect: &Rect, selected: bool) {
 
         
         if (is_mouse_button_released(macroquad::input::MouseButton::Left) || is_mouse_button_released(macroquad::input::MouseButton::Right)) && !self.contains_point(mouse_position().into()) {
-            println!("close");
+           
             self.close_menu();
         }
 
         
-        if is_mouse_button_released(macroquad::input::MouseButton::Right) && self.object_bounding_box(Some(space)).contains(mouse_world_pos(camera_rect)) {
+        if selected && is_mouse_button_released(macroquad::input::MouseButton::Right) && self.object_bounding_box(Some(space)).contains(mouse_world_pos(camera_rect)) {
 
-            println!("open");
+            
             self.open_menu(mouse_position().into(), &DataEditorContext { space });
         }
 
@@ -177,6 +179,19 @@ pub trait EditorContextMenu {
 
         let mut entry_index = 0;
 
+        if self.despawn().is_some() {
+            entries.push(
+                MenuEntry {
+                    button: Button::new(
+                        Rect::new(position.x, position.y + (20. * entry_index as f32), 150., 20.),
+                        None
+                    ),
+                    field_type: EntryType::Despawn
+                }
+            );
+
+            entry_index += 1;
+        }
         if self.data_editor_export(ctx).is_some() {
             entries.push(
                 MenuEntry {
@@ -267,6 +282,7 @@ pub struct MenuEntry {
 
 #[derive(strum::Display, Clone, PartialEq)]
 pub enum EntryType {
+    Despawn,
     IncreaseLayer,
     DecreaseLayer,
     DataEditor
