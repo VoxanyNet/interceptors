@@ -391,25 +391,8 @@ impl Player {
         let body_handle = body.body_handle.clone();
 
         let inventory = Inventory::new();
-
-
-        // items[0] = Some(ItemSlot {
-        //     quantity: 1,
-        //     item: Item::Prop(
-        //         PropItem {
-        //             prefab_path: PathBuf::from("prefabs\\generic_physics_props\\box2.json"),
-        //         }
-        //     ),
-        // });
-        // items[3] = Some(ItemSlot {
-        //     quantity: 1,
-        //     item: Item::Prop(
-        //         PropItem {
-        //             prefab_path: PathBuf::from("prefabs\\generic_physics_props\\box2.json"),
-        //         }
-        //     ),
-        // });
-
+// OTIS DEC 2025
+// pooooooooooooooooo0l0ppppppppppppppp-
         Self {
             id: PlayerId::new(),
             health: 100,
