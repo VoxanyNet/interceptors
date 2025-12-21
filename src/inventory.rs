@@ -21,8 +21,6 @@ impl Inventory {
         space: &mut Space,
         player_id: PlayerId
     ) -> Option<Item> {
-
-        dbg!("trying");
     
         for (item_slot_index, item_slot) in &mut self.items.iter_mut().enumerate() {
 
@@ -31,14 +29,12 @@ impl Inventory {
                 Some(item_slot) => {
 
                     if !item_slot.item.stackable() {
-                        dbg!("skipping unstackable");
+                        
                         continue;
                     }
                     // matching item
                     if item_slot.item == item {
                         item_slot.quantity += 1;
-
-                        dbg!("increasing");
 
                         ctx.network_io.send_network_packet(
                             NetworkPacket::ItemSlotQuantityUpdate(

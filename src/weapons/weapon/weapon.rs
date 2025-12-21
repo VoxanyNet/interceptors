@@ -69,7 +69,7 @@ impl Weapon {
 
 
         let collider = space.collider_set.insert_with_parent(
-            collider_from_texture_size(self.texture_size)
+            collider_from_texture_size(self.texture_size * self.scale)
                 .mass(self.mass)
                 .build(), 
             rigid_body, 
@@ -209,8 +209,6 @@ impl Weapon {
     ) -> Self {
 
         let mass = mass.unwrap_or(1.);
-
-        let texture_size = texture_size * scale ; // scale the size of the shotgun
         
 
         let aim_angle_offset = match aim_angle_offset {

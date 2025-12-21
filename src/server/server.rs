@@ -292,7 +292,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
                     let player = area.players.iter_mut().find(|player| {player.id == update.id}).unwrap();
 
-                    player.set_facing(update.facing);
+                    player.facing = update.facing;
 
                     self.network_io.send_all_except(network_packet, client_id);
                 },

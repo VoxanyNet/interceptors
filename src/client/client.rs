@@ -345,7 +345,7 @@ impl Client {
 
                     let player = area.players.iter_mut().find(|player| {player.id == update.id}).unwrap();
 
-                    player.set_facing(update.facing);
+                    player.facing = update.facing;
                 },
                 NetworkPacket::SpawnBulletTrail(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
