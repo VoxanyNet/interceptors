@@ -1,7 +1,7 @@
 use std::{f32::consts::PI, mem::take, path::PathBuf, str::FromStr, time::Instant, usize};
 
 use cs_utils::drain_filter;
-use macroquad::{color::{BLACK, WHITE}, input::{is_key_down, is_mouse_button_released, mouse_wheel, KeyCode}, math::{Rect, Vec2}, shapes::draw_rectangle, text::{draw_text, draw_text_ex, TextParams}, window::{screen_height, screen_width}};
+use macroquad::{color::{BLACK, WHITE}, input::{KeyCode, is_key_down, is_mouse_button_released, mouse_position, mouse_wheel}, math::{Rect, Vec2}, shapes::draw_rectangle, text::{TextParams, draw_text, draw_text_ex}, window::{screen_height, screen_width}};
 use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
@@ -307,35 +307,6 @@ impl Player {
         self.facing = facing
     } 
 
-    pub fn move_camera_enemies(&mut self, ctx: &mut ClientTickContext, minimum_camera_width: f32, minimum_camera_height: f32, space: &Space, average_enemy_pos: Vector2<f32>, max_camera_y: f32) {
-
-
-        let our_player_pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position();
-
-        let distance_x = (our_player_pos.translation.x - average_enemy_pos.x).abs();
-        let distance_y = (our_player_pos.translation.y - average_enemy_pos.y).abs();
-
-        
-        let rapier_camera_x = our_player_pos.translation.x.min(average_enemy_pos.x) - 200.; // add some padding
-        let rapier_camera_y = our_player_pos.translation.y.min(average_enemy_pos.y) + 200.;
-
-        let macroquad_camera = rapier_to_macroquad(vector![rapier_camera_x, rapier_camera_y].into());
-
-        
-        let ratio = screen_height() / screen_width();
-
-
-        ctx.camera_rect.x = macroquad_camera.x;
-        ctx.camera_rect.y = macroquad_camera.y;
-        ctx.camera_rect.w = (distance_x + 400.).max(minimum_camera_width);
-        ctx.camera_rect.h = (ctx.camera_rect.w) * ratio;
-
-        // clamp max camera y pos so we dont go below the level
-        let max_camera_y = max_camera_y - ctx.camera_rect.h;
-        //ctx.camera_rect.y = ctx.camera_rect.y.min(max_camera_y);
-
-
-    }
 
     pub fn move_camera(&mut self, space: &Space, max_camera_y: f32, average_enemy_pos: Option<Vector2<f32>>, ctx: &mut ClientTickContext, minimum_camera_width: f32, minimum_camera_height: f32) {
 
@@ -343,14 +314,29 @@ impl Player {
 
         let macroquad_position = rapier_to_macroquad(*position);
 
+
+
         // center camera on player
-        ctx.camera_rect.x = macroquad_position.x - (ctx.camera_rect.w / 2.);
-        ctx.camera_rect.y = macroquad_position.y - (ctx.camera_rect.h / 2.);
+        // ctx.camera_rect.x = macroquad_position.x - (ctx.camera_rect.w / 2.);
+        // ctx.camera_rect.y = macroquad_position.y - (ctx.camera_rect.h / 2.);
 
-        let mouse_world_pos = mouse_world_pos(&ctx.camera_rect);
 
-        ctx.camera_rect.x += (mouse_world_pos.x - macroquad_position.x);
-        ctx.camera_rect.y += (mouse_world_pos.y - macroquad_position.y);
+        let mouse_pos: Vec2 = mouse_position().into();
+
+        let distance_from_center = Vec2::new(
+            mouse_pos.x - (ctx.camera_rect.w / 2.), 
+            mouse_pos.y - (ctx.camera_rect.h / 2.)
+        );
+
+        let target_camera_pos = Vec2 {
+            x: (macroquad_position.x - ctx.camera_rect.w / 2.) + distance_from_center.x,
+            y: (macroquad_position.y - ctx.camera_rect.h / 2.) + distance_from_center.y,
+        };
+
+        ctx.camera_rect.x = target_camera_pos.x;
+        ctx.camera_rect.y = target_camera_pos.y;
+
+
 
 
         let ratio = screen_height() / screen_width();
