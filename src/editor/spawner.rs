@@ -1,11 +1,11 @@
-use std::fs::read_to_string;
+use std::{fs::read_to_string, path::PathBuf, str::FromStr};
 
 use interceptors_lib::{area::Area, background::{Background, BackgroundSave}, button::Button, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, prop::{Prop, PropSave}, space::Space, texture_loader::TextureLoader, tile::{Tile, TileSave}};
 use macroquad::{color::{GREEN, LIGHTGRAY, WHITE}, input::{MouseButton, is_mouse_button_released, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle_lines, text::draw_text};
 use nalgebra::{vector, Vector2};
 use strum::IntoEnumIterator;
 
-use crate::{editor_input_context::EditorInputContext, spawner_category::SpawnerCategory, spawner_menu::SpawnerMenu};
+use crate::{editor_input_context::EditorInputContext, list_dir_entries, spawner_category::SpawnerCategory, spawner_menu::SpawnerMenu};
 
 
 pub struct Spawner {
@@ -190,9 +190,31 @@ impl Spawner {
 
     pub fn load_prefab(&mut self) {
         if self.change {
-            let selected_prefab_path = self.menu.prefabs.get(&self.selected_category).unwrap().get(self.selected_prefab as usize).unwrap();
+            let selected_prefab_path = self.menu.prefabs.get(&self.selected_category).unwrap().get(self.selected_prefab as usize).unwrap().clone();
 
-            self.selected_prefab_json = read_to_string(selected_prefab_path).unwrap();
+
+            let path = PathBuf::from_str(&selected_prefab_path).unwrap();
+
+            // enter into directory
+            if path.is_dir() {
+                *self.menu.prefabs.get_mut(&self.selected_category).unwrap() = list_dir_entries(path.clone()).unwrap();
+                
+                // add the parent directory so you can go back up
+                self.menu.prefabs.get_mut(&self.selected_category).unwrap().insert(0, path.parent().unwrap().to_string_lossy().to_string());
+
+                // load the first entry in the directory
+                self.selected_prefab = 1;
+                let selected_prefab_path = self.menu.prefabs.get(&self.selected_category).unwrap().get(self.selected_prefab as usize).unwrap().clone();
+                self.selected_prefab_json = read_to_string(selected_prefab_path).unwrap();
+                
+                self.rebuild_buttons();
+
+                
+            } else {
+                self.selected_prefab_json = read_to_string(selected_prefab_path).unwrap();
+            }
+
+            
         }   
     }
 
@@ -230,6 +252,7 @@ impl Spawner {
             
             SpawnerCategory::Decoration => {
 
+                println!("{}", self.selected_prefab_json);
                 let decoration_save: DecorationSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
 
                 let mut decoration: Decoration = Decoration::from_save(decoration_save);

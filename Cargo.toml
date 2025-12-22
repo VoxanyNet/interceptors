@@ -25,6 +25,8 @@ noise = "0.9.0"
 cs-utils = "0.21.1"
 dhat = "0.3.3"
 async-trait = "0.1.89"
+clap = { version = "4.5.53", features = ["derive"] }
+image = "0.25.9"
 #web-sys = { version = "0.3.72", features = ["console"] }
 
 [[bin]]
@@ -38,6 +40,10 @@ path = "src/server/main.rs"
 [[bin]]
 name = "editor"
 path = "src/editor/main.rs"
+
+[[bin]]
+name = "decoration-util"
+path = "src/decoration-util/main.rs"
 
 [lib]
 name = "interceptors_lib"
