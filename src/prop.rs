@@ -537,7 +537,7 @@ pub struct PropSave {
     #[serde(default)]
     pub material: PropMaterial,
     #[serde(default = "default_prop_name")]
-    name: String
+    pub name: String
 }
 
 

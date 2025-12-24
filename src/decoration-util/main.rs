@@ -1,37 +1,38 @@
-use std::{env::{self, set_current_dir}, fs, io, path::{Path, PathBuf}, time::Duration};
+use std::{env::{self, set_current_dir}, fs, io, path::{Path, PathBuf}, process::exit, time::Duration};
 
 use clap::{Arg, Parser};
 use image::{GenericImageView, ImageReader};
-use interceptors_lib::decoration::DecorationSave;
+use interceptors_lib::{decoration::DecorationSave, prop::{PropMaterial, PropSave}};
 use macroquad::{math::Vec2, texture::load_image};
+use nalgebra::vector;
 
+use crate::prefab_type::PrefabType;
 
+pub mod prefab_type;
 
 #[derive(Parser)]
 struct Args {
     /// Input file
     asset_paths: Vec<String>,
 
-    /// Output file
-    #[arg(long)]
-    output_path: Option<String>,
-
     #[arg(long)]
     scale: Option<f32>,
 }
 
-fn wait_for_user_enter() {
+fn get_user_input() -> String {
      // pause execution
     let mut string_input = String::new();
     io::stdin()
         .read_line(&mut string_input)
         .expect("Failed to read line");
-}
+
+    string_input.trim().to_string()
+}   
 
 fn error_print(message: String) {
     log::error!("{}", message);
 
-   wait_for_user_enter();
+   get_user_input();
 
 }
 
@@ -74,14 +75,58 @@ fn main() {
     set_current_dir(env::current_exe().unwrap().parent().unwrap()).unwrap();
     
     for asset_path in args.asset_paths {
-        asset_to_decoration_prefab(asset_path, scale);
+        asset_to_prefab(asset_path);
     }
 
-    wait_for_user_enter();
+    get_user_input();
     
 }
 
-fn asset_to_decoration_prefab(asset_path: String, scale: f32) {
+fn asset_to_prefab(asset_path: String) {
+
+    let relative_path = match get_path_relative_to_assets_folder(relative_path) {
+        Ok(relative_path) => relative_path,
+        Err(error) => {
+            error_print("Asset must exist in assets directory".to_string());
+            return;
+        },
+    };
+
+    println!("")
+}
+
+fn asset_to_prop(relative_path: PathBuf, scale: f32, mass: f32, material: PropMaterial, name: String) {
+
+    let (width, height) = get_image_dimensions(&relative_path);
+
+    log::info!("Loaded {} with dimensions: {:?}", &relative_path.to_string_lossy(), (width, height));
+
+    let prop_save = PropSave {
+        size: Vec2::new(width as f32 * scale, width as f32 * scale),
+        pos: Default::default(),
+        mass,
+        sprite_path: relative_path.clone(),
+        id: None,
+        owner: None,
+        material: material,
+        name,
+    };
+
+    let save = serde_json::to_string_pretty(&prop_save).unwrap();
+
+    let prefab_path = format!("prefabs/decorations/{}.json", &relative_path.file_stem().unwrap().to_string_lossy().to_string());
+
+    match fs::write(&prefab_path, save) {
+        Ok(_) => {},
+        Err(error) => error_print(format!("Error writing destination file '{}': {}", &prefab_path, error)),
+    }
+
+    log::info!("Successfully wrote prefab to: {}", prefab_path);
+
+    
+}
+
+fn get_image_dimensions(asset_path: &str) -> (u32, u32) {
 
     let img = match ImageReader::open(&asset_path) {
         Ok(image_reader) => {
@@ -90,32 +135,28 @@ fn asset_to_decoration_prefab(asset_path: String, scale: f32) {
                 Err(error) => {
                     error_print(format!("Image decoding error: {}", error));
                     
-                    return;
+                    exit(1);
                 },
             }
         },
         Err(error) => {
             error_print(format!("Image opening error: {}", error));
 
-            return;
+            exit(1)
         },
     };
 
     
 
-    let (width, height) = img.dimensions();
+    img.dimensions()
 
-    
+}
 
-    let relative_path = match get_path_relative_to_assets_folder(asset_path) {
-        Ok(relative_path) => relative_path,
-        Err(error) => {
-            error_print("Asset must exist in assets directory".to_string());
-            return;
-        },
-    };
+fn asset_to_decoration_prefab(relative_path: PathBuf, scale: f32) {
 
-    log::info!("Loaded {} with dimensions: {:?}", &relative_path.to_string_lossy(), img.dimensions());
+    let (width, height) = get_image_dimensions(&asset_path);
+
+    log::info!("Loaded {} with dimensions: {:?}", &relative_path.to_string_lossy(), (width, height));
 
     let decoration_save = DecorationSave {
         pos: Vec2::ZERO,
@@ -126,10 +167,7 @@ fn asset_to_decoration_prefab(asset_path: String, scale: f32) {
         layer: 0,
     };
 
-    
-
     let save = serde_json::to_string_pretty(&decoration_save).unwrap();
-
 
     let prefab_path = format!("prefabs/decorations/{}.json", &relative_path.file_stem().unwrap().to_string_lossy().to_string());
 
