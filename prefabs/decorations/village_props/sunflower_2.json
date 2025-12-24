@@ -1,0 +1,14 @@
+{
+  "pos": [
+    0.0,
+    0.0
+  ],
+  "size": [
+    52.0,
+    126.0
+  ],
+  "sprite_path": "assets\\sunflower_2.png",
+  "animated_sprite_paths": null,
+  "frame_duration": null,
+  "layer": 0
+}

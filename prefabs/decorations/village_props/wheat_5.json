@@ -1,0 +1,14 @@
+{
+  "pos": [
+    0.0,
+    0.0
+  ],
+  "size": [
+    50.0,
+    96.0
+  ],
+  "sprite_path": "assets\\wheat_5.png",
+  "animated_sprite_paths": null,
+  "frame_duration": null,
+  "layer": 0
+}

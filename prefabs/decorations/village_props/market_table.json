@@ -1,0 +1,14 @@
+{
+  "pos": [
+    0.0,
+    0.0
+  ],
+  "size": [
+    170.0,
+    66.0
+  ],
+  "sprite_path": "assets\\market_table.png",
+  "animated_sprite_paths": null,
+  "frame_duration": null,
+  "layer": 0
+}

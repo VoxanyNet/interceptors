@@ -1,0 +1,14 @@
+{
+  "pos": [
+    0.0,
+    0.0
+  ],
+  "size": [
+    74.0,
+    26.0
+  ],
+  "sprite_path": "assets\\axe.png",
+  "animated_sprite_paths": null,
+  "frame_duration": null,
+  "layer": 0
+}

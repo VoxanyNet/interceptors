@@ -1,0 +1,14 @@
+{
+  "pos": [
+    0.0,
+    0.0
+  ],
+  "size": [
+    174.0,
+    182.0
+  ],
+  "sprite_path": "assets\\well.png",
+  "animated_sprite_paths": null,
+  "frame_duration": null,
+  "layer": 0
+}

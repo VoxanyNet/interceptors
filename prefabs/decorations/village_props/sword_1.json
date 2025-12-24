@@ -1,0 +1,14 @@
+{
+  "pos": [
+    0.0,
+    0.0
+  ],
+  "size": [
+    72.0,
+    18.0
+  ],
+  "sprite_path": "assets\\sword_1.png",
+  "animated_sprite_paths": null,
+  "frame_duration": null,
+  "layer": 0
+}

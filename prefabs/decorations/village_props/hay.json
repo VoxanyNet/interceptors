@@ -1,0 +1,14 @@
+{
+  "pos": [
+    0.0,
+    0.0
+  ],
+  "size": [
+    124.0,
+    68.0
+  ],
+  "sprite_path": "assets\\hay.png",
+  "animated_sprite_paths": null,
+  "frame_duration": null,
+  "layer": 0
+}

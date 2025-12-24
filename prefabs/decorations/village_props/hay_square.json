@@ -1,0 +1,14 @@
+{
+  "pos": [
+    0.0,
+    0.0
+  ],
+  "size": [
+    82.0,
+    58.0
+  ],
+  "sprite_path": "assets\\hay_square.png",
+  "animated_sprite_paths": null,
+  "frame_duration": null,
+  "layer": 0
+}

@@ -1,0 +1,14 @@
+{
+  "pos": [
+    0.0,
+    0.0
+  ],
+  "size": [
+    128.0,
+    180.0
+  ],
+  "sprite_path": "assets\\pumpkin_dummy.png",
+  "animated_sprite_paths": null,
+  "frame_duration": null,
+  "layer": 0
+}

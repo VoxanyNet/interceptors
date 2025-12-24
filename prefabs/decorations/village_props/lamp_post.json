@@ -1,0 +1,14 @@
+{
+  "pos": [
+    0.0,
+    0.0
+  ],
+  "size": [
+    32.0,
+    194.0
+  ],
+  "sprite_path": "assets\\lamp_post.png",
+  "animated_sprite_paths": null,
+  "frame_duration": null,
+  "layer": 0
+}
