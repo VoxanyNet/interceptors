@@ -1,4 +1,4 @@
-use std::{f32::consts::PI, path::PathBuf, time::Instant};
+use std::{f32::consts::PI, path::PathBuf};
 
 use macroquad::{color::{BLACK, GREEN}, math::Vec2, shapes::{draw_rectangle, draw_rectangle_lines}};
 use nalgebra::{vector, Isometry2, Vector2};
@@ -319,7 +319,7 @@ impl Enemy {
             facing: Facing::Right,
             owner,
             head_body_joint: Some(head_body_joint),
-            last_jump: Instant::now(),
+            last_jump: web_time::Instant::now(),
             player_target: None,
             id: EnemyId::new(),
             despawn: false,
@@ -374,9 +374,6 @@ impl Enemy {
             WeaponOwner::Player(player_id) => {},
         }
 
-
-
-        dbg!(bullet_impact.damage);
         // body shot
         if bullet_impact.impacted_collider == self.body.collider_handle {
 
@@ -423,8 +420,6 @@ impl Enemy {
     pub fn despawn_if_dead(&mut self, ctx: &mut ClientTickContext, space: &mut Space, area_id: AreaId) {
         
         if let Some(death_time) = self.death_time {
-
-            dbg!(death_time);
             if death_time.elapsed().as_secs_f32() > 3. {
                 self.despawn(space);
 
@@ -436,7 +431,6 @@ impl Enemy {
                         }
                     )
                 );
-                
             }
         }
     }
@@ -506,14 +500,7 @@ impl Enemy {
         self.set_task(space, players, props);
 
         if self.health <= 0 {
-
-            
-
             if self.death_time.is_none() {
-
-                println!("set death time");
-                
-
                 self.death_time = Some(web_time::Instant::now());
             }
         }
@@ -796,14 +783,11 @@ impl Enemy {
             
             body.set_linvel(vector![current_velocity.x, current_velocity.y + 500.], true);
 
-            self.last_jump = Instant::now();
+            self.last_jump = web_time::Instant::now();
         }
 
         let joint = space.impulse_joint_set.get_mut(self.head_body_joint.unwrap(), true).unwrap();
-
         joint.data.as_revolute_mut().unwrap().set_motor_position(0., 1000., 2.);
-
-        //println!("{:?}", joint.data.as_revolute().unwrap().motor())
     }
 
     pub fn change_facing_direction(&mut self, space: &Space) {

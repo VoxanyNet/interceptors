@@ -1,6 +1,7 @@
 
 use std::{fs, path::{Path, PathBuf}};
 
+use clap::Parser;
 use interceptors_lib::background::BackgroundSave;
 use ldtk2::serde_json;
 use macroquad::{miniquad::conf::Platform, window::Conf};
@@ -45,16 +46,22 @@ fn window_conf() -> Conf {
     conf
 }
 
+#[derive(Parser)]
+#[command(name = "Interceptors Editor")]
+struct EditorArgs {
+
+    area_path: String,
+}
+
+
 #[macroquad::main(window_conf)]
 async fn main() {   
 
-    
-    let x = BackgroundSave::default();
+    pretty_env_logger::init();
 
-    let x = serde_json::to_string_pretty(&x).unwrap();
+    let args = EditorArgs::parse();
 
-    let mut area_editor = AreaEditor::new().await;
-
+    let mut area_editor = AreaEditor::new(args.area_path).await;
     
     area_editor.run().await;
 }

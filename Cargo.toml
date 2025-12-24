@@ -27,6 +27,9 @@ dhat = "0.3.3"
 async-trait = "0.1.89"
 clap = { version = "4.5.53", features = ["derive"] }
 image = "0.25.9"
+log = "0.4.29"
+env_logger = "0.11.8"
+pretty_env_logger = "0.5.0"
 #web-sys = { version = "0.3.72", features = ["console"] }
 
 [[bin]]

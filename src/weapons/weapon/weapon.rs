@@ -231,7 +231,7 @@ impl Weapon {
             y_screen_shake_intensity,
             shell_sprite: shell_sprite_path,
             player_joint_handle: None,
-            last_reload: web_time::Instant::now() - web_time::Duration::from_secs(100),
+            last_reload: web_time::Instant::now(),
             rounds,
             capacity,
             reserve_capacity,
@@ -285,9 +285,6 @@ impl Weapon {
         bullet_count: Option<u32>
         
     ) {
-
-        dbg!(self.rounds);
-
         let innaccuracy_factor = innaccuracy_factor.unwrap_or(0.);
         let bullet_count = bullet_count.unwrap_or(1);
         

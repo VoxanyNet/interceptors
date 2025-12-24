@@ -349,7 +349,7 @@ impl Computer {
             active: false,
             screen_pos: Vec2::ONE,
             screen_size: Vec2::ONE,
-            activated_time: web_time::Instant::now() - web_time::Duration::from_secs(100),
+            activated_time: web_time::Instant::now(),
             category_tabs,
             selected_category: 0,
             item_categories,

@@ -2,6 +2,9 @@ use std::path::PathBuf;
 
 use fxhash::FxHashMap;
 use macroquad::texture::{self, load_texture, Texture2D};
+use web_sys::console;
+
+use crate::normalize_path;
 
 pub struct TextureLoader {
     pub cache: FxHashMap<PathBuf, Texture2D>
@@ -31,8 +34,11 @@ impl TextureLoader {
 
         }
     }
-    pub fn get(&self, texture_path: &PathBuf) -> &Texture2D {
+    pub fn get(&self, texture_path: &PathBuf) -> &Texture2D {   
+        let normalized_path = normalize_path(texture_path);
 
-        self.cache.get(texture_path).unwrap()
+        self.cache.get(&normalized_path).unwrap()
     }
+
+    
 }

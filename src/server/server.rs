@@ -1,4 +1,4 @@
-use std::fs::read_to_string;
+use std::{fs::read_to_string, process::exit};
 
 use interceptors_lib::{area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket}, weapons::weapon_type::WeaponType, world::World, ClientId, Prefabs, ServerIO};
 use tungstenite::Message;
@@ -324,7 +324,8 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                     let prop = match area.props.iter_mut().find(|prop| {prop.id} == update.prop_id) {
                         Some(prop) => prop,
                         None => {
-                            println!("received bad update for prop");
+                            log::warn!("Received bad prop position update");
+                            
                             continue;
                         },
                     };
@@ -387,7 +388,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                             item_slot.quantity = update.quantity;
                         },
                         None => {
-                            dbg!("received quantity update for invalid item index");
+                            log::warn!("Received quantity update for invalid item index");
 
                             continue;
                         },
@@ -424,11 +425,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                         }
                     ).unwrap();
 
-
                     let enemy = Enemy::from_save(update.enemy.clone(), &mut area.space);
-
-                    dbg!(enemy.id);
-
                     area.enemies.push(enemy);
 
                     self.network_io.send_all_except(network_packet, client_id);
@@ -454,8 +451,6 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                             area.id == update.area_id
                         }
                     ).unwrap();
-
-                    dbg!(update.enemy_id);
 
                     let enemy = area.enemies.iter().find(|enemy| {enemy.id == update.enemy_id}).unwrap();
 
@@ -533,17 +528,13 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                                 update_bytes
                             },
                             Message::Close(_close_message) => {
-                                println!("client {:?} disconnected", client_id);
-
+                                log::info!("Client {:?} disconnected", client_id);
                                 disconnected_clients.push(*client_id);
-
                                 continue 'client_loop;
                             },
                             _ => {
-                                println!("client tried to send non binary message. disconnecting them!");
-
+                                log::warn!("Client {:?} tried to send non binary message. Disconnecting them.", client_id);
                                 disconnected_clients.push(*client_id);
-
                                 continue 'client_loop;
                             }
                         }
@@ -559,25 +550,28 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                                         continue 'client_loop // move to the next client
                                     },
                                     std::io::ErrorKind::ConnectionReset => {
-                                        println!("client {:?} disconnected", client_id);
-
+                                        log::info!("Client {:?} disconnected", client_id);
                                         disconnected_clients.push(*client_id);
-
                                         continue 'client_loop;
                                     }
-                                    _ => todo!("unhandled io error: {}", io_error),
+                                    _ => {
+                                        log::error!("Unhandled io error: {}", io_error);
+                                        exit(1);
+                                    },
                                 }
                             },
                             
                             tungstenite::Error::Protocol(_error) => {
-                                println!("client {:?} disconnected due to protocol error", client_id);
-
+                                log::info!("Client {:?} disconnected due to protocol error", client_id);
                                 disconnected_clients.push(*client_id);
-
                                 continue 'client_loop;
                             },
                             
-                            _ => todo!("unhandled websocket message read error: {}", error.to_string())
+                            _ => {
+
+                                log::error!("Unhandled websocket message read error: {}", error.to_string());
+                                exit(1);
+                            }
                         }
                     },
                 };

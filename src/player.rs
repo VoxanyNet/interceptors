@@ -1,4 +1,4 @@
-use std::{f32::consts::PI, mem::take, path::PathBuf, str::FromStr, time::Instant, usize};
+use std::{f32::consts::PI, mem::take, path::PathBuf, str::FromStr, usize};
 
 use cs_utils::drain_filter;
 use macroquad::{color::{BLACK, WHITE}, input::{KeyCode, is_key_down, is_mouse_button_released, mouse_position, mouse_wheel}, math::{Rect, Vec2}, shapes::draw_rectangle, text::{TextParams, draw_text, draw_text_ex}, window::{screen_height, screen_width}};
@@ -314,7 +314,7 @@ impl Player {
     } 
 
 
-    pub fn move_camera(&mut self, space: &Space, max_camera_y: f32, average_enemy_pos: Option<Vector2<f32>>, ctx: &mut ClientTickContext, minimum_camera_width: f32, minimum_camera_height: f32) {
+    pub fn move_camera(&mut self, space: &Space, max_camera_y: f32, ctx: &mut ClientTickContext, minimum_camera_width: f32, minimum_camera_height: f32) {
 
         let player_position = space.rigid_body_set.get(self.body.body_handle).unwrap().translation();
         let macroquad_player_position = rapier_to_macroquad(*player_position);
@@ -407,7 +407,7 @@ impl Player {
             max_speed: Vector2::new(350., 80.),
             selected_item: 0,
             inventory: inventory,
-            last_changed_inventory_slot: Instant::now(),
+            last_changed_inventory_slot: web_time::Instant::now(),
             junk: Vec::new(),
             last_dash: web_time::Instant::now(),
             previous_pos: Isometry2::default(),
@@ -621,7 +621,6 @@ impl Player {
         dissolved_pixels: &mut Vec<DissolvedPixel>,
         dropped_items: &mut Vec<DroppedItem>,
         max_camera_y: f32,
-        average_enemy_pos: Option<Vector2<f32>>,
         minimum_camera_width: f32,
         minimum_camera_height: f32,
         tiles: &mut Vec<Vec<Option<Tile>>>
@@ -635,7 +634,7 @@ impl Player {
         self.materialize_tiles(space, tiles);
 
         if self.owner == *ctx.client_id {
-            self.owner_tick(space, ctx, area_id, players, enemies, props, bullet_trails, dissolved_pixels, dropped_items, max_camera_y, average_enemy_pos, minimum_camera_width, minimum_camera_height);
+            self.owner_tick(space, ctx, area_id, players, enemies, props, bullet_trails, dissolved_pixels, dropped_items, max_camera_y, minimum_camera_width, minimum_camera_height);
         }   
 
         self.unequip_previous_weapon(space);
@@ -873,7 +872,6 @@ impl Player {
         dissolved_pixels: &mut Vec<DissolvedPixel>,
         dropped_items: &mut Vec<DroppedItem>,
         max_camera_y: f32,
-        average_enemy_pos: Option<Vector2<f32>>,
         minimum_camera_width: f32,
         minimum_camera_height: f32,
     ) {
@@ -887,7 +885,7 @@ impl Player {
         self.change_active_inventory_slot(ctx, area_id, space);
         self.change_facing_direction(space, ctx, area_id);
         self.control(space, ctx);
-        self.move_camera(space, max_camera_y, average_enemy_pos, ctx, minimum_camera_width, minimum_camera_height);
+        self.move_camera(space, max_camera_y, ctx, minimum_camera_width, minimum_camera_height);
         self.send_velocity_network_update(ctx, area_id, space);
         self.face_towards_mouse(space, ctx, area_id);
         

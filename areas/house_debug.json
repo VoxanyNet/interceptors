@@ -1,0 +1,175 @@
+{
+  "spawn_point": [
+    2175.0,
+    -60.0
+  ],
+  "decorations": [
+    {
+      "pos": [
+        828.70605,
+        132.65182
+      ],
+      "size": [
+        1631.0,
+        780.0
+      ],
+      "sprite_path": "assets/house/front.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 1
+    },
+    {
+      "pos": [
+        828.2048,
+        132.51282
+      ],
+      "size": [
+        1631.0,
+        780.0
+      ],
+      "sprite_path": "assets/house/back.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    }
+  ],
+  "clips": [
+    {
+      "size": [
+        1650.0,
+        22.0
+      ],
+      "pos": [
+        1634.9312,
+        -171.05429
+      ],
+      "layer": 2
+    },
+    {
+      "size": [
+        135.98169,
+        26.078674
+      ],
+      "pos": [
+        1551.2299,
+        101.9252
+      ],
+      "layer": 0
+    },
+    {
+      "size": [
+        976.2439,
+        32.287903
+      ],
+      "pos": [
+        1970.66,
+        99.87204
+      ],
+      "layer": 2
+    },
+    {
+      "size": [
+        10.263062,
+        47.21051
+      ],
+      "pos": [
+        1947.1786,
+        60.433014
+      ],
+      "layer": 2
+    },
+    {
+      "size": [
+        9.813721,
+        48.718628
+      ],
+      "pos": [
+        2307.7827,
+        333.76196
+      ],
+      "layer": 2
+    },
+    {
+      "size": [
+        705.73413,
+        9.813843
+      ],
+      "pos": [
+        1952.298,
+        353.21436
+      ],
+      "layer": 2
+    },
+    {
+      "size": [
+        10.791504,
+        39.405396
+      ],
+      "pos": [
+        1947.5624,
+        328.77557
+      ],
+      "layer": 2
+    },
+    {
+      "size": [
+        11.277222,
+        72.01538
+      ],
+      "pos": [
+        1489.6332,
+        151.81519
+      ],
+      "layer": 2
+    },
+    {
+      "size": [
+        13.034912,
+        51.849915
+      ],
+      "pos": [
+        1124.447,
+        62.38974
+      ],
+      "layer": 2
+    },
+    {
+      "size": [
+        12.108154,
+        48.11328
+      ],
+      "pos": [
+        2309.3408,
+        59.471436
+      ],
+      "layer": 2
+    }
+  ],
+  "players": [],
+  "backgrounds": [
+    {
+      "repeat": true,
+      "pos": [
+        474.0,
+        204.99998
+      ],
+      "sprite_path": "assets/checkerboard.png",
+      "size": [
+        1000.0,
+        650.0
+      ],
+      "parallax": 0.25
+    }
+  ],
+  "generic_physics_props": [],
+  "enemies": [],
+  "computer_pos": null,
+  "dropped_items": [],
+  "max_camera_y": 720.0,
+  "minimum_camera_width": 1200.0,
+  "minimum_camera_height": 1920.0,
+  "despawn_y": -200.0,
+  "master": null,
+  "ambiance": [],
+  "tiles": []
+}

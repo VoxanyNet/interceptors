@@ -1,4 +1,4 @@
-use std::{collections::HashMap, f32::consts::PI, fs::read_to_string, net::{TcpListener, TcpStream}, path::PathBuf};
+use std::{collections::HashMap, f32::consts::PI, fs::read_to_string, net::{TcpListener, TcpStream}, path::PathBuf, process::exit};
 
 use ewebsock::{WsReceiver, WsSender};
 use macroquad::{camera::Camera2D, color::{Color, WHITE}, file::load_string, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}};
@@ -201,6 +201,20 @@ pub fn uuid_u64() -> u64 {
     getrandom::getrandom(&mut buf).unwrap();
     u64::from_be_bytes(buf)
 
+}
+
+#[cfg(target_arch = "wasm32")]
+fn normalize_path(path: &PathBuf) -> PathBuf {
+    let s = path
+        .to_string_lossy()
+        .replace('/', "\\");
+
+    PathBuf::from(s)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn normalize_path(path: &PathBuf) -> PathBuf {
+    path.clone()
 }
 
 pub async fn draw_texture_onto_physics_body(
@@ -567,9 +581,13 @@ impl ServerIO {
     pub fn accept_new_client(&mut self) -> Option<ClientId> {
         match self.listener.accept() {
             Ok((stream, address)) => {
-                println!("received new connection from address: {}", address);
+                log::info!("Received new connection from address: {}", address);
 
-                stream.set_nonblocking(true).expect("Failed to set new client as non blocking");
+                stream.set_nonblocking(true)
+                    .map_err(|e| {
+                        log::error!("Failed to set new client as non blocking: {}", e);
+                        exit(1)
+                    });
 
                 let mut websocket_stream = loop {
                     match tungstenite::accept(stream.try_clone().expect("failed to clone stream")) {
@@ -618,8 +636,7 @@ impl ServerIO {
                     }
                 };
                 
-            
-                println!("new client connected!");
+                log::info!("New client connected");
 
                 self.clients.insert(client_id, websocket_stream);
 
@@ -633,7 +650,7 @@ impl ServerIO {
                     std::io::ErrorKind::WouldBlock => return None, // no new clients
 
                     _ => {
-                        println!("Something went wrong trying to accept a new client");
+                        log::warn!("Something went wrong trying to accept a new client");
                         return None
                     }
                 }

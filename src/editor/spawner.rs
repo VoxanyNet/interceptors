@@ -251,34 +251,21 @@ impl Spawner {
         match self.selected_category {
             
             SpawnerCategory::Decoration => {
-
-                println!("{}", self.selected_prefab_json);
                 let decoration_save: DecorationSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
-
                 let mut decoration: Decoration = Decoration::from_save(decoration_save);
-
                 decoration.pos = cursor;
-
-                decoration.draw(&draw_context).await
-                
+                decoration.draw(&draw_context).await  
             },
             SpawnerCategory::Background => {
                 let background_save: BackgroundSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
-
                 let mut background = Background::from_save(background_save);
-
                 background.pos = cursor;
-
                 background.draw(&draw_context).await
             },
 
             SpawnerCategory::Prop => {
                 let generic_physics_prop_save: PropSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
-
-                
-
                 let mut generic_physics_prop = Prop::from_save(generic_physics_prop_save.clone(), &mut self.preview_space);
-
                 generic_physics_prop.set_pos(vector![rapier_cursor.x + generic_physics_prop_save.size.x / 2., rapier_cursor.y - generic_physics_prop_save.size.y / 2.].into(), &mut self.preview_space);
                 
                 // need to swap the draw context's space for the spawner 'preview space'
@@ -293,10 +280,7 @@ impl Spawner {
                     default_camera: draw_context.default_camera,
                 };
 
-                
-
                 generic_physics_prop.draw(&draw_context).await;
-
                 // need to immedietly remove the rigid bodies from space because this is a temporary object
                 self.preview_space.rigid_body_set.remove(generic_physics_prop.rigid_body_handle, &mut self.preview_space.island_manager, &mut self.preview_space.collider_set,&mut self.preview_space.impulse_joint_set, &mut self.preview_space.multibody_joint_set, true);
                  

@@ -78,24 +78,14 @@ pub trait EditorContextMenu {
         // someday i will come back to this code and look on in horror
         match self.context_menu_data_mut() {
             Some(data) => {
-
                 match data.data_editor_last_edit {
-
                     Some(last_edit) => {
 
-                    
-
                         if fs::metadata(&data.data_editor_file_path).unwrap().modified().unwrap() > last_edit {
-
-                            println!("object updated!");
-
                             // need to preserve the context menu data lololol!
                             let old_editor_context_menu_data = self.context_menu_data().as_ref().unwrap().clone();
-
                             self.data_editor_import(fs::read_to_string(&old_editor_context_menu_data.data_editor_file_path).unwrap(), ctx);
-
                             *self.context_menu_data_mut() = Some(old_editor_context_menu_data.clone());
-
                             self.context_menu_data_mut().as_mut().unwrap().data_editor_last_edit = Some(fs::metadata(old_editor_context_menu_data.data_editor_file_path).unwrap().modified().unwrap());
                         }
                     },
@@ -112,32 +102,21 @@ pub trait EditorContextMenu {
 
         
         if (is_mouse_button_released(macroquad::input::MouseButton::Left) || is_mouse_button_released(macroquad::input::MouseButton::Right)) && !self.contains_point(mouse_position().into()) {
-           
             self.close_menu();
         }
 
         
         if selected && is_mouse_button_released(macroquad::input::MouseButton::Right) && self.object_bounding_box(Some(space)).contains(mouse_world_pos(camera_rect)) {
-
-            
             self.open_menu(mouse_position().into(), &DataEditorContext { space });
         }
 
-        
-        
-
         self.apply_data_editor_updates(&mut DataEditorContext { space });
-
         self.update_buttons();
         self.handle_buttons(
             DataEditorContext {
                 space,
             }
         );
-
-
-
-
     }
 
     fn menu_rect(&self) -> Rect {

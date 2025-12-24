@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr, time::Instant};
+use std::{path::PathBuf, str::FromStr};
 
 use macroquad::{audio::{play_sound, PlaySoundParams}, camera::Camera2D, input::{is_key_released, KeyCode}, math::Rect};
 use nalgebra::{vector, Isometry2, Vector2};
@@ -202,7 +202,6 @@ impl Area {
     } 
     
     pub fn tick_players(&mut self, ctx: &mut ClientTickContext) {
-        let average_enemy_pos = self.average_enemy_pos(&self.space); 
 
         let mut players_iter = SwapIter::new(&mut self.players);
         
@@ -219,8 +218,7 @@ impl Area {
                 &mut self.bullet_trails,
                 &mut self.dissolved_pixels, 
                 &mut self.dropped_items,
-                self.max_camera_y, 
-                average_enemy_pos, 
+                self.max_camera_y,
                 self.minimum_camera_width, 
                 self.minimum_camera_height,
                 &mut self.tiles
@@ -540,8 +538,6 @@ impl Area {
         
         let enemy = Enemy::new( Isometry2::new(mouse_pos, 0.), *ctx.client_id, &mut self.space, None);
 
-        dbg!(enemy.id);
-
         ctx.network_io.send_network_packet(crate::updates::NetworkPacket::NewEnemyUpdate(
             NewEnemyUpdate {
                 area_id: self.id,
@@ -550,32 +546,6 @@ impl Area {
         ));
 
         self.enemies.push(enemy);
-    }
-
-    pub fn average_enemy_pos(&self, space: &Space) -> Option<Vector2<f32>> {
-
-        if self.enemies.len() == 0 {
-            return None
-        }
-
-        let mut cumulative_x = 0.;
-        let mut cumulative_y = 0.;
-
-        for enemy in &self.enemies {
-  
-            let enemy_pos = space.rigid_body_set.get(enemy.body.body_handle).unwrap().position().translation;
-
-            cumulative_x += enemy_pos.x;
-            cumulative_y += enemy_pos.y;
-        }   
-
-        Some(
-            Vector2::new(
-                cumulative_x / self.enemies.len() as f32,
-                cumulative_y / self.enemies.len() as f32
-            )
-        )
-
     }
 
     // the player should be spawned by the server - this is temporary
@@ -658,15 +628,11 @@ impl Area {
 
             self.wave_data.active = false;
 
-            dbg!("ending wave");
-
             
         }
 
         // start new wave
         if self.wave_data.wave_end.elapsed().as_secs_f32() > 5. && self.wave_data.active == false  {
-
-            dbg!("starting wave");
 
             self.wave_data.wave += 1;
 
@@ -681,8 +647,6 @@ impl Area {
 
         // spawn batch
         if self.wave_data.active && self.wave_data.last_batch_spawn.elapsed() > self.wave_data.batch_interval && self.enemies.len() == 0 {
-
-            dbg!("spawning batch");
 
             for i in 0..self.wave_data.batch_size {
 

@@ -1,6 +1,7 @@
-use std::{fs::read_to_string, path::PathBuf, time::{Duration, Instant}};
+use std::{fs::{self, read_to_string}, path::PathBuf, process::exit, time::{Duration, Instant}};
 
 use interceptors_lib::{Prefabs, area::{Area, AreaSave}, clip::Clip, decoration::Decoration, draw_hitbox, drawable::{DrawContext, Drawable}, editor_context_menu::EditorContextMenu, font_loader::FontLoader, macroquad_to_rapier, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, texture_loader::TextureLoader};
+use log::info;
 use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{GREEN, RED, WHITE}, input::{KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, time::draw_fps, window::{next_frame, screen_height, screen_width}};
 use nalgebra::{vector, Vector2};
 use rapier2d::{math::Point, prelude::{ColliderBuilder, PointQuery, RigidBodyBuilder}};
@@ -47,8 +48,8 @@ pub struct AreaEditor {
     dragging_object: bool,
     simulate_space: bool,
     undo_checkpoints: Vec<AreaSave>,
-    last_checkpoint_save: Instant,
-    last_undo: Instant,
+    last_checkpoint_save: web_time::Instant,
+    last_undo: web_time::Instant,
     modifying: bool,
     last_area_save: AreaSave
 }
@@ -270,24 +271,21 @@ impl AreaEditor {
         }
     }
 
-    pub async fn new() -> Self {
+    pub async fn new(area_path: String) -> Self {
 
         let mut prefabs = Prefabs::new();
 
         for prefab_path in PREFAB_PATHS {
             prefabs.load_prefab_data(prefab_path).await
         }
-
+        
         let mut textures = TextureLoader::new();
-
         let mut fonts = FontLoader::new();
 
         for asset in ASSET_PATHS {
-
             if asset.ends_with(".png") {
                 textures.load(PathBuf::from(asset)).await;
             }
-
             if asset.ends_with(".ttf") {
                 fonts.load(PathBuf::from(asset)).await
             }
@@ -302,7 +300,34 @@ impl AreaEditor {
             h: 720.,
         };
 
-        let area_json = read_to_string("areas/forest.json").unwrap();
+        let area_json = match read_to_string(&area_path) {
+            Ok(area_json) => area_json,
+            Err(error) => {
+                match error.kind() {
+                    std::io::ErrorKind::NotFound => {
+
+                        info!("Creating new area at path: {}", &area_path);
+
+                        let empty_area_json = serde_json::to_string_pretty(&Area::empty().save()).unwrap();
+
+                        fs::write(&area_path,  &empty_area_json)
+                            .map_err(|e| 
+                                {
+                                    log::error!("Failed to write new area at path: {:?}: {}", area_path, e);
+                                    exit(1)
+                                }
+                            );
+
+                        empty_area_json
+                    },
+                    _ => {
+                        log::error!("Failed to open area path: {:?}", error);
+                        exit(1)
+                    }
+                }
+            },
+        };
+
         let area_save: AreaSave = serde_json::from_str(&area_json).unwrap();
 
         Self {
@@ -330,8 +355,8 @@ impl AreaEditor {
             simulate_space: false,
             layer_toggle_ui: LayerToggleUI::new(),
             undo_checkpoints: vec![area_save.clone()],
-            last_checkpoint_save: Instant::now() - Duration::from_secs(50),
-            last_undo: Instant::now(),
+            last_checkpoint_save: web_time::Instant::now() - Duration::from_secs(50),
+            last_undo: web_time::Instant::now(),
             modifying: false,
             last_area_save: area_save
         }
@@ -889,11 +914,11 @@ impl AreaEditor {
             
 
             if *last_checkpoint != current_area_save && self.modifying == false {
-                self.last_checkpoint_save = Instant::now();
+                self.last_checkpoint_save = web_time::Instant::now();
 
                 self.undo_checkpoints.push(current_area_save);
 
-                println!("adding checkpoint: {}", self.undo_checkpoints.len());
+                //println!("adding checkpoint: {}", self.undo_checkpoints.len());
                 
             }
         } else {
@@ -912,9 +937,8 @@ impl AreaEditor {
     pub fn undo(&mut self) {
 
         if is_key_down(KeyCode::LeftControl) && is_key_released(KeyCode::Z) {
-            println!("undoing");
 
-            self.last_undo = Instant::now();
+            self.last_undo = web_time::Instant::now();
             
             let area_id = self.area.id.clone();
 
@@ -955,9 +979,11 @@ impl AreaEditor {
         if is_key_down(KeyCode::LeftControl) {
             if is_key_released(KeyCode::S) {
 
-                println!("saving");
+                log::info!("Saving level...");
 
                 self.save_area();
+
+                log::info!("Saved");
             }
         }
 

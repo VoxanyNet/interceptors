@@ -1,4 +1,4 @@
-use std::{fs::read_to_string, path::PathBuf, time::Instant};
+use std::{fs::read_to_string, path::PathBuf};
 
 use async_trait::async_trait;
 use macroquad::{audio::play_sound_once, color::Color, math::Vec2, shapes::{draw_rectangle_ex, DrawRectangleParams}};
@@ -20,7 +20,7 @@ pub struct DissolvedPixel {
     pub collider: ColliderHandle,
     color: Color,
     scale: f32,
-    spawned: Instant,
+    spawned: web_time::Instant,
     pub despawn: bool,
 }
 
@@ -96,7 +96,7 @@ impl DissolvedPixel {
             collider,
             color,
             scale,
-            spawned: Instant::now(),
+            spawned: web_time::Instant::now(),
             despawn: false
         }
     }

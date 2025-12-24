@@ -23,8 +23,6 @@ impl Inventory {
     ) -> Option<Item> {
     
         for (item_slot_index, item_slot) in &mut self.items.iter_mut().enumerate() {
-
-            dbg!(item_slot_index);
             match item_slot {
                 Some(item_slot) => {
 

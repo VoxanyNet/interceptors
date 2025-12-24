@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf, process::exit};
 
 use interceptors_lib::{area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, player::{ItemSlot, Player}, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, weapons::weapon_type::WeaponType, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
 use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{BLACK, WHITE}, input::{is_key_released, KeyCode}, math::{vec2, Rect}, prelude::{gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
@@ -121,16 +121,25 @@ impl Client {
                 Some(event) => {
                     match event {
                         ewebsock::WsEvent::Opened => {
-                            println!("we got the opened message!");
+                            log::info!("Received opened message from server");
                             break;
                         },
                         ewebsock::WsEvent::Message(message) => {
                             match message {
-                                _ => panic!("received a message from the server")
+                                _ => {
+                                    log::error!("Received a message from the server");
+                                    exit(1);
+                                }
                             }
                         },
-                        ewebsock::WsEvent::Error(error) => panic!("received error when trying to connect to server: {}", error),
-                        ewebsock::WsEvent::Closed => panic!("server closed when trying to connect"),
+                        ewebsock::WsEvent::Error(error) => {
+                            log::error!("Received error when trying to connect to server: {}", error);
+                            exit(1);
+                        },
+                        ewebsock::WsEvent::Closed => {
+                            log::error!("Server closed when trying to connect");
+                            exit(1);
+                        }
                         
                     }
                 },
@@ -356,11 +365,7 @@ impl Client {
                 },
                 NetworkPacket::PlayerPositionUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
-
                     let player = area.players.iter_mut().find(|player| {player.id == update.player_id}).unwrap();
-
-                    dbg!("received pos update");
-                        
                     player.set_pos(update.pos, &mut area.space);
 
 
@@ -468,8 +473,7 @@ impl Client {
                             item_slot.quantity = update.quantity;
                         },
                         None => {
-                            dbg!("received quantity update for invalid item index");
-
+                            log::warn!("Received quantity update for invalid item index");
                             continue;
                         },
                     }
