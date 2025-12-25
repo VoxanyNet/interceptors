@@ -5,10 +5,11 @@ use macroquad::{audio::play_sound_once, color::Color, math::Vec2, shapes::{draw_
 use nalgebra::{Isometry2, Vector2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
+use strum::{AsRefStr, Display, EnumIter, EnumString};
 
 use crate::{ClientId, ClientTickContext, Prefabs, ServerIO, area::AreaId, draw_preview, draw_texture_onto_physics_body, drawable::{DrawContext, Drawable}, get_preview_resolution, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
-#[derive(Serialize, Deserialize, Clone, Copy, Default, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Copy, Default, Debug, PartialEq, EnumIter, Display)]
 pub enum PropMaterial {
     Wood,
     #[default]

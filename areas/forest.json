@@ -1042,7 +1042,176 @@
       "parallax": 0.1
     }
   ],
-  "generic_physics_props": [],
+  "generic_physics_props": [
+    {
+      "size": [
+        84.0,
+        40.0
+      ],
+      "pos": {
+        "rotation": [
+          1.0,
+          -0.00019302816
+        ],
+        "translation": [
+          -302.99646,
+          40.50113
+        ]
+      },
+      "mass": 500.0,
+      "sprite_path": "assets\\anvil.png",
+      "id": {
+        "id": 3933027896671104055
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Anvil"
+    },
+    {
+      "size": [
+        84.0,
+        40.0
+      ],
+      "pos": {
+        "rotation": [
+          0.99999994,
+          -0.00018763814
+        ],
+        "translation": [
+          -297.97104,
+          80.38575
+        ]
+      },
+      "mass": 500.0,
+      "sprite_path": "assets\\anvil.png",
+      "id": {
+        "id": 6246969104244665230
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Anvil"
+    },
+    {
+      "size": [
+        84.0,
+        40.0
+      ],
+      "pos": {
+        "rotation": [
+          0.99999994,
+          0.000010777522
+        ],
+        "translation": [
+          -303.06705,
+          120.328476
+        ]
+      },
+      "mass": 500.0,
+      "sprite_path": "assets\\anvil.png",
+      "id": {
+        "id": 8690921088968711579
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Anvil"
+    },
+    {
+      "size": [
+        84.0,
+        40.0
+      ],
+      "pos": {
+        "rotation": [
+          1.0,
+          -0.0001825655
+        ],
+        "translation": [
+          182.00368,
+          40.473682
+        ]
+      },
+      "mass": 500.0,
+      "sprite_path": "assets\\anvil.png",
+      "id": {
+        "id": 814750524266185522
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Anvil"
+    },
+    {
+      "size": [
+        84.0,
+        40.0
+      ],
+      "pos": {
+        "rotation": [
+          0.9999997,
+          -0.0007553585
+        ],
+        "translation": [
+          180.0206,
+          80.29647
+        ]
+      },
+      "mass": 500.0,
+      "sprite_path": "assets\\anvil.png",
+      "id": {
+        "id": 7860445949294669390
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Anvil"
+    },
+    {
+      "size": [
+        84.0,
+        40.0
+      ],
+      "pos": {
+        "rotation": [
+          0.99999917,
+          -0.0012879167
+        ],
+        "translation": [
+          184.07103,
+          120.15641
+        ]
+      },
+      "mass": 500.0,
+      "sprite_path": "assets\\anvil.png",
+      "id": {
+        "id": 18211069217978095186
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Anvil"
+    },
+    {
+      "size": [
+        84.0,
+        40.0
+      ],
+      "pos": {
+        "rotation": [
+          0.999999,
+          -0.0014184706
+        ],
+        "translation": [
+          187.09587,
+          160.08629
+        ]
+      },
+      "mass": 500.0,
+      "sprite_path": "assets\\anvil.png",
+      "id": {
+        "id": 17596833018967380590
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Anvil"
+    }
+  ],
   "enemies": [],
   "computer_pos": null,
   "dropped_items": [],

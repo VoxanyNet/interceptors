@@ -5,7 +5,7 @@
   ],
   "pos": {
     "rotation": [
-      0.0,
+      1.0,
       0.0
     ],
     "translation": [
@@ -14,8 +14,9 @@
     ]
   },
   "mass": 500.0,
-  "sprite_path": "assets/anvil.png",
-  "material": "None",
+  "sprite_path": "assets\\anvil.png",
   "id": null,
+  "owner": null,
+  "material": "None",
   "name": "Anvil"
 }
