@@ -158,7 +158,7 @@ impl Player {
         );
 
         for item in &mut picked_up_items {
-            item.despawn(space);
+            item.mark_despawn();
 
             ctx.network_io.send_network_packet(
                 NetworkPacket::RemoveDroppedItemUpdate(

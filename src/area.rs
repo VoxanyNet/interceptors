@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{path::PathBuf, str::FromStr, time::{Duration, Instant}};
 
 use macroquad::{audio::{play_sound, PlaySoundParams}, camera::Camera2D, input::{is_key_released, KeyCode}, math::Rect};
 use nalgebra::{vector, Isometry2, Vector2};
@@ -87,6 +87,9 @@ impl Area {
     }
 
     pub fn server_tick(&mut self, io: &mut ServerIO, dt: web_time::Duration) {
+
+        self.despawn_entities();
+
         self.space.step(dt);
 
         self.designate_master(io);
@@ -163,10 +166,19 @@ impl Area {
     }
 
     pub fn tick_enemies(&mut self, ctx: &mut ClientTickContext) {
-        let mut enemy_iter = SwapIter::new(&mut self.enemies);
 
-        while enemy_iter.not_done() {
-            let (enemies, mut enemy) = enemy_iter.next();
+        //let mut wasted_time = Duration::ZERO;
+
+        let enemies_vec_ptr = &mut self.enemies as *mut Vec<Enemy>;
+        
+        //let then = Instant::now();
+        //let mut enemy_iter = SwapIter::new(&mut self.enemies);
+        //wasted_time += then.elapsed();
+
+        for enemy in &mut self.enemies {
+            // let then = Instant::now();
+            //let (enemies, mut enemy) = enemy_iter.next();
+            //wasted_time += then.elapsed();
             enemy.client_tick(
                 &mut self.space, 
                 ctx, 
@@ -176,11 +188,17 @@ impl Area {
                 &mut self.bullet_trails,
                 self.id,
                 &mut self.dissolved_pixels,
-                enemies
+                unsafe {
+                    &mut *enemies_vec_ptr
+                }
             );
 
-            enemy_iter.restore(enemy);
+            //let then = Instant::now();
+            //enemy_iter.restore(enemy);
+            //wasted_time += then.elapsed();
         }
+
+        //log::debug!("{:?}", wasted_time);
     }
 
     pub fn tick_props(&mut self, ctx: &mut ClientTickContext) {
@@ -677,11 +695,76 @@ impl Area {
     }
 
     pub fn despawn_entities(&mut self) {
-        self.props.retain(|prop| {prop.despawn == false});
-        self.enemies.retain(|enemy| {enemy.despawn == false});
-        self.dissolved_pixels.retain(|pixel| {pixel.despawn == false});
-        self.decorations.retain(|decoration| decoration.despawn == false);
-        self.clips.retain(|clip| clip.despawn == false);
+        self.dropped_items.retain_mut(
+            |dropped_item|
+            {
+                if !dropped_item.despawn {
+                    return true;
+                }
+
+                dropped_item.despawn_callback(&mut self.space);
+
+                false
+            }
+        );
+        self.props.retain_mut(
+            |prop|
+            {
+                if !prop.despawn {
+                    return true;
+                }
+
+                prop.despawn_callback(&mut self.space, self.id);
+
+                false
+            }
+        );
+        self.enemies.retain_mut(
+            |enemy| 
+            {
+                if !enemy.despawn {
+                    return true;
+                }
+
+                enemy.despawn_callback(&mut self.space);
+                false
+            }
+        );
+        self.dissolved_pixels.retain_mut(
+            |pixel| 
+            {
+
+                if !pixel.despawn {
+                    return true;
+                }
+                
+                pixel.despawn_callback(&mut self.space);
+                false
+            }
+        );
+        self.decorations.retain_mut(
+            |decoration| 
+            {
+                if !decoration.despawn {
+                    return true;
+                }
+                
+                decoration.despawn_callback();
+                false
+            }
+        );
+        self.clips.retain_mut(
+            |clip| 
+            {
+
+                if !clip.despawn {
+                    return true;
+                }
+
+                clip.despawn_callback(&mut self.space);
+                false
+            }
+        );
     }
 
     pub fn find_prop_mut(&mut self, id: PropId) -> Option<&mut Prop> {

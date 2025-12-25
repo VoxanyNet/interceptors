@@ -51,6 +51,8 @@ pub struct Enemy {
 
 impl Enemy {
 
+    
+
     pub fn angle_head_to_target(&mut self, space: &mut Space, players: &Vec<Player>) {
 
         let target_player = match self.player_target {
@@ -421,7 +423,7 @@ impl Enemy {
         
         if let Some(death_time) = self.death_time {
             if death_time.elapsed().as_secs_f32() > 3. {
-                self.despawn(space);
+                self.mark_despawn();
 
                 ctx.network_io.send_network_packet(
                     NetworkPacket::EnemyDespawnUpdate(
@@ -438,7 +440,7 @@ impl Enemy {
         let pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation;
 
         if pos.y < despawn_y {
-            self.despawn(space);
+            self.mark_despawn();
 
             ctx.network_io.send_network_packet(
                 NetworkPacket::EnemyDespawnUpdate(
@@ -584,6 +586,10 @@ impl Enemy {
         );
     }
 
+    pub fn mark_despawn(&mut self) { 
+        self.despawn = true;
+    }
+
     pub fn client_tick(
         &mut self, 
         space: &mut Space, 
@@ -593,12 +599,20 @@ impl Enemy {
         props: &mut Vec<Prop>,
         bullet_trails: &mut Vec<BulletTrail>,
         area_id: AreaId,
-        dissolved_pixels: &mut Vec<DissolvedPixel>, enemies: &mut Vec<Enemy>,
+        dissolved_pixels: &mut Vec<DissolvedPixel>, 
+        enemies: &mut Vec<Enemy>,
     ) {
 
         if self.despawn {
             return;
         }
+
+
+        // delete self
+        let me = enemies.iter_mut().find(|e| e.id == self.id).unwrap();
+        me.despawn = true;
+
+
 
         self.detach_head_if_dead(space);
 
@@ -637,8 +651,7 @@ impl Enemy {
 
     }
     
-    pub fn despawn(&mut self, space: &mut Space) {
-        self.despawn = true;
+    pub fn despawn_callback(&mut self, space: &mut Space) {
 
         space.rigid_body_set.remove(self.body.body_handle, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
         space.rigid_body_set.remove(self.head.body_handle, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);

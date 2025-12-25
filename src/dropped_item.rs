@@ -30,7 +30,7 @@ pub struct DroppedItem {
     pub id: DroppedItemId,
     pub size: Vector2<f32>,
     previous_velocity: RigidBodyVelocity,
-    despawn: bool
+    pub despawn: bool
 
 }
 
@@ -38,9 +38,11 @@ pub struct DroppedItem {
 
 impl DroppedItem {
 
-    pub fn despawn(&mut self, space: &mut Space) {
+    pub fn despawn_callback(&mut self, space: &mut Space) {
         space.rigid_body_set.remove(self.body, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
+    }
 
+    pub fn mark_despawn(&mut self) {
         self.despawn = true;
     }
 

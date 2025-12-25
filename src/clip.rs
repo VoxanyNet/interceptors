@@ -15,6 +15,20 @@ pub struct Clip {
 }
 
 impl Clip {
+
+    pub fn despawn_callback(&mut self, space: &mut Space) {
+        space.rigid_body_set.remove(
+            self.rigid_body_handle, 
+            &mut space.island_manager, 
+            &mut space.collider_set, 
+            &mut space.impulse_joint_set, 
+            &mut space.multibody_joint_set, 
+            true
+        );
+    }
+    pub fn mark_despawn(&mut self) {
+        self.despawn = true;
+    }
     pub fn from_save(save: ClipSave, space: &mut Space) -> Self {
 
         let rigid_body_handle = space.rigid_body_set.insert(
@@ -30,6 +44,7 @@ impl Clip {
             rigid_body_handle,
             &mut space.rigid_body_set
         );
+
 
         Self {
             rigid_body_handle,

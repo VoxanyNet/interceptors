@@ -44,19 +44,15 @@ impl DissolvedPixel {
         self.color.a -= 0.01 * elapsed;
 
         if self.color.a <= 0. {
-            self.despawn(space, ctx)
+            self.mark_despawn();
         }
 
     }
 
-    pub fn despawn(&mut self, space: &mut Space, ctx: &mut ClientTickContext) {
-
-        if self.despawn {
-            return;
-        }
-
+    pub fn mark_despawn(&mut self) {
         self.despawn = true;
-
+    }
+    pub fn despawn_callback(&mut self, space: &mut Space) {
         space.rigid_body_set.remove(self.body, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
     }
 
@@ -157,6 +153,10 @@ impl Prop {
         self.name.clone()
     }
 
+    pub fn mark_despawn(&mut self) {
+        self.despawn = true;
+    }
+
     pub fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
         draw_preview(textures, size, draw_pos, color, rotation, &self.sprite_path);
     }
@@ -222,26 +222,12 @@ impl Prop {
 
         
 
-        self.despawn(space, area_id, Some(ctx));
+        self.mark_despawn();
     }
+
     
-    pub fn despawn(&mut self, space: &mut Space, area_id: AreaId, ctx: Option<&mut ClientTickContext>) {
+    pub fn despawn_callback(&mut self, space: &mut Space, area_id: AreaId) {
         space.rigid_body_set.remove(self.rigid_body_handle, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
-
-        self.despawn = true;
-
-        // i dont know if this is a good pattern
-        if let Some(ctx) = ctx {
-            ctx.network_io.send_network_packet(NetworkPacket::RemovePropUpdate(
-            RemovePropUpdate {
-                prop_id: self.id,
-                area_id: area_id,
-            }
-            ));
-        }
-        
-
-
     }
     pub fn from_prefab(prefab_path: String, space: &mut Space) -> Self {
 

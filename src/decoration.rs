@@ -24,6 +24,14 @@ impl Decoration {
         
         self.draw_editor_context_menu();
     }
+
+    pub fn mark_despawn(&mut self) {
+        self.despawn = true;
+    }
+
+    pub fn despawn_callback(&mut self) {
+        
+    }
     pub fn from_save(save: DecorationSave) -> Self {
 
         let frame_duration = match save.frame_duration {

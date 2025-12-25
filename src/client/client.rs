@@ -402,10 +402,8 @@ impl Client {
 
                     let prop = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}).unwrap();
 
-                    prop.despawn(&mut area.space, area.id, None);
+                    prop.mark_despawn();
 
-
-                    area.props.retain(|prop| {prop.id != update.prop_id});
                 },
                 NetworkPacket::NewDroppedItemUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(
@@ -425,16 +423,9 @@ impl Client {
                         }
                     ).unwrap();
 
-                    area.dropped_items.retain_mut(|dropped_item| {
-                        if dropped_item.id == update.dropped_item_id {
-
-                            dropped_item.despawn(&mut area.space);
-
-                            false
-                        } else {
-                            true
-                        }
-                    });
+                    let dropped_item = area.dropped_items.iter_mut().find(|dropped_item| {dropped_item.id == update.dropped_item_id}).unwrap();
+                    
+                    dropped_item.mark_despawn();
                 }
                 NetworkPacket::DroppedItemVelocityUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(
@@ -560,9 +551,8 @@ impl Client {
 
                     let enemy = area.enemies.iter_mut().find(|enemy| {enemy.id == update.enemy_id}).unwrap();
 
-                    enemy.despawn(&mut area.space);
+                    enemy.mark_despawn();
 
-                    area.enemies.retain(|enemy| {enemy.id != update.enemy_id});
 
                 },
                 NetworkPacket::EnemyHealthUpdate(update) => {

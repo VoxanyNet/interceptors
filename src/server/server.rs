@@ -211,16 +211,9 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                         }
                     ).unwrap();
 
-                    area.dropped_items.retain_mut(|dropped_item| {
-                        if dropped_item.id == update.dropped_item_id {
+                    let dropped_item = area.dropped_items.iter_mut().find(|dropped_item| dropped_item.id == update.dropped_item_id).unwrap();
 
-                            dropped_item.despawn(&mut area.space);
-                            
-                            false
-                        } else {
-                            true
-                        }
-                    });
+                    dropped_item.mark_despawn();
 
                     self.network_io.send_all_except(network_packet, client_id);
                 }
@@ -363,9 +356,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
                     let prop = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}).unwrap();
 
-                    prop.despawn(&mut area.space, area.id, None);
-
-                    area.props.retain(|prop|{prop.id != update.prop_id});
+                    prop.mark_despawn();
 
                     self.network_io.send_all_except(network_packet, client_id);
                 },
@@ -497,9 +488,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
                     let enemy = area.enemies.iter_mut().find(|enemy| {enemy.id == update.enemy_id}).unwrap();
 
-                    enemy.despawn(&mut area.space);
-
-                    area.enemies.retain(|enemy|{enemy.id != update.enemy_id});  
+                    enemy.mark_despawn();
 
                     self.network_io.send_all_except(network_packet, client_id);
 
