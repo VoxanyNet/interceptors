@@ -3,17 +3,21 @@ use std::path::PathBuf;
 use macroquad::{color::Color, math::Vec2};
 use rapier2d::prelude::{ImpulseJointHandle, RigidBodyHandle};
 
-use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapons::{shotgun::{ weapon_save::ShotgunSave}, weapon::weapon::Weapon, weapon_fire_context::WeaponFireContext}, ClientId, ClientTickContext};
+use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapons::{shotgun::{ weapon_save::ShotgunSave}, weapon::weapon::WeaponBase, weapon_fire_context::WeaponFireContext}, ClientId, ClientTickContext};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct Shotgun {
-    pub weapon: Weapon
+    pub weapon: WeaponBase
 }
 
 impl Shotgun {
 
-    pub fn despawn(&mut self, space: &mut Space) {
-        self.weapon.despawn(space);
+    pub fn mark_despawn(&mut self) {
+        self.weapon.mark_despawn();
+    }
+
+    pub fn despawn_callback(&mut self, space: &mut Space) {
+        self.weapon.despawn_callback(space);
     }
     pub fn preview_name(&self) -> String {
         "Shotgun".to_string()
@@ -34,7 +38,7 @@ impl Shotgun {
 
     pub fn from_save(save: ShotgunSave, space: &mut Space, player_rigid_body_handle: Option<RigidBodyHandle>) -> Self {
         Self {
-            weapon: Weapon::from_save(save.weapon, space, player_rigid_body_handle),
+            weapon: WeaponBase::from_save(save.weapon, space, player_rigid_body_handle),
         }
     }
     pub fn fire(&mut self, ctx: &mut ClientTickContext, weapon_fire_context: &mut WeaponFireContext) {
@@ -57,7 +61,7 @@ impl Shotgun {
     pub fn new(owner: ClientId, player_rigid_body_handle: Option<RigidBodyHandle>, facing: Facing) -> Self {
 
         Self {
-            weapon: Weapon::new(
+            weapon: WeaponBase::new(
                 owner, 
                 player_rigid_body_handle, 
                 PathBuf::from("assets\\shotgun.png"), 

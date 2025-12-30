@@ -3,6 +3,7 @@ use rapier2d::prelude::{ColliderHandle, ImpulseJointHandle, RigidBodyHandle};
 
 use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapons::{lmg::weapon::LMG, shotgun::weapon::Shotgun, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}, ClientTickContext};
 
+// in order to be an equipable weapon your weapon must be part of this enum 
 #[derive(PartialEq, Clone, Debug)]
 pub enum WeaponType {
     Shotgun(Shotgun),
@@ -42,10 +43,17 @@ impl WeaponType {
         }
     }
 
-    pub fn despawn(&mut self, space: &mut Space) {
+    pub fn mark_despawn(&mut self, space: &mut Space) {
         match self {
-            WeaponType::Shotgun(shotgun) => shotgun.despawn(space),
-            WeaponType::LMG(lmg) => lmg.weapon.despawn(space),
+            WeaponType::Shotgun(shotgun) => shotgun.mark_despawn(),
+            WeaponType::LMG(lmg) => lmg.weapon.mark_despawn(),
+        }
+    }
+
+    pub fn despawn_callback(&mut self, space: &mut Space) {
+        match self {
+            WeaponType::Shotgun(shotgun) => shotgun.despawn_callback(space),
+            WeaponType::LMG(lmg) => lmg.despawn_callback(space),
         }
     }
 

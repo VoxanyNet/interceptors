@@ -13,8 +13,10 @@ pub enum WeaponOwner {
     Player(PlayerId)
 }
 
+
+// common functionality that can be used as a component for a bunch of different weapon types
 #[derive(PartialEq, Clone, Debug)]
-pub struct Weapon {
+pub struct WeaponBase {
     pub player_rigid_body_handle: Option<RigidBodyHandle>,
     pub collider: Option<ColliderHandle>,
     pub rigid_body: Option<RigidBodyHandle>,
@@ -41,17 +43,18 @@ pub struct Weapon {
     mass: f32
 }
 
-impl Weapon {
+impl WeaponBase {
 
-    pub fn despawn(&mut self, space: &mut Space) {
+    pub fn mark_despawn(&mut self) {
 
         self.despawn = true;
+        
+    }
 
+    pub fn despawn_callback(&mut self, space: &mut Space) {
         if let Some(rigid_body) = self.rigid_body {
             space.rigid_body_set.remove(rigid_body, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
         }
-
-        
     }
 
     pub fn equip(&mut self, space: &mut Space, player_rigid_body_handle: RigidBodyHandle) {

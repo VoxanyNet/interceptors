@@ -607,13 +607,6 @@ impl Enemy {
             return;
         }
 
-
-        // delete self
-        let me = enemies.iter_mut().find(|e| e.id == self.id).unwrap();
-        me.despawn = true;
-
-
-
         self.detach_head_if_dead(space);
 
         

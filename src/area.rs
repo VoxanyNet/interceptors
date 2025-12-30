@@ -169,15 +169,15 @@ impl Area {
 
         //let mut wasted_time = Duration::ZERO;
 
-        let enemies_vec_ptr = &mut self.enemies as *mut Vec<Enemy>;
+        //let enemies_vec_ptr = &mut self.enemies as *mut Vec<Enemy>;
         
         //let then = Instant::now();
-        //let mut enemy_iter = SwapIter::new(&mut self.enemies);
+        let mut enemy_iter = SwapIter::new(&mut self.enemies);
         //wasted_time += then.elapsed();
 
-        for enemy in &mut self.enemies {
+        while enemy_iter.not_done() {
             // let then = Instant::now();
-            //let (enemies, mut enemy) = enemy_iter.next();
+            let (enemies, mut enemy) = enemy_iter.next();
             //wasted_time += then.elapsed();
             enemy.client_tick(
                 &mut self.space, 
@@ -188,13 +188,11 @@ impl Area {
                 &mut self.bullet_trails,
                 self.id,
                 &mut self.dissolved_pixels,
-                unsafe {
-                    &mut *enemies_vec_ptr
-                }
+                enemies
             );
 
             //let then = Instant::now();
-            //enemy_iter.restore(enemy);
+            enemy_iter.restore(enemy);
             //wasted_time += then.elapsed();
         }
 
