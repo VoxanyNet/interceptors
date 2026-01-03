@@ -16,6 +16,11 @@ pub struct BodyPart {
 }
 
 impl BodyPart {
+
+    pub fn despawn(&mut self, space: &mut Space) {
+        space.rigid_body_set.remove(self.body_handle, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
+    }
+    
     pub fn new(
         sprite_path: PathBuf,
         scale: u16,

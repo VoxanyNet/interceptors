@@ -763,6 +763,19 @@ impl Area {
                 false
             }
         );
+
+        self.players.retain_mut(
+            |player|
+            {
+                if !player.despawn {
+                    return true
+                }
+
+                player.despawn_callback(&mut self.space);
+                
+                false
+            }
+        );
     }
 
     pub fn find_prop_mut(&mut self, id: PropId) -> Option<&mut Prop> {

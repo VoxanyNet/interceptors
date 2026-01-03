@@ -159,6 +159,7 @@ fn asset_to_prop(relative_path: PathBuf) {
         owner: None,
         material: *prop_material,
         name,
+        layer: 0
     };
 
     let save = serde_json::to_string_pretty(&prop_save).unwrap();

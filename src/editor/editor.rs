@@ -2,9 +2,9 @@ use std::{fs::{self, read_to_string}, path::PathBuf, process::exit, time::{Durat
 
 use interceptors_lib::{Prefabs, area::{Area, AreaSave}, clip::Clip, decoration::Decoration, draw_hitbox, drawable::{DrawContext, Drawable}, editor_context_menu::EditorContextMenu, font_loader::FontLoader, macroquad_to_rapier, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, texture_loader::TextureLoader};
 use log::info;
-use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{GREEN, RED, WHITE}, input::{KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, time::draw_fps, window::{next_frame, screen_height, screen_width}};
+use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, RED, WHITE}, input::{KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, time::draw_fps, window::{next_frame, screen_height, screen_width}};
 use nalgebra::{vector, Vector2};
-use rapier2d::{math::Point, prelude::{ColliderBuilder, PointQuery, RigidBodyBuilder}};
+use rapier2d::{math::Point, prelude::{ColliderBuilder, PointQuery, RigidBodyBuilder, RigidBodyVelocity}};
 use strum::Display;
 
 use crate::{editor_input_context::EditorInputContext, editor_mode_select_ui::EditorModeSelectUI, editor_ui_tick_context::EditorUITickContext, layer_toggle_ui::LayerToggleUI, spawner::Spawner};
@@ -184,13 +184,18 @@ impl AreaEditor {
                     SelectableObject::Prop(prop) => {
                         let body = self.area.space.rigid_body_set.get_mut(prop.rigid_body_handle).unwrap();
 
+                        body.set_vels(RigidBodyVelocity::zero(), false);
+                        body.set_angvel(0., false);
+
                         body.set_position(
-                            vector![body.translation().x + delta.x, body.translation().y + delta.y].into(), 
+                            vector![body.translation().x + delta.x, body.translation().y - delta.y].into(), 
                             true
                         );
                     },
                     SelectableObject::Clip(clip) => {
                         let body = self.area.space.rigid_body_set.get_mut(clip.rigid_body_handle).unwrap();
+
+                        
 
                         body.set_position(
                             vector![body.translation().x + delta.x, body.translation().y - delta.y].into(), 
@@ -204,7 +209,7 @@ impl AreaEditor {
          
     }
 
-    pub fn highlight_object(&mut self, item: SelectableObjectId) {
+    pub fn highlight_object(&mut self, item: SelectableObjectId, color: Color) {
 
         let object = match item.get_object(&mut self.area.props, &mut self.area.tiles, &mut self.area.decorations, &mut self.area.clips) {
             Some(object) => object,
@@ -217,7 +222,7 @@ impl AreaEditor {
 
                 let decoration_rect = Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y);
 
-                draw_rectangle_lines(decoration_rect.x, decoration_rect.y, decoration_rect.w, decoration_rect.h, 3., WHITE);
+                draw_rectangle_lines(decoration_rect.x, decoration_rect.y, decoration_rect.w, decoration_rect.h, 3., color);
             },
 
             SelectableObject::Tile(tile) => {
@@ -238,7 +243,7 @@ impl AreaEditor {
                     50.
                 );
 
-                draw_rectangle_lines(tile_rect.x, tile_rect.y, tile_rect.w, tile_rect.h, 3., WHITE);
+                draw_rectangle_lines(tile_rect.x, tile_rect.y, tile_rect.w, tile_rect.h, 3.,  color);
 
             },
 
@@ -252,7 +257,7 @@ impl AreaEditor {
 
                 let prop_rect = Rect::new(macroquad_prop_pos.x - shape.half_extents.x, macroquad_prop_pos.y - shape.half_extents.y,  shape.half_extents.x * 2., shape.half_extents.y * 2.);
 
-                draw_rectangle_lines(prop_rect.x, prop_rect.y, prop_rect.w, prop_rect.h, 3., WHITE);
+                draw_rectangle_lines(prop_rect.x, prop_rect.y, prop_rect.w, prop_rect.h, 3., color);
             },  
             SelectableObject::Clip(clip) => {
                 
@@ -264,7 +269,7 @@ impl AreaEditor {
 
                 let clip_rect = Rect::new(macroquad_clip_pos.x - shape.half_extents.x, macroquad_clip_pos.y - shape.half_extents.y,  shape.half_extents.x * 2., shape.half_extents.y * 2.);
 
-                draw_rectangle_lines(clip_rect.x, clip_rect.y, clip_rect.w, clip_rect.h, 3., WHITE);
+                draw_rectangle_lines(clip_rect.x, clip_rect.y, clip_rect.w, clip_rect.h, 3., color);
 
 
             }
@@ -417,14 +422,14 @@ impl AreaEditor {
             ) {
                 return;
             }
-            self.highlight_object(hovered_object_id);
+            self.highlight_object(hovered_object_id, GRAY);
         }
     }
 
     pub fn highlight_selected_object(&mut self) {
 
         for selected_object in self.selected_objects.clone() {
-            self.highlight_object(selected_object);
+            self.highlight_object(selected_object, WHITE);
         }
     }
 
@@ -692,6 +697,10 @@ impl AreaEditor {
         for clip in &self.area.clips {
             clip.draw_editor_context_menu();
         }
+
+        for prop in &self.area.props {
+            prop.draw_editor_context_menu();
+        }
     }
 
     pub fn draw_selection_rect(&self) {
@@ -871,20 +880,23 @@ impl AreaEditor {
     pub fn update_context_menus(&mut self) {
 
         for (index, decoration) in self.area.decorations.iter_mut().enumerate() {
-
             
             let selected = self.selected_objects.contains(&SelectableObjectId::Decoration(index));
-        
-
             decoration.update_menu(&mut self.area.space, &self.camera_rect, selected);
         }
 
         for (index, clip) in self.area.clips.iter_mut().enumerate() {
+            let selected = self.selected_objects.contains(&SelectableObjectId::Clip(index));            
+            clip.update_menu(&mut self.area.space, &self.camera_rect, selected);
+        }
 
-            let selected = self.selected_objects.contains(&SelectableObjectId::Clip(index));
+        for (index, prop) in self.area.props.iter_mut().enumerate() {
+            
+            let selected = self.selected_objects.contains(&SelectableObjectId::Prop(prop.id));
+            
+            prop.update_menu(&mut self.area.space, &self.camera_rect, selected);
 
             
-            clip.update_menu(&mut self.area.space, &self.camera_rect, selected);
         }
     }
     
@@ -968,13 +980,7 @@ impl AreaEditor {
         self.update_context_menus();
         self.update_active_layer_to_selected_object();
         self.area.despawn_entities();
-        
-
-
-
         self.create_clip();
-
-        
 
         if is_key_down(KeyCode::LeftControl) {
             if is_key_released(KeyCode::S) {
@@ -988,7 +994,6 @@ impl AreaEditor {
         }
 
         self.update_last_mouse_pos();
-
         self.update_modifying_status();
         self.undo();
         self.add_undo_checkpoint();

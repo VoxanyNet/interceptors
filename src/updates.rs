@@ -1,7 +1,8 @@
 use crate::{area::{AreaId, AreaSave}, bullet_trail::SpawnBulletTrail, dropped_item::{DroppedItemVelocityUpdate, NewDroppedItemUpdate, RemoveDroppedItemUpdate}, enemy::{EnemyDespawnUpdate, EnemyHealthUpdate, EnemyPositionUpdate, EnemyVelocityUpdate, EnemyWeaponUpdate, NewEnemyUpdate}, player::{ActiveItemSlotUpdate, ItemSlotQuantityUpdate, ItemSlotUpdate, NewPlayer, PlayerCursorUpdate, PlayerFacingUpdate, PlayerHealthUpdate, PlayerPositionUpdate, PlayerVelocityUpdate}, prop::{DissolveProp, NewProp, PropPositionUpdate, PropUpdateOwner, PropVelocityUpdate, RemovePropUpdate}, uuid_u64, ClientId};
+use derive_more::From;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, From)]
 pub enum NetworkPacket {
     Ping(Ping),
     LoadArea(LoadArea),

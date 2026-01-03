@@ -146,20 +146,6 @@
     },
     {
       "pos": [
-        156.92241,
-        697.6408
-      ],
-      "size": [
-        50.0,
-        50.0
-      ],
-      "sprite_path": "assets/grass_topright.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
         -393.07758,
         697.6408
       ],
@@ -476,62 +462,6 @@
         50.0
       ],
       "sprite_path": "assets/grass_middlemiddle.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        156.92241,
-        747.6408
-      ],
-      "size": [
-        50.0,
-        50.0
-      ],
-      "sprite_path": "assets/grass_middleright.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        156.92241,
-        797.6408
-      ],
-      "size": [
-        50.0,
-        50.0
-      ],
-      "sprite_path": "assets/grass_middleright.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        156.92241,
-        847.6408
-      ],
-      "size": [
-        50.0,
-        50.0
-      ],
-      "sprite_path": "assets/grass_middleright.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        156.92241,
-        897.6408
-      ],
-      "size": [
-        50.0,
-        50.0
-      ],
-      "sprite_path": "assets/grass_middleright.png",
       "animated_sprite_paths": null,
       "frame_duration": null,
       "layer": 0
@@ -1011,6 +941,90 @@
       "animated_sprite_paths": null,
       "frame_duration": null,
       "layer": 0
+    },
+    {
+      "pos": [
+        156.92241,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        206.92241,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        256.92242,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        306.92242,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        356.92242,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        406.92242,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
     }
   ],
   "clips": [
@@ -1024,6 +1038,17 @@
         -54.164154
       ],
       "layer": 1
+    },
+    {
+      "size": [
+        0.0,
+        -0.6829834
+      ],
+      "pos": [
+        411.27988,
+        77.50421
+      ],
+      "layer": 0
     }
   ],
   "players": [],
@@ -1051,11 +1076,11 @@
       "pos": {
         "rotation": [
           1.0,
-          -0.00019302816
+          -0.00019301413
         ],
         "translation": [
-          -302.99646,
-          40.50113
+          -302.99643,
+          40.501125
         ]
       },
       "mass": 500.0,
@@ -1065,7 +1090,8 @@
       },
       "owner": null,
       "material": "None",
-      "name": "Anvil"
+      "name": "Anvil",
+      "layer": 0
     },
     {
       "size": [
@@ -1075,11 +1101,11 @@
       "pos": {
         "rotation": [
           0.99999994,
-          -0.00018763814
+          -0.00018749585
         ],
         "translation": [
-          -297.97104,
-          80.38575
+          -297.97156,
+          80.38572
         ]
       },
       "mass": 500.0,
@@ -1089,7 +1115,8 @@
       },
       "owner": null,
       "material": "None",
-      "name": "Anvil"
+      "name": "Anvil",
+      "layer": 0
     },
     {
       "size": [
@@ -1099,10 +1126,10 @@
       "pos": {
         "rotation": [
           0.99999994,
-          0.000010777522
+          0.000010963829
         ],
         "translation": [
-          -303.06705,
+          -303.0671,
           120.328476
         ]
       },
@@ -1113,7 +1140,8 @@
       },
       "owner": null,
       "material": "None",
-      "name": "Anvil"
+      "name": "Anvil",
+      "layer": 0
     },
     {
       "size": [
@@ -1123,11 +1151,11 @@
       "pos": {
         "rotation": [
           1.0,
-          -0.0001825655
+          0.00007799958
         ],
         "translation": [
-          182.00368,
-          40.473682
+          181.99861,
+          40.529217
         ]
       },
       "mass": 500.0,
@@ -1137,7 +1165,8 @@
       },
       "owner": null,
       "material": "None",
-      "name": "Anvil"
+      "name": "Anvil",
+      "layer": 0
     },
     {
       "size": [
@@ -1146,12 +1175,12 @@
       ],
       "pos": {
         "rotation": [
-          0.9999997,
-          -0.0007553585
+          0.99999994,
+          0.0001561791
         ],
         "translation": [
-          180.0206,
-          80.29647
+          179.99162,
+          80.47163
         ]
       },
       "mass": 500.0,
@@ -1161,55 +1190,8 @@
       },
       "owner": null,
       "material": "None",
-      "name": "Anvil"
-    },
-    {
-      "size": [
-        84.0,
-        40.0
-      ],
-      "pos": {
-        "rotation": [
-          0.99999917,
-          -0.0012879167
-        ],
-        "translation": [
-          184.07103,
-          120.15641
-        ]
-      },
-      "mass": 500.0,
-      "sprite_path": "assets\\anvil.png",
-      "id": {
-        "id": 18211069217978095186
-      },
-      "owner": null,
-      "material": "None",
-      "name": "Anvil"
-    },
-    {
-      "size": [
-        84.0,
-        40.0
-      ],
-      "pos": {
-        "rotation": [
-          0.999999,
-          -0.0014184706
-        ],
-        "translation": [
-          187.09587,
-          160.08629
-        ]
-      },
-      "mass": 500.0,
-      "sprite_path": "assets\\anvil.png",
-      "id": {
-        "id": 17596833018967380590
-      },
-      "owner": null,
-      "material": "None",
-      "name": "Anvil"
+      "name": "Anvil",
+      "layer": 0
     }
   ],
   "enemies": [],

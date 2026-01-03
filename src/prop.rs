@@ -1,13 +1,13 @@
 use std::{fs::read_to_string, path::PathBuf};
 
 use async_trait::async_trait;
-use macroquad::{audio::play_sound_once, color::Color, math::Vec2, shapes::{draw_rectangle_ex, DrawRectangleParams}};
+use macroquad::{audio::play_sound_once, color::Color, math::{Rect, Vec2}, shapes::{DrawRectangleParams, draw_rectangle_ex}};
 use nalgebra::{Isometry2, Vector2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
-use crate::{ClientId, ClientTickContext, Prefabs, ServerIO, area::AreaId, draw_preview, draw_texture_onto_physics_body, drawable::{DrawContext, Drawable}, get_preview_resolution, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
+use crate::{ClientId, ClientTickContext, Prefabs, ServerIO, area::AreaId, draw_preview, draw_texture_onto_physics_body, drawable::{DrawContext, Drawable}, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, get_preview_resolution, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Default, Debug, PartialEq, EnumIter, Display)]
 pub enum PropMaterial {
@@ -143,7 +143,9 @@ pub struct Prop {
     last_sound_play: web_time::Instant,
     pub despawn: bool,
     last_pos_update: web_time::Instant,
-    name: String
+    name: String,
+    context_menu_data: Option<EditorContextMenuData>,
+    layer: u32
 }
 
 
@@ -222,7 +224,15 @@ impl Prop {
 
         
 
+        
         self.mark_despawn();
+
+        ctx.network_io.send_network_packet(
+            RemovePropUpdate {
+                prop_id: self.id,
+                area_id,
+            }.into()
+        );
     }
 
     
@@ -451,6 +461,7 @@ impl Prop {
             None => PropId::new(),
         };
 
+
         Self {
             rigid_body_handle: body,
             collider_handle: collider,
@@ -462,8 +473,10 @@ impl Prop {
             last_sound_play: web_time::Instant::now(),
             despawn: false,
             last_pos_update: web_time::Instant::now(),
-            name: save.name
-            
+            name: save.name,
+            context_menu_data: None,
+            layer: save.layer
+
         }
     }
 
@@ -484,12 +497,59 @@ impl Prop {
             id: Some(self.id.clone()),
             owner: self.owner,
             material: self.material,
-            name: self.name.clone()
+            name: self.name.clone(),
+            layer: self.layer
         }
     }
 
 }
 
+impl EditorContextMenu for Prop {
+    fn object_bounding_box(&self, space: Option<&Space>) -> macroquad::prelude::Rect {
+        let space = space.unwrap();
+
+        let pos = space.rigid_body_set.get(self.rigid_body_handle).unwrap().translation();
+        let size = space.collider_set.get(self.collider_handle).unwrap().shape().as_cuboid().unwrap().half_extents;
+
+        let mpos = rapier_to_macroquad(*pos);
+
+        Rect::new(mpos.x - size.x, mpos.y - size.y, size.x * 2., size.y * 2.)
+
+    }
+
+    fn context_menu_data_mut(&mut self) -> &mut Option<crate::editor_context_menu::EditorContextMenuData> {
+        &mut self.context_menu_data
+    }
+
+    fn context_menu_data(&self) -> &Option<crate::editor_context_menu::EditorContextMenuData> {
+        &self.context_menu_data
+    }
+
+    fn despawn(&mut self) -> Option<&mut bool> {
+        Some(&mut self.despawn)
+    }
+
+    fn data_editor_export(&self, ctx: &crate::editor_context_menu::DataEditorContext) -> Option<String> {
+        serde_json::to_string_pretty(
+            &self.save(ctx.space)
+        ).unwrap().into()
+    }
+
+    fn data_editor_import(&mut self, json: String, ctx: &mut crate::editor_context_menu::DataEditorContext) {
+        let prop_save: PropSave = serde_json::from_str(&json).unwrap();
+
+        *self = Self::from_save(prop_save, ctx.space);
+    }
+
+    fn layer(&mut self) -> Option<&mut u32> {
+        Some(&mut self.layer)
+    }
+
+
+
+
+    
+}
 #[async_trait]
 impl Drawable for Prop {
     async fn draw(&mut self, draw_context: &crate::drawable::DrawContext) {
@@ -509,7 +569,7 @@ impl Drawable for Prop {
     }
 
     fn draw_layer(&self) -> u32 {
-        1
+        self.layer
     }
 }
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -524,7 +584,9 @@ pub struct PropSave {
     #[serde(default)]
     pub material: PropMaterial,
     #[serde(default = "default_prop_name")]
-    pub name: String
+    pub name: String,
+    #[serde(default)]
+    pub layer: u32
 }
 
 

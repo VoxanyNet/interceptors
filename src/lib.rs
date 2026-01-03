@@ -1,6 +1,7 @@
 use std::{collections::HashMap, f32::consts::PI, fs::read_to_string, net::{TcpListener, TcpStream}, path::PathBuf, process::exit};
 
 use ewebsock::{WsReceiver, WsSender};
+use gilrs::{GamepadId, Gilrs};
 use macroquad::{camera::Camera2D, color::{Color, WHITE}, file::load_string, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}};
 use nalgebra::{vector, Vector2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, QueryFilter, RigidBodyHandle};
@@ -8,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tungstenite::WebSocket;
 use nalgebra::point;
 
-use crate::{all_keys::ALL_KEYS, player::Facing, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, weapons::weapon_type::WeaponType};
+use crate::{all_keys::ALL_KEYS, gamepad::Gamepad, player::Facing, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, weapons::weapon_type::WeaponType};
 
 pub mod space;
 pub mod updates;
@@ -45,7 +46,7 @@ pub mod tile;
 pub mod drawable;
 pub mod editor_context_menu;
 pub mod selectable_object_id;
-
+pub mod gamepad;
 pub fn angle_weapon_to_mouse(
     space: &mut Space, 
     weapon: Option<&mut WeaponType>, 
@@ -669,7 +670,8 @@ pub struct ClientTickContext<'a> {
     pub screen_shake: &'a mut ScreenShakeParameters,
     pub sounds: &'a mut SoundLoader,
     pub textures: &'a TextureLoader,
-    pub camera: &'a Camera2D
+    pub camera: &'a Camera2D,
+    pub gilrs: &'a mut Gilrs
 }
 
 fn round_to_nearest(x: i32, n: i32) -> i32 {

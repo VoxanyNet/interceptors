@@ -1,7 +1,8 @@
 use std::{f32::consts::PI, mem::take, path::PathBuf, str::FromStr, usize};
 
 use cs_utils::drain_filter;
-use macroquad::{color::{BLACK, WHITE}, input::{KeyCode, is_key_down, is_mouse_button_released, mouse_position, mouse_wheel}, math::{Rect, Vec2}, shapes::draw_rectangle, text::{TextParams, draw_text, draw_text_ex}, window::{screen_height, screen_width}};
+use gilrs::{Button, Event};
+use macroquad::{color::{BLACK, WHITE}, input::{KeyCode, is_key_down, is_key_released, is_mouse_button_released, mouse_position, mouse_wheel}, math::{Rect, Vec2}, shapes::draw_rectangle, text::{TextParams, draw_text, draw_text_ex}, window::{screen_height, screen_width}};
 use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
@@ -77,11 +78,23 @@ pub struct Player {
     previous_pos: Isometry2<f32>,
     last_position_update: web_time::Instant,
     last_autofire: web_time::Instant,
-    flying: bool
+    flying: bool,
+    pub despawn: bool,
+    pub move_right_toggle: bool,
+    pub move_left_toggle: bool,
 }
 
 impl Player {
 
+    pub fn mark_despawn(&mut self) {
+        self.despawn = true;
+    }
+
+    pub fn despawn_callback(&mut self, space: &mut Space) {
+        self.head.despawn(space);
+        self.body.despawn(space);
+        self.unequip_previous_weapon(space);
+    }
     pub fn dash(&mut self, space: &mut Space) {
         if !is_key_down(KeyCode::LeftShift) {
             return
@@ -414,7 +427,10 @@ impl Player {
             last_position_update: web_time::Instant::now(),
             last_autofire: web_time::Instant::now(),
             previous_selected_item: 1,
-            flying: true
+            flying: true,
+            despawn: false,
+            move_left_toggle: false,
+            move_right_toggle: false
         }
     }
 
@@ -546,51 +562,114 @@ impl Player {
         self.previous_cursor_pos = self.cursor_pos_rapier;
     }
 
+    pub fn control_controller(&mut self, space: &mut Space, ctx: &mut ClientTickContext) {
 
-    pub fn control(&mut self, space: &mut Space, ctx: &mut ClientTickContext) {
         let body = space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
 
-        self.jump(body);
-        self.fly(body);
 
-        let speed = 50.;
-
-        if is_key_down(KeyCode::A) {
-            if body.linvel().x < -self.max_speed.x {
-                return;
+        if let Some(event) = ctx.gilrs.next_event() {
+            match event.event {
+                gilrs::EventType::ButtonPressed(button, code) => {
+                    match button {
+                        Button::South => self.jump(body, ctx),
+                        Button::DPadLeft => self.move_left_toggle = true,
+                        Button::DPadRight => self.move_right_toggle = true,
+                        _ => {}
+                    }
+                },
+                gilrs::EventType::ButtonReleased(button, code) => {
+                    match button {
+                        Button::DPadLeft => self.move_left_toggle = false,
+                        Button::DPadRight => self.move_right_toggle = false,
+                        _ => {}
+                    }
+                },
+                gilrs::EventType::ButtonChanged(button, _, code) => {},
+                gilrs::EventType::AxisChanged(axis, data, code) => {
+                    match axis {
+                        gilrs::Axis::LeftStickX => {},
+                        gilrs::Axis::LeftStickY => {},
+                        gilrs::Axis::LeftZ => {},
+                        gilrs::Axis::RightStickX => {
+                           
+    
+                        },
+                        gilrs::Axis::RightStickY => {
+                            
+                        },
+                        gilrs::Axis::RightZ => {},
+                        gilrs::Axis::DPadX => {},
+                        gilrs::Axis::DPadY => {},
+                        gilrs::Axis::Unknown => {},
+                    }
+                },
+                gilrs::EventType::Connected => {},
+                gilrs::EventType::Disconnected => {},
+                gilrs::EventType::Dropped => {},
+                gilrs::EventType::ForceFeedbackEffectCompleted => {},
+                _ => {},
             }
 
-            if body.linvel().x.is_sign_positive() {
-                body.set_linvel(
-                    Vector2::new(body.linvel().x * 0.5, body.linvel().y), 
-                    true
-                );
-            }
+        }
 
+        if self.move_left_toggle {
+            self.move_left(body);
+        }
+
+        if self.move_right_toggle {
+            self.move_right(body);
+        }
+    }
+
+    pub fn move_left(&mut self, body: &mut RigidBody) {
+        if body.linvel().x < -self.max_speed.x {
+            return;
+        }
+
+        if body.linvel().x.is_sign_positive() {
             body.set_linvel(
-                Vector2::new(body.linvel().x - speed, body.linvel().y), 
+                Vector2::new(body.linvel().x * 0.5, body.linvel().y), 
                 true
             );
         }
 
-        if is_key_down(KeyCode::D) {
-            if body.linvel().x > self.max_speed.x {
-                return;
-            }
+        body.set_linvel(
+            Vector2::new(body.linvel().x - 50., body.linvel().y), 
+            true
+        );
+    }
 
-            if body.linvel().x.is_sign_negative() {
-                body.set_linvel(
-                    Vector2::new(body.linvel().x * 0.5,body.linvel().y), 
-                    true
-                );
-            }
+    pub fn move_right(&mut self, body: &mut RigidBody) {
+        if body.linvel().x > self.max_speed.x {
+            return;
+        }
 
+        if body.linvel().x.is_sign_negative() {
             body.set_linvel(
-                Vector2::new(body.linvel().x + speed, body.linvel().y), 
+                Vector2::new(body.linvel().x * 0.5,body.linvel().y), 
                 true
             );
+        }
 
+        body.set_linvel(
+            Vector2::new(body.linvel().x + 50., body.linvel().y), 
+            true
+        );
+    }
 
+    pub fn control_mkb(&mut self, space: &mut Space, ctx: &mut ClientTickContext) {
+        let body = space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
+        //self.fly(body);
+
+        if is_key_down(KeyCode::Space) {
+            self.jump(body, ctx);
+        }
+
+        if is_key_down(KeyCode::A) {
+            self.move_left(body);
+        }
+        if is_key_down(KeyCode::D) {
+            self.move_right(body);
         }
     }
 
@@ -782,31 +861,24 @@ impl Player {
         }
     }
 
-    pub fn jump(&mut self, body: &mut RigidBody) {
+    pub fn jump(&mut self, body: &mut RigidBody, ctx: &mut ClientTickContext) {
 
-        if self.flying {
+        // dont allow if moving, falling or jumping
+        if body.linvel().y.abs() > 0.5 {
             return;
         }
 
-        if is_key_down(KeyCode::Space) {
-
-            // dont allow if moving, falling or jumping
-            if body.linvel().y.abs() > 0.5 {
-                return;
-            }
-
-            if body.linvel().y.is_sign_negative() {
-                body.set_linvel(
-                    Vector2::new(body.linvel().x, 0.), 
-                    true
-                );
-            }
-
+        if body.linvel().y.is_sign_negative() {
             body.set_linvel(
-                Vector2::new(body.linvel().x, body.linvel().y + 700.), 
+                Vector2::new(body.linvel().x, 0.), 
                 true
             );
         }
+
+        body.set_linvel(
+            Vector2::new(body.linvel().x, body.linvel().y + 700.), 
+            true
+        );
     }
 
     pub fn get_selected_item_slot_mut(&mut self) -> &mut Option<ItemSlot> {
@@ -878,13 +950,15 @@ impl Player {
         if is_mouse_button_released(macroquad::input::MouseButton::Left) {
             self.use_item(ctx, space, props, players, bullet_trails, self.facing, area_id, enemies, dissolved_pixels, dropped_items);
         }
+
         self.send_position_network_update(ctx, space, area_id);
         self.update_cursor_pos(ctx, area_id);
         self.dash(space);
         self.pickup_item(dropped_items, space, ctx, area_id);
         self.change_active_inventory_slot(ctx, area_id, space);
         self.change_facing_direction(space, ctx, area_id);
-        self.control(space, ctx);
+        self.control_controller(space, ctx);
+        self.control_mkb(space, ctx);
         self.move_camera(space, max_camera_y, ctx, minimum_camera_width, minimum_camera_height);
         self.send_velocity_network_update(ctx, area_id, space);
         self.face_towards_mouse(space, ctx, area_id);

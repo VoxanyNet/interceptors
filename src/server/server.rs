@@ -356,6 +356,8 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
                     let prop = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}).unwrap();
 
+                    log::debug!("Despawning prop: {:?}", prop.id);
+
                     prop.mark_despawn();
 
                     self.network_io.send_all_except(network_packet, client_id);
@@ -585,10 +587,6 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
         let megabits = self.total_bits_sent as f32 / 1000000 as f32;
 
-        //dbg!(megabits);
-
-        
-        
         self.world.server_tick(&mut self.network_io, self.last_tick_duration);
 
         self.network_io.flush(&mut self.total_bits_sent);

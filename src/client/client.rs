@@ -1,6 +1,7 @@
 use std::{collections::HashMap, path::PathBuf, process::exit};
 
-use interceptors_lib::{area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, player::{ItemSlot, Player}, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, weapons::weapon_type::WeaponType, world::World, ClientIO, ClientId, ClientTickContext, Prefabs};
+use gilrs::{GamepadId, Gilrs};
+use interceptors_lib::{ClientIO, ClientId, ClientTickContext, Prefabs, area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, gamepad::Gamepad, player::{ItemSlot, Player}, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, weapons::weapon_type::WeaponType, world::World};
 use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{BLACK, WHITE}, input::{is_key_released, KeyCode}, math::{vec2, Rect}, prelude::{gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
 
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
@@ -94,7 +95,8 @@ pub struct Client {
     camera: Camera2D,
     spawned: bool,
     fonts: FontLoader,
-    test_button: Button
+    test_button: Button,
+    gilrs: Gilrs
 }
 
 impl Client {
@@ -225,6 +227,7 @@ impl Client {
             h: 100.,
         }, None);
 
+        let gamepad = Gamepad::new();
 
         Self {
             network_io: server,
@@ -246,7 +249,8 @@ impl Client {
             spawned: false,
             camera,
             fonts,
-            test_button
+            test_button,
+            gilrs: Gilrs::new().unwrap()
 
         }
         
@@ -608,10 +612,7 @@ impl Client {
     pub fn tick(&mut self) {
 
         self.phone();
-
         self.measure_latency();
-
-
         self.ping();
 
         let mut ctx = ClientTickContext {
@@ -623,7 +624,9 @@ impl Client {
             screen_shake: &mut self.screen_shake,
             sounds: &mut self.sounds,
             textures: &self.textures,
-            camera: &self.camera
+            camera: &self.camera,
+            gilrs: &mut self.gilrs
+            
         };
 
         // if !self.spawned {
