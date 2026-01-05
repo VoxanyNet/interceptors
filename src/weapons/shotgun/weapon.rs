@@ -42,7 +42,7 @@ impl Shotgun {
         }
     }
     pub fn fire(&mut self, ctx: &mut ClientTickContext, weapon_fire_context: &mut WeaponFireContext) {
-        self.weapon.fire(ctx, weapon_fire_context, None, Some(1));
+        self.weapon.fire(ctx, weapon_fire_context, Some(0.2), Some(3));
     }
 
     pub fn player_joint_handle(&self) -> Option<ImpulseJointHandle> {
@@ -81,7 +81,10 @@ impl Shotgun {
                 2,
                 24,
                 100.,
-                100000.
+                100000.,
+                web_time::Duration::from_secs(1),
+                None,
+                None
             ),
         }
         

@@ -1,12 +1,13 @@
 use std::path::PathBuf;
 
+use derive_more::From;
 use macroquad::{camera::{set_camera, Camera2D}, color::{Color, BLACK, GRAY, WHITE}, math::{Rect, Vec2}, shapes::draw_line, text::{draw_text_ex, TextParams}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::clear_background};
 use nalgebra::Isometry2;
 use serde::{Deserialize, Serialize};
 
 use crate::{ClientTickContext, Prefabs, button::Button, drawable::{DrawContext, Drawable}, font_loader::FontLoader, mouse_world_pos, player::Player, prop::{Prop, PropSave}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, weapons::{weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Debug, From)]
 pub enum Item {
     Prop(Prop),
     Weapon(WeaponType)

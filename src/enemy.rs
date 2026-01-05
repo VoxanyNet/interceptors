@@ -193,6 +193,9 @@ impl Enemy {
                     if self.last_fired_weapon.elapsed().as_secs_f32() < 0.1 {
                         return;
                     }
+                },
+                WeaponType::SMG(_) => {
+
                 }
             }
         } else {
@@ -459,14 +462,6 @@ impl Enemy {
 
         if let Some(weapon) = &mut self.weapon {
 
-            match weapon {
-                WeaponType::Shotgun(shotgun) => if self.last_fired_weapon.elapsed().as_secs_f32() < 1. {
-                    return;
-                },
-                WeaponType::LMG(lmg) => if self.last_fired_weapon.elapsed().as_secs_f32() < 0.01 {
-                    return;
-                }
-            }
             weapon.fire(ctx, &mut WeaponFireContext {
                 space,
                 players,

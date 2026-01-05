@@ -24,6 +24,9 @@ pub struct WeaponSave {
     pub reserve_capacity: u32,
     pub reload_duration: f32, // reload duration time in seconds
     pub base_damage: f32,
-    pub knockback: f32
+    pub knockback: f32,
+    pub fire_cooldown: web_time::Duration,
+    pub hold_fire_begin_sound_path: Option<PathBuf>,
+    pub hold_fire_end_sound_path: Option<PathBuf>
 
 }

@@ -74,6 +74,10 @@ impl LMG {
                 100000,
                 4.,
                 50000.,
+                web_time::Duration::from_millis(100),
+                None,
+                None
+
             ),
         }
     }

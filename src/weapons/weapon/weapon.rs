@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use macroquad::{audio::{play_sound, PlaySoundParams}, color::Color, math::Vec2, rand::RandomRange};
+use macroquad::{audio::{PlaySoundParams, play_sound}, color::Color, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released}, math::Vec2, rand::RandomRange};
 use nalgebra::{point, vector, Vector2};
 use rapier2d::{math::Vector, parry::query::Ray, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 
@@ -40,7 +40,12 @@ pub struct WeaponBase {
     base_damage: f32,
     knockback: f32,
     texture_size: Vec2,
-    mass: f32
+    mass: f32,
+    pub last_fire: web_time::Instant,
+    pub fire_cooldown: web_time::Duration,
+    pub hold_fire_begin_sound_path: Option<PathBuf>, // worst variable name awards
+    pub hold_fire_end_sound_path: Option<PathBuf>,
+    holding_fire: bool
 }
 
 impl WeaponBase {
@@ -131,7 +136,11 @@ impl WeaponBase {
         get_preview_resolution(size, textures, &self.sprite)
     }
 
-    pub fn from_save(save: WeaponSave, space: &mut Space, player_rigid_body_handle: Option<RigidBodyHandle>) -> Self {
+    pub fn from_save(
+        save: WeaponSave, 
+        space: &mut Space, 
+        player_rigid_body_handle: Option<RigidBodyHandle>
+    ) -> Self {
 
         Self::new(
             save.owner, 
@@ -153,7 +162,10 @@ impl WeaponBase {
             save.capacity, 
             save.reserve_capacity,
             save.base_damage,
-            save.knockback
+            save.knockback,
+            save.fire_cooldown,
+            save.hold_fire_begin_sound_path,
+            save.hold_fire_end_sound_path
         )
     }
 
@@ -183,7 +195,10 @@ impl WeaponBase {
             reserve_capacity: self.reserve_capacity,
             reload_duration: self.reload_duration.as_secs_f32(),
             base_damage: self.base_damage,
-            knockback: self.knockback
+            knockback: self.knockback,
+            fire_cooldown: self.fire_cooldown,
+            hold_fire_begin_sound_path: self.hold_fire_begin_sound_path.clone(),
+            hold_fire_end_sound_path: self.hold_fire_end_sound_path.clone()
         }
     }
     pub fn new(
@@ -207,6 +222,9 @@ impl WeaponBase {
         reserve_capacity: u32,
         base_damage: f32,
         knockback: f32,
+        fire_cooldown: web_time::Duration,
+        hold_fire_begin_sound_path: Option<PathBuf>,
+        hold_fire_end_sound_path: Option<PathBuf>
         
 
     ) -> Self {
@@ -243,7 +261,12 @@ impl WeaponBase {
             base_damage: base_damage,
             knockback,
             texture_size,
-            mass    
+            mass,
+            last_fire: web_time::Instant::now(),
+            fire_cooldown,
+            hold_fire_begin_sound_path,
+            hold_fire_end_sound_path,
+            holding_fire: false
             
         }
     }
@@ -280,84 +303,12 @@ impl WeaponBase {
         
     }
 
-    pub fn fire(
+    pub fn handle_entity_impacts(
         &mut self, 
         ctx: &mut ClientTickContext,
-        weapon_fire_context: &mut WeaponFireContext,
-        innaccuracy_factor: Option<f32>,
-        bullet_count: Option<u32>
-        
+        weapon_fire_context: &mut WeaponFireContext, 
+        impacts: Vec<BulletImpactData>,
     ) {
-        let innaccuracy_factor = innaccuracy_factor.unwrap_or(0.);
-        let bullet_count = bullet_count.unwrap_or(1);
-        
-        // dont shoot while reloading
-        if self.last_reload.elapsed() < self.reload_duration {
-
-            let sound = ctx.sounds.get(PathBuf::from("assets\\sounds\\pistol_dry_fire.wav"));
-
-            return;
-        }
-
-
-        // automatically reload if zero bullets
-        if self.rounds == 0 {
-            self.reload();
-
-            let sound = ctx.sounds.get(PathBuf::from("assets\\sounds\\pistol_dry_fire.wav"));
-
-
-            play_sound(sound, PlaySoundParams {
-                looped: false,
-                volume: 0.2,
-            });
-
-            return;
-        }
-
-        self.rounds -= 1;
-        
-        self.shake_screen(ctx);
-
-
-        play_sound(
-            ctx.sounds.get(self.fire_sound_path.clone()),
-            PlaySoundParams {
-                looped: false,
-                volume: 0.2,
-            }
-        );
-
-        
-
-        let mut bullet_vectors = Vec::new();
-
-        for _ in 0..bullet_count {
-            
-
-            let bullet_vector = self.get_bullet_vector_rapier(&weapon_fire_context.space, weapon_fire_context.facing);
-
-            let innacuracy_coefficient = RandomRange::gen_range(1. - innaccuracy_factor, 1. + innaccuracy_factor);
-
-            let innacurate_bullet_vector = Vector2::new(
-                bullet_vector.x * innacuracy_coefficient, 
-                bullet_vector.y * innacuracy_coefficient
-            );
-
-            bullet_vectors.push(innacurate_bullet_vector);
-        };
-
-        let mut impacts = Vec::new();
-        
-        for bullet_vector in &bullet_vectors {
-
-        
-            impacts.append(&mut self.get_impacts(weapon_fire_context.space, *bullet_vector));
-
-            self.create_bullet_trail(ctx, *bullet_vector, weapon_fire_context.space, weapon_fire_context.area_id, weapon_fire_context.bullet_trails);
-
-        };
-        
         // PLAYERS
         for player in &mut *weapon_fire_context.players {
 
@@ -390,17 +341,7 @@ impl WeaponBase {
             for impact in impacts.iter().filter(|impact| {impact.impacted_collider == collider}) {
                 prop.handle_bullet_impact(ctx, &impact, weapon_fire_context.space, weapon_fire_context.area_id, weapon_fire_context.dissolved_pixels);
             };
-
-            
-
-            
         }
-
-        for bullet_vector in &bullet_vectors {
-        
-            impacts.append(&mut self.get_impacts(weapon_fire_context.space, *bullet_vector));
-
-        };
 
         for dissolved_pixel in &mut *weapon_fire_context.dissolved_pixels {
 
@@ -414,7 +355,167 @@ impl WeaponBase {
                 );
             }
         };
+    }
+
+    pub fn reload_on_zero_bullets(&mut self, ctx: &mut ClientTickContext){
+        // automatically reload if zero bullets
+        if self.rounds == 0 {
+            self.reload();
+
+            if is_mouse_button_released(macroquad::input::MouseButton::Left) {
+                let sound = ctx.sounds.get(PathBuf::from("assets\\sounds\\pistol_dry_fire.wav"));
+                play_sound(sound, PlaySoundParams {
+                    looped: false,
+                    volume: 0.2,
+                });
+            }
+
             
+
+            
+
+            return;
+        }
+    }
+
+    pub fn play_fire_sound(&self, ctx: &mut ClientTickContext) {
+        play_sound(
+            ctx.sounds.get(self.fire_sound_path.clone()),
+            PlaySoundParams {
+                looped: false,
+                volume: 0.2,
+            }
+        );
+    }
+
+    fn get_bullet_vectors(
+        &mut self, 
+        bullet_count: u32, 
+        innaccuracy: f32,
+        weapon_fire_context: &WeaponFireContext
+    ) -> Vec<Vector2<f32>> {
+        let mut bullet_vectors = Vec::new();
+
+        for _ in 0..bullet_count {
+            
+
+            let bullet_vector = self.get_bullet_vector_rapier(
+                &weapon_fire_context.space, 
+                weapon_fire_context.facing,
+                innaccuracy
+            );
+
+            bullet_vectors.push(bullet_vector);
+        };
+
+        bullet_vectors
+    }
+
+    fn get_bullet_impacts(
+        &mut self, 
+        ctx: &mut ClientTickContext,
+        bullet_vectors: Vec<Vector2<f32>>,
+        weapon_fire_context: &mut WeaponFireContext
+    ) -> Vec<BulletImpactData> {
+        let mut impacts = Vec::new();
+        
+        for bullet_vector in &bullet_vectors {
+
+        
+            impacts.append(&mut self.get_impacts(weapon_fire_context.space, *bullet_vector));
+
+            self.create_bullet_trail(ctx, *bullet_vector, weapon_fire_context.space, weapon_fire_context.area_id, weapon_fire_context.bullet_trails);
+
+        };
+
+        impacts
+    }
+
+    pub fn play_hold_fire_begin_sound(&self, ctx: &mut ClientTickContext) {
+
+        log::debug!("Start");
+
+        if let Some(hold_fire_begin_sound) = &self.hold_fire_begin_sound_path {
+            let sound = ctx.sounds.get(hold_fire_begin_sound.clone());
+            
+            play_sound(
+                sound,
+                PlaySoundParams {
+                    looped: false,
+                    volume: 0.2,
+                }
+            );
+        }
+    }
+
+    pub fn play_hold_fire_end_sound(&self, ctx: &mut ClientTickContext) {
+
+        log::debug!("End");
+        if let Some(hold_fire_end_sound) = &self.hold_fire_end_sound_path {
+            let sound = ctx.sounds.get(hold_fire_end_sound.clone());
+            
+            play_sound(
+                sound,
+                PlaySoundParams {
+                    looped: false,
+                    volume: 0.2,
+                }
+            );
+        }
+    }
+
+    pub fn update_holding_fire(&mut self, ctx: &mut ClientTickContext) {
+
+        
+        if is_mouse_button_down(macroquad::input::MouseButton::Left) && !self.holding_fire {
+
+            self.holding_fire = true;
+
+            self.play_hold_fire_begin_sound(ctx);
+        }
+
+        if !is_mouse_button_down(macroquad::input::MouseButton::Left) && self.holding_fire {
+            self.holding_fire = false;
+
+            self.play_hold_fire_end_sound(ctx);
+        }
+    }
+    
+    pub fn fire(
+        &mut self, 
+        ctx: &mut ClientTickContext,
+        weapon_fire_context: &mut WeaponFireContext,
+        innaccuracy_factor: Option<f32>,
+        bullet_count: Option<u32>
+        
+    ) {
+
+        self.update_holding_fire(ctx);
+
+        // dont shoot while reloading
+        if self.last_reload.elapsed() < self.reload_duration {
+            //let sound = ctx.sounds.get(PathBuf::from("assets\\sounds\\pistol_dry_fire.wav"));
+            return;
+        }
+
+        if self.last_fire.elapsed() < self.fire_cooldown {
+            return
+        }
+
+        let innaccuracy_factor = innaccuracy_factor.unwrap_or(0.);
+        let bullet_count = bullet_count.unwrap_or(1);
+        self.reload_on_zero_bullets(ctx);
+
+        if self.rounds == 0 {return;}
+
+        
+        self.rounds -= 1;
+        self.last_fire = web_time::Instant::now();
+        self.shake_screen(ctx);
+        self.play_fire_sound(ctx);
+        let bullet_vectors = self.get_bullet_vectors(bullet_count, innaccuracy_factor, weapon_fire_context);
+        let bullet_impacts = self.get_bullet_impacts(ctx, bullet_vectors, weapon_fire_context);
+        self.handle_entity_impacts(ctx, weapon_fire_context, bullet_impacts);
 
     }
     
@@ -452,10 +553,19 @@ impl WeaponBase {
 
     }
 
-    pub fn get_bullet_vector_rapier(&mut self, space: &Space, facing: Facing) -> Vector2<f32> {
+    pub fn get_bullet_vector_rapier(
+        &mut self, 
+        space: &Space, 
+        facing: Facing,
+        inaccuracy: f32
+    ) -> Vector2<f32> {
         let weapon_body = space.rigid_body_set.get(self.rigid_body.unwrap()).unwrap().clone();
 
-        let weapon_angle = weapon_body.rotation().angle();
+        let mut weapon_angle = weapon_body.rotation().angle();
+
+        let innacuracy_value = RandomRange::gen_range(-1. * inaccuracy, inaccuracy);
+
+        weapon_angle += innacuracy_value;
 
         // we use the angle of the gun to get the direction of the bullet
         let mut macroquad_angle_bullet_vector = Vec2 {

@@ -2,7 +2,7 @@ use std::{f32::consts::PI, mem::take, path::PathBuf, str::FromStr, usize};
 
 use cs_utils::drain_filter;
 use gilrs::{Button, Event};
-use macroquad::{color::{BLACK, WHITE}, input::{KeyCode, is_key_down, is_key_released, is_mouse_button_released, mouse_position, mouse_wheel}, math::{Rect, Vec2}, shapes::draw_rectangle, text::{TextParams, draw_text, draw_text_ex}, window::{screen_height, screen_width}};
+use macroquad::{color::{BLACK, WHITE}, input::{KeyCode, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_position, mouse_wheel}, math::{Rect, Vec2}, shapes::draw_rectangle, text::{TextParams, draw_text, draw_text_ex}, window::{screen_height, screen_width}};
 use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
@@ -501,6 +501,10 @@ impl Player {
         dropped_items: &mut Vec<DroppedItem>,
     ) {
 
+        if !(is_mouse_button_released(macroquad::input::MouseButton::Left) || is_mouse_button_down(macroquad::input::MouseButton::Left))  {
+            return;
+        }
+
         // take the item slot out of the inventory
         let item_slot = take(&mut self.inventory.items[self.selected_item]);
 
@@ -947,10 +951,8 @@ impl Player {
         minimum_camera_width: f32,
         minimum_camera_height: f32,
     ) {
-        if is_mouse_button_released(macroquad::input::MouseButton::Left) {
-            self.use_item(ctx, space, props, players, bullet_trails, self.facing, area_id, enemies, dissolved_pixels, dropped_items);
-        }
 
+        self.use_item(ctx, space, props, players, bullet_trails, self.facing, area_id, enemies, dissolved_pixels, dropped_items);
         self.send_position_network_update(ctx, space, area_id);
         self.update_cursor_pos(ctx, area_id);
         self.dash(space);
