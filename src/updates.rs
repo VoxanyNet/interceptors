@@ -1,5 +1,6 @@
-use crate::{area::{AreaId, AreaSave}, bullet_trail::SpawnBulletTrail, dropped_item::{DroppedItemVelocityUpdate, NewDroppedItemUpdate, RemoveDroppedItemUpdate}, enemy::{EnemyDespawnUpdate, EnemyHealthUpdate, EnemyPositionUpdate, EnemyVelocityUpdate, EnemyWeaponUpdate, NewEnemyUpdate}, player::{ActiveItemSlotUpdate, ItemSlotQuantityUpdate, ItemSlotUpdate, NewPlayer, PlayerCursorUpdate, PlayerFacingUpdate, PlayerHealthUpdate, PlayerPositionUpdate, PlayerVelocityUpdate}, prop::{DissolveProp, NewProp, PropPositionUpdate, PropUpdateOwner, PropVelocityUpdate, RemovePropUpdate}, uuid_u64, ClientId};
+use crate::{ClientId, area::{AreaId, AreaSave}, bullet_trail::SpawnBulletTrail, dropped_item::{DroppedItemVelocityUpdate, NewDroppedItemUpdate, RemoveDroppedItemUpdate}, enemy::{EnemyDespawnUpdate, EnemyHealthUpdate, EnemyPositionUpdate, EnemyVelocityUpdate, EnemyWeaponUpdate, NewEnemyUpdate}, player::{ActiveItemSlotUpdate, ItemSlotQuantityUpdate, ItemSlotUpdate, NewPlayer, PlayerCursorUpdate, PlayerFacingUpdate, PlayerHealthUpdate, PlayerId, PlayerPositionUpdate, PlayerVelocityUpdate}, prop::{DissolveProp, DissolvedPixelId, NewProp, PropPositionUpdate, PropUpdateOwner, PropVelocityUpdate, RemovePropUpdate, StupidDissolvedPixelVelocityUpdate}, uuid_u64};
 use derive_more::From;
+use rapier2d::prelude::RigidBodyVelocity;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, From)]
@@ -31,7 +32,17 @@ pub enum NetworkPacket {
     EnemyDespawnUpdate(EnemyDespawnUpdate),
     PlayerHealthUpdate(PlayerHealthUpdate),
     EnemyHealthUpdate(EnemyHealthUpdate),
-    MasterUpdate(MasterUpdate)
+    MasterUpdate(MasterUpdate),
+    PlayerDespawnUpdate(PlayerDespawnUpdate),
+    StupidDissolvedPixelVelocityUpdate(StupidDissolvedPixelVelocityUpdate)
+}
+
+
+
+#[derive(Serialize, Deserialize, Clone, Copy)]
+pub struct PlayerDespawnUpdate {
+    pub area_id: AreaId,
+    pub player_id: PlayerId
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]

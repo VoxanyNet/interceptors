@@ -3,8 +3,8 @@ use std::{collections::HashMap, f32::consts::PI, fs::read_to_string, net::{TcpLi
 use ewebsock::{WsReceiver, WsSender};
 use gilrs::{GamepadId, Gilrs};
 use macroquad::{camera::Camera2D, color::{Color, WHITE}, file::load_string, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}};
-use nalgebra::{vector, Vector2};
-use rapier2d::prelude::{ColliderBuilder, ColliderHandle, QueryFilter, RigidBodyHandle};
+use nalgebra::{Isometry2, SVector, Vector2, vector};
+use rapier2d::{parry::query::Ray, prelude::{ColliderBuilder, ColliderHandle, QueryFilter, RigidBodyHandle}};
 use serde::{Deserialize, Serialize};
 use tungstenite::WebSocket;
 use nalgebra::point;
@@ -47,6 +47,69 @@ pub mod drawable;
 pub mod editor_context_menu;
 pub mod selectable_object_id;
 pub mod gamepad;
+
+#[derive(Clone, Debug)]
+pub struct IntersectionData {
+    pub origin: Isometry2<f32>,
+    pub origin_collider: Option<ColliderHandle>,
+    pub intersected_collider: ColliderHandle,
+    pub intersection_vector: Vector2<f32>,
+    pub distance: Vector2<f32>
+} 
+
+pub fn get_intersections(
+    origin: Isometry2<f32>, 
+    space: &mut Space, 
+    intersection_vector: Vector2<f32>,
+    origin_collider: Option<ColliderHandle>
+) -> Vec<IntersectionData> {
+
+    space.query_pipeline.update(&space.collider_set);
+
+
+    let ray = Ray::new(point![origin.translation.x, origin.translation.y], vector![intersection_vector.x, intersection_vector.y]);
+    let max_toi = 5000.0;
+    let solid = true;
+    let filter = QueryFilter::default();
+
+    let mut impacts = Vec::new();
+    
+    space.query_pipeline.intersections_with_ray(
+        &space.rigid_body_set, 
+        &space.collider_set, 
+        &ray, 
+        max_toi, 
+        solid, 
+        filter, 
+        |handle, _intersection| {
+
+            if let Some(origin_collider) = origin_collider {
+                if origin_collider == handle {
+                    return true
+                }
+            };
+
+            let pos = space.collider_set.get(handle).unwrap().position().translation;
+
+            let distance: Vector2<f32> = pos.vector - origin.translation.vector;
+
+            impacts.push(
+                IntersectionData {
+                    origin,
+                    intersected_collider: handle,
+                    intersection_vector,
+                    origin_collider,
+                    distance
+                    
+                }
+            );
+
+            true
+
+    });
+
+    impacts
+}
 
 pub fn angle_weapon_to_mouse(
     space: &mut Space, 

@@ -372,7 +372,14 @@ impl Enemy {
     } 
 
     #[inline]
-    pub fn handle_bullet_impact(&mut self, area_id: AreaId, ctx: &mut ClientTickContext, space: &mut Space, bullet_impact: BulletImpactData, weapon_owner: WeaponOwner) {
+    pub fn handle_bullet_impact(
+        &mut self, 
+        area_id: AreaId, 
+        ctx: &mut ClientTickContext, 
+        space: &mut Space, 
+        bullet_impact: BulletImpactData, 
+        weapon_owner: WeaponOwner
+    ) {
 
         match weapon_owner {
             WeaponOwner::Enemy(enemy_id) => return,

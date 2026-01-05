@@ -1,6 +1,7 @@
 use std::{fs::read_to_string, process::exit};
 
-use interceptors_lib::{area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket}, weapons::weapon_type::WeaponType, world::World, ClientId, Prefabs, ServerIO};
+use interceptors_lib::{ClientId, Prefabs, ServerIO, area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, get_intersections, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket, PlayerDespawnUpdate}, weapons::weapon_type::WeaponType, world::World};
+use rapier2d::math::Vector;
 use tungstenite::Message;
 
 include!(concat!(env!("OUT_DIR"), "/prefabs.rs"));
@@ -89,6 +90,29 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
     }
 
     pub fn handle_disconnected_client(&mut self, client_id: ClientId) {
+
+        for area in &mut self.world.areas {
+            let disconnected_player = area.players.iter_mut().find(
+                |player| 
+                {
+                    player.owner == client_id
+                }
+            );
+
+            if let Some(player) = disconnected_player {
+                player.mark_despawn();
+
+                self.network_io.send_all_clients(
+                    PlayerDespawnUpdate {
+                        area_id: area.id,
+                        player_id: player.id,
+                    }.into()
+                );
+            }
+
+            
+        }
+        
         if self.network_io.clients.keys().len() == 0 {
 
             let lobby: AreaSave = serde_json::from_str(&read_to_string("areas/forest.json").unwrap()).unwrap();
@@ -96,6 +120,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
             self.world.areas[0].generate_terrain(0);
         }
     }
+
 
     pub fn run(&mut self) {
         loop {
@@ -496,6 +521,23 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
 
                 },
+
+                NetworkPacket::PlayerDespawnUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+                    let player = area.players.iter_mut().find(|player| {player.id == update.player_id}).unwrap();
+
+                    player.mark_despawn();
+
+                    self.network_io.send_all_except(network_packet, client_id);
+                },
+                NetworkPacket::StupidDissolvedPixelVelocityUpdate(update) => {
+                    
+                    // server doesnt care about this!
+                    self.network_io.send_all_except(network_packet, client_id);
+                          
+
+                    
+                }
                 
                 
             }
@@ -582,6 +624,8 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
         }
         packets
     }
+
+    
 
     pub fn tick(&mut self) {
 

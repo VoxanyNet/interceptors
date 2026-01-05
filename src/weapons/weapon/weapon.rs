@@ -4,7 +4,7 @@ use macroquad::{audio::{PlaySoundParams, play_sound}, color::Color, input::{is_k
 use nalgebra::{point, vector, Vector2};
 use rapier2d::{math::Vector, parry::query::Ray, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 
-use crate::{area::AreaId, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, enemy::EnemyId, get_preview_resolution, player::{Facing, PlayerId}, space::Space, texture_loader::TextureLoader, weapons::{bullet_impact_data::BulletImpactData, weapon::{weapon_save::WeaponSave}, weapon_fire_context::WeaponFireContext}, ClientId, ClientTickContext};
+use crate::{ClientId, ClientTickContext, IntersectionData, area::AreaId, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, enemy::EnemyId, get_intersections, get_preview_resolution, player::{Facing, PlayerId}, prop::StupidDissolvedPixelVelocityUpdate, space::Space, texture_loader::TextureLoader, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon_save::WeaponSave, weapon_fire_context::WeaponFireContext}};
 
 
 #[derive(Clone)]
@@ -421,11 +421,14 @@ impl WeaponBase {
         
         for bullet_vector in &bullet_vectors {
 
-        
             impacts.append(&mut self.get_impacts(weapon_fire_context.space, *bullet_vector));
-
-            self.create_bullet_trail(ctx, *bullet_vector, weapon_fire_context.space, weapon_fire_context.area_id, weapon_fire_context.bullet_trails);
-
+            self.create_bullet_trail(
+                ctx, 
+                *bullet_vector, 
+                weapon_fire_context.space, 
+                weapon_fire_context.area_id, 
+                weapon_fire_context.bullet_trails
+            );
         };
 
         impacts
@@ -480,6 +483,23 @@ impl WeaponBase {
             self.play_hold_fire_end_sound(ctx);
         }
     }
+
+    pub fn send_stupid_updates(
+        &mut self, 
+        bullet_vectors: &Vec<Vector2<f32>>, 
+        ctx: &mut ClientTickContext,
+        weapon_fire_context: &WeaponFireContext
+    ) {
+        for bullet_vector in bullet_vectors {
+            ctx.network_io.send_network_packet(
+                StupidDissolvedPixelVelocityUpdate {
+                    area_id: weapon_fire_context.area_id,
+                    bullet_vector: *bullet_vector,
+                    weapon_pos: weapon_fire_context.space.rigid_body_set.get(self.rigid_body.unwrap()).unwrap().position().translation.vector
+                }.into()
+            );
+        }
+    }
     
     pub fn fire(
         &mut self, 
@@ -514,6 +534,7 @@ impl WeaponBase {
         self.shake_screen(ctx);
         self.play_fire_sound(ctx);
         let bullet_vectors = self.get_bullet_vectors(bullet_count, innaccuracy_factor, weapon_fire_context);
+        self.send_stupid_updates(&bullet_vectors, ctx, weapon_fire_context);
         let bullet_impacts = self.get_bullet_impacts(ctx, bullet_vectors, weapon_fire_context);
         self.handle_entity_impacts(ctx, weapon_fire_context, bullet_impacts);
 
@@ -588,55 +609,79 @@ impl WeaponBase {
 
         rapier_angle_bullet_vector
     }
-    
+ 
     pub fn get_impacts(&mut self, space: &mut Space, bullet_vector: Vector2<f32>) -> Vec<BulletImpactData> {
 
-        space.query_pipeline.update(&space.collider_set);
 
-        let weapon_pos = space.rigid_body_set.get(self.rigid_body.unwrap()).unwrap().position();
+        let pos = space.rigid_body_set.get(self.rigid_body.unwrap()).unwrap().position();
 
-        let ray = Ray::new(point![weapon_pos.translation.x, weapon_pos.translation.y], vector![bullet_vector.x, bullet_vector.y]);
-        let max_toi = 5000.0;
-        let solid = true;
-        let filter = QueryFilter::default();
+        let intersections = get_intersections(
+            *pos, 
+            space, 
+            bullet_vector, 
+            self.collider
+        );
 
-        let mut impacts = Vec::new();
+        intersections.iter().map(
+            |intersection| 
+            {
+                BulletImpactData {
+                    shooter_pos: intersection.origin,
+                    impacted_collider: intersection.intersected_collider,
+                    bullet_vector: intersection.intersection_vector,
+                    damage: self.base_damage,
+                    knockback: self.knockback,
+                }
+            }
+        ).collect()
+
+
+        // space.query_pipeline.update(&space.collider_set);
+
+        // let weapon_pos = space.rigid_body_set.get(self.rigid_body.unwrap()).unwrap().position();
+
+        // let ray = Ray::new(point![weapon_pos.translation.x, weapon_pos.translation.y], vector![bullet_vector.x, bullet_vector.y]);
+        // let max_toi = 5000.0;
+        // let solid = true;
+        // let filter = QueryFilter::default();
+
+        // let mut impacts = Vec::new();
         
-        space.query_pipeline.intersections_with_ray(
-            &space.rigid_body_set, 
-            &space.collider_set, 
-            &ray, 
-            max_toi, 
-            solid, 
-            filter, 
-            |handle, _intersection| {
+        // space.query_pipeline.intersections_with_ray(
+        //     &space.rigid_body_set, 
+        //     &space.collider_set, 
+        //     &ray, 
+        //     max_toi, 
+        //     solid, 
+        //     filter, 
+        //     |handle, _intersection| {
 
-                if self.collider == Some(handle) {
-                    return true;
-                };
+        //         if self.collider == Some(handle) {
+        //             return true;
+        //         };
 
                 
-                let pos = space.collider_set.get(handle).unwrap().position().translation;
+        //         let pos = space.collider_set.get(handle).unwrap().position().translation;
 
-                let distance = pos.vector - weapon_pos.translation.vector;
+        //         let distance = pos.vector - weapon_pos.translation.vector;
 
-                let bullet_damage = self.base_damage; // (self.base_damage - distance.magnitude() * 0.1).max(0.);
+        //         let bullet_damage = self.base_damage; // (self.base_damage - distance.magnitude() * 0.1).max(0.);
 
-                impacts.push(
-                    BulletImpactData {
-                        shooter_pos: *weapon_pos,
-                        impacted_collider: handle,
-                        bullet_vector,
-                        damage: bullet_damage,
-                        knockback: self.knockback
-                    }
-                );
+        //         impacts.push(
+        //             BulletImpactData {
+        //                 shooter_pos: *weapon_pos,
+        //                 impacted_collider: handle,
+        //                 bullet_vector,
+        //                 damage: bullet_damage,
+        //                 knockback: self.knockback
+        //             }
+        //         );
 
-                true
+        //         true
 
-        });
+        // });
 
-        impacts
+        // impacts
     }
 
     pub fn shake_screen(&self, ctx: &mut ClientTickContext) {

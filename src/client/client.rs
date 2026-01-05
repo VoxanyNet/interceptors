@@ -1,8 +1,9 @@
 use std::{collections::HashMap, path::PathBuf, process::exit};
 
 use gilrs::{GamepadId, Gilrs};
-use interceptors_lib::{ClientIO, ClientId, ClientTickContext, Prefabs, area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, gamepad::Gamepad, player::{ItemSlot, Player}, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, weapons::weapon_type::WeaponType, world::World};
+use interceptors_lib::{ClientIO, ClientId, ClientTickContext, Prefabs, area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, gamepad::Gamepad, get_intersections, player::{ItemSlot, Player}, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, weapons::weapon_type::WeaponType, world::World};
 use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{BLACK, WHITE}, input::{is_key_released, KeyCode}, math::{vec2, Rect}, prelude::{gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
+use rapier2d::math::Vector;
 
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
 
@@ -293,6 +294,7 @@ impl Client {
         for packet in packets {
             match packet {
 
+                
                 NetworkPacket::MasterUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
@@ -578,6 +580,41 @@ impl Client {
                     let player = area.players.iter_mut().find(|player| {player.id == update.player_id}).unwrap();
 
                     player.health = update.health
+                },
+                NetworkPacket::PlayerDespawnUpdate(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+                    let player = area.players.iter_mut().find(|player| {player.id == update.player_id}).unwrap();
+
+                    player.mark_despawn();
+                },
+                NetworkPacket::StupidDissolvedPixelVelocityUpdate(update) => {
+                    
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                    let intersections = get_intersections(
+                        update.weapon_pos.into(), 
+                        &mut area.space, 
+                        update.bullet_vector, 
+                        None
+                    ); 
+
+    
+
+                    for dissolved_pixel in &mut area.dissolved_pixels {
+
+                        let collider = dissolved_pixel.collider;
+                        
+                        for impact in intersections.iter().filter(|impact| {impact.intersected_collider == collider}) {
+
+                            
+                            let body = area.space.rigid_body_set.get_mut(dissolved_pixel.body).unwrap();
+                            body.apply_impulse(
+                                Vector::new(impact.intersection_vector.x * 5000., impact.intersection_vector.y * 5000.), 
+                                true
+                            );
+                        }
+                    } 
+
                 }
             }
         }
@@ -609,6 +646,7 @@ impl Client {
         //     self.phone.toggle();
         // }
     }
+
     pub fn tick(&mut self) {
 
         self.phone();

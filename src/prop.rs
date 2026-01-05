@@ -7,7 +7,7 @@ use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, Rigid
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
-use crate::{ClientId, ClientTickContext, Prefabs, ServerIO, area::AreaId, draw_preview, draw_texture_onto_physics_body, drawable::{DrawContext, Drawable}, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, get_preview_resolution, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
+use crate::{ClientId, ClientTickContext, Prefabs, ServerIO, area::AreaId, draw_preview, draw_texture_onto_physics_body, drawable::{DrawContext, Drawable}, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, get_preview_resolution, player::PlayerId, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Default, Debug, PartialEq, EnumIter, Display)]
 pub enum PropMaterial {
@@ -16,13 +16,26 @@ pub enum PropMaterial {
     None
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Default, Copy, PartialEq)]
+pub struct DissolvedPixelId {
+    id: u64
+}
+
+impl DissolvedPixelId {
+    pub fn new() -> Self {
+        Self {
+            id: uuid_u64(),
+        }
+    }
+}
+
 pub struct DissolvedPixel {
     pub body: RigidBodyHandle,
     pub collider: ColliderHandle,
     color: Color,
     scale: f32,
     spawned: web_time::Instant,
-    pub despawn: bool,
+    pub despawn: bool
 }
 
 
@@ -98,6 +111,8 @@ impl DissolvedPixel {
         }
     }
 }
+
+
 
 #[async_trait]
 impl Drawable for DissolvedPixel {
@@ -190,6 +205,7 @@ impl Prop {
 
         //manually create a prop velocity update if we dont own it (because if we do it just happens automatically)
 
+        
         match self.owner {
             Some(owner) => {
                 if *ctx.client_id != owner {
@@ -207,8 +223,7 @@ impl Prop {
             None => {},
         }
 
-
-        // we must manually send a velocity update here because we are despawning the prop here and it wont get automically updated in the tick method
+        // we must manually send a velocity update here because we are despawning the prop here and it wont get automatically updated in the tick method
         ctx.network_io.send_network_packet(
             crate::updates::NetworkPacket::PropVelocityUpdate(
                 PropVelocityUpdate {
@@ -220,10 +235,8 @@ impl Prop {
         );
         
         // if health < 0 {}
+
         self.dissolve(ctx.textures, space, dissolved_pixels, Some(ctx), area_id);
-
-        
-
         
         self.mark_despawn();
 
@@ -254,36 +267,31 @@ impl Prop {
 
     }
 
-    pub fn dissolve(&mut self, textures: &TextureLoader, space: &mut Space, dissolved_pixels: &mut Vec<DissolvedPixel>, ctx: Option<&mut ClientTickContext>, area_id: AreaId) {
+    pub fn dissolve(
+        &mut self, 
+        textures: &TextureLoader, 
+        space: &mut Space, 
+        dissolved_pixels: &mut Vec<DissolvedPixel>, 
+        ctx: Option<&mut ClientTickContext>, 
+        area_id: AreaId
+    ) {
 
         let collider = space.collider_set.get(self.collider_handle).unwrap().clone();
         let body = space.rigid_body_set.get(self.rigid_body_handle).unwrap().clone();
-
         let body_translation = body.translation();
-
         let texture = textures.get(&self.sprite_path);
-
         let half_extents = collider.shape().as_cuboid().unwrap().half_extents;
-
         let x_scale = (half_extents.x * 2.) / texture.width() ;
-
         let y_scale = (half_extents.y * 2.) / texture.height();
-
         let texture_data = texture.get_texture_data();
-
         let total_pixel_count = texture.width() * texture.height();
 
         for x in (0..texture.width() as u32).step_by(4) {
             for y in (0..texture.height() as u32).step_by(4) {
-
-                
-
                 // create an average of the 4 neighboring pixels
                 // start with bottom left
                 let mut color = texture_data.get_pixel(x, y);
-
                 let mut pixel_count = 1;
-
                 // bottom right
                 if x + 1 <= texture.width() as u32 {
                     let bottom_right_color = texture_data.get_pixel(x + 1, y);
@@ -332,6 +340,7 @@ impl Prop {
                     body.rotation().angle()
                 );
 
+                
                 dissolved_pixels.push(
                     DissolvedPixel::new(
                         position, 
@@ -339,7 +348,7 @@ impl Prop {
                         color, 
                         x_scale, 
                         Some(collider.mass() / total_pixel_count), 
-                        Some(*body.vels())
+                        Some(*body.vels()),
                     )
                 );
 
@@ -396,6 +405,7 @@ impl Prop {
         }
         
 
+        // need to add a cooldown?
         if current_velocity != self.previous_velocity {
             //println!("sending pos update");
             ctx.network_io.send_network_packet (
@@ -572,6 +582,15 @@ impl Drawable for Prop {
         self.layer
     }
 }
+
+// this SHOULD be a temporary fix to make dissolved pixels react to bullets
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct StupidDissolvedPixelVelocityUpdate {
+    pub area_id: AreaId,
+    pub bullet_vector: Vector2<f32>,
+    pub weapon_pos: Vector2<f32>
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct PropSave {
     pub size: Vec2,
