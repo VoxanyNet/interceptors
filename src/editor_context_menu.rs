@@ -1,6 +1,8 @@
 use std::{env::temp_dir, fs::{self}, path::PathBuf, process::Command, time::SystemTime};
 
-use macroquad::{color::{DARKGRAY, GRAY, WHITE}, input::{is_key_released, is_mouse_button_released, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle, text::draw_text};
+use macroquad::{color::{DARKGRAY, GRAY, WHITE}, input::{KeyCode, is_key_down, is_key_released, is_mouse_button_released, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle, text::draw_text};
+use nalgebra::{Isometry2, vector};
+use rapier2d::prelude::{ColliderHandle, RigidBodyHandle};
 
 use crate::{button::Button, mouse_world_pos, selectable_object_id::SelectableObjectId, space::Space, uuid_string};
 
@@ -13,7 +15,15 @@ pub trait EditorContextMenu {
         None
     }
 
+    fn rigid_body(&mut self) -> Option<RigidBodyHandle> {
+        None
+    }
+
     fn despawn(&mut self) -> Option<&mut bool> {
+        None
+    }
+
+    fn collider(&mut self) -> Option<ColliderHandle> {
         None
     }
 
@@ -33,11 +43,55 @@ pub trait EditorContextMenu {
     }
 
     // not sure if this should be in here
-    fn handle_hotkeys(&mut self) {
+    fn handle_hotkeys(&mut self, selected: bool, space: &mut Space) {
         
+        if !selected {
+            return;
+        }
+
         if let Some(despawn) = self.despawn() {
             if is_key_released(macroquad::input::KeyCode::Delete)  {
                 *despawn = true
+            }
+        }
+        
+        if let Some(collider_handle) = self.collider() && let Some(rigid_body_handle) = self.rigid_body() {
+            if is_key_down(KeyCode::LeftShift) {
+
+                let mut x_delta = 0.;
+                let mut y_delta = 0.;
+                if is_key_released(KeyCode::Left) {
+                    x_delta = -10.;
+                }
+
+                if is_key_released(KeyCode::Right) {
+                    x_delta = 10.;
+                }
+
+                if is_key_released(KeyCode::Up) {
+                    y_delta = 10.;
+                }
+
+                if is_key_released(KeyCode::Down) {
+                    y_delta = -10.;
+                }
+
+
+                let collider = space.collider_set.get_mut(collider_handle).unwrap();
+                let rigid_body = space.rigid_body_set.get_mut(rigid_body_handle).unwrap();
+
+                let shape = collider.shape_mut().as_cuboid_mut().unwrap();
+                shape.half_extents.x += x_delta;
+                shape.half_extents.y += y_delta;
+
+                let mut new_pos = rigid_body.position().clone();
+                new_pos.translation.x += x_delta;
+                new_pos.translation.y += y_delta;
+
+                rigid_body.set_position(
+                    new_pos, 
+                    true
+                );
             }
         }
         
@@ -112,7 +166,7 @@ pub trait EditorContextMenu {
     fn update_menu(&mut self, space: &mut Space, camera_rect: &Rect, selected: bool) {
         
         // not sure if this is where this should be. maybe i should rename the trait. the hotkeys access the same data as the menu so this is a good spot to put it
-        self.handle_hotkeys();
+        self.handle_hotkeys(selected, space);
         
         if (is_mouse_button_released(macroquad::input::MouseButton::Left) || is_mouse_button_released(macroquad::input::MouseButton::Right)) && !self.contains_point(mouse_position().into()) {
             self.close_menu();

@@ -71,6 +71,14 @@ impl Clip {
 }
 
 impl EditorContextMenu for Clip {
+
+    fn collider(&mut self) -> Option<ColliderHandle> {
+        Some(self.collider_handle)
+    }
+
+    fn rigid_body(&mut self) -> Option<RigidBodyHandle> {
+        Some(self.rigid_body_handle)
+    }
     fn object_bounding_box(&self, space: Option<&Space>) -> macroquad::prelude::Rect {
 
         let space = space.unwrap();
