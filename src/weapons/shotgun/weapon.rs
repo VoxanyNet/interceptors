@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use macroquad::{color::Color, math::Vec2};
 use rapier2d::prelude::{ImpulseJointHandle, RigidBodyHandle};
 
-use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapons::{shotgun::{ weapon_save::ShotgunSave}, weapon::weapon::WeaponBase, weapon_fire_context::WeaponFireContext}, ClientId, ClientTickContext};
+use crate::{ClientId, ClientTickContext, TickContext, player::Facing, space::Space, texture_loader::TextureLoader, weapons::{shotgun::weapon_save::ShotgunSave, weapon::weapon::WeaponBase, weapon_fire_context::WeaponFireContext}};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct Shotgun {
@@ -41,7 +41,7 @@ impl Shotgun {
             weapon: WeaponBase::from_save(save.weapon, space, player_rigid_body_handle),
         }
     }
-    pub fn fire(&mut self, ctx: &mut ClientTickContext, weapon_fire_context: &mut WeaponFireContext) {
+    pub fn fire(&mut self, ctx: &mut TickContext, weapon_fire_context: &mut WeaponFireContext) {
         self.weapon.fire(ctx, weapon_fire_context, Some(0.2), Some(3));
     }
 

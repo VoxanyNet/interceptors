@@ -1,7 +1,7 @@
 use std::{collections::HashMap, f32::consts::PI, fs::read_to_string, net::{TcpListener, TcpStream}, path::PathBuf, process::exit};
 
+use derive_more::From;
 use ewebsock::{WsReceiver, WsSender};
-use gilrs::{GamepadId, Gilrs};
 use macroquad::{camera::Camera2D, color::{Color, WHITE}, file::load_string, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}};
 use nalgebra::{Isometry2, SVector, Vector2, vector};
 use rapier2d::{parry::query::Ray, prelude::{ColliderBuilder, ColliderHandle, QueryFilter, RigidBodyHandle}};
@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tungstenite::WebSocket;
 use nalgebra::point;
 
-use crate::{all_keys::ALL_KEYS, gamepad::Gamepad, player::Facing, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, weapons::weapon_type::WeaponType};
+use crate::{all_keys::ALL_KEYS, player::Facing, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, weapons::weapon_type::WeaponType};
 
 pub mod space;
 pub mod updates;
@@ -46,7 +46,6 @@ pub mod tile;
 pub mod drawable;
 pub mod editor_context_menu;
 pub mod selectable_object_id;
-pub mod gamepad;
 
 #[derive(Clone, Debug)]
 pub struct IntersectionData {
@@ -734,9 +733,60 @@ pub struct ClientTickContext<'a> {
     pub screen_shake: &'a mut ScreenShakeParameters,
     pub sounds: &'a mut SoundLoader,
     pub textures: &'a TextureLoader,
-    pub camera: &'a Camera2D,
-    pub gilrs: &'a mut Gilrs
+    pub camera: &'a Camera2D
 }
+
+
+pub struct ServerTickContext<'a> {
+    pub network_io: &'a mut ServerIO,
+    pub last_tick_duration: web_time::Duration
+}
+
+/// This needs a better name
+#[derive(Debug, From, Clone, Serialize, Deserialize, PartialEq, Copy)]
+pub enum Owner {
+    ClientId(ClientId),
+    Server
+}
+
+#[derive(From)]
+pub enum TickContext<'a> {
+    Client(ClientTickContext<'a>),
+    Server(ServerTickContext<'a>)
+}
+
+impl<'a> TickContext<'a> {
+    pub fn id(&self) -> Owner {
+        match self {
+            TickContext::Client(client_tick_context) => Owner::ClientId(*client_tick_context.client_id),
+            TickContext::Server(server_tick_context) => Owner::Server,
+        }
+    }
+
+    /// Send all clients on server
+    pub fn send_network_packet(&mut self, packet: NetworkPacket) {
+        match self {
+            TickContext::Client(client_tick_context) => {
+                client_tick_context.network_io.send_network_packet(
+                    packet
+                );
+            },
+            TickContext::Server(server_tick_context) => {
+                server_tick_context.network_io.send_all_clients(
+                    packet
+                );
+            },
+        }
+    }
+
+    pub fn last_tick_duration(&self) -> web_time::Duration {
+        match self {
+            TickContext::Client(client_tick_context) => *client_tick_context.last_tick_duration,
+            TickContext::Server(server_tick_context) => server_tick_context.last_tick_duration,
+        }
+    }
+}
+
 
 fn round_to_nearest(x: i32, n: i32) -> i32 {
     if n == 0 {

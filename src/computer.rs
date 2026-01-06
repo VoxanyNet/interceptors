@@ -5,7 +5,7 @@ use macroquad::{camera::{set_camera, Camera2D}, color::{Color, BLACK, GRAY, WHIT
 use nalgebra::Isometry2;
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientTickContext, Prefabs, button::Button, drawable::{DrawContext, Drawable}, font_loader::FontLoader, mouse_world_pos, player::Player, prop::{Prop, PropSave}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, weapons::{weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
+use crate::{ClientTickContext, Owner, Prefabs, button::Button, drawable::{DrawContext, Drawable}, font_loader::FontLoader, mouse_world_pos, player::Player, prop::{Prop, PropSave}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, weapons::{weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
 
 #[derive(PartialEq, Clone, Debug, From)]
 pub enum Item {
@@ -385,7 +385,7 @@ impl Computer {
 
         
 
-        let controlled_player = players.iter().find(|player| {player.owner == *ctx.client_id});
+        let controlled_player = players.iter().find(|player| {player.owner == Owner::ClientId(*ctx.client_id)});
 
         let computer_pos = space.rigid_body_set.get(self.prop.rigid_body_handle).unwrap().position();
 

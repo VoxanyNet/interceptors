@@ -7,7 +7,7 @@ use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, Rigid
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
-use crate::{ClientId, ClientTickContext, Prefabs, ServerIO, area::AreaId, draw_preview, draw_texture_onto_physics_body, drawable::{DrawContext, Drawable}, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, get_preview_resolution, player::PlayerId, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
+use crate::{ClientId, ClientTickContext, Owner, Prefabs, ServerIO, TickContext, area::AreaId, draw_preview, draw_texture_onto_physics_body, drawable::{DrawContext, Drawable}, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, get_preview_resolution, player::PlayerId, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Default, Debug, PartialEq, EnumIter, Display)]
 pub enum PropMaterial {
@@ -41,7 +41,7 @@ pub struct DissolvedPixel {
 
 impl DissolvedPixel {
 
-    pub fn client_tick(&mut self, space: &mut Space, ctx: &mut ClientTickContext) {
+    pub fn tick(&mut self) {
 
         if self.despawn {
             return;
@@ -154,7 +154,7 @@ pub struct Prop {
     previous_velocity: RigidBodyVelocity,
     material: PropMaterial,
     pub id: PropId,
-    pub owner: Option<ClientId>,
+    pub owner: Option<Owner>,
     last_sound_play: web_time::Instant,
     pub despawn: bool,
     last_pos_update: web_time::Instant,
@@ -185,7 +185,7 @@ impl Prop {
 
     pub fn handle_bullet_impact(
         &mut self, 
-        ctx: &mut ClientTickContext, 
+        ctx: &mut TickContext, 
         impact: &BulletImpactData, 
         space: &mut Space, 
         area_id: AreaId,
@@ -208,44 +208,70 @@ impl Prop {
         
         match self.owner {
             Some(owner) => {
-                if *ctx.client_id != owner {
-                    ctx.network_io.send_network_packet(
-                        crate::updates::NetworkPacket::PropVelocityUpdate(
-                            PropVelocityUpdate {
-                                velocity: *rigid_body.vels(),
-                                id: self.id,
-                                area_id,
-                            }
-                        )
+                if ctx.id() != owner {
+                    let packet = crate::updates::NetworkPacket::PropVelocityUpdate(
+                        PropVelocityUpdate {
+                            velocity: *rigid_body.vels(),
+                            id: self.id,
+                            area_id,
+                        }
                     );
+
+                    match ctx {
+                        TickContext::Client(ctx) => {
+                            ctx.network_io.send_network_packet(packet);
+                        },
+                        TickContext::Server(ctx) => {
+                            ctx.network_io.send_all_clients(packet);
+                        },
+                    };
+
                 }
             },
             None => {},
         }
 
         // we must manually send a velocity update here because we are despawning the prop here and it wont get automatically updated in the tick method
-        ctx.network_io.send_network_packet(
-            crate::updates::NetworkPacket::PropVelocityUpdate(
-                PropVelocityUpdate {
-                    velocity: *rigid_body.vels(),
-                    id: self.id,
-                    area_id,
-                }
-            )
+        let packet = crate::updates::NetworkPacket::PropVelocityUpdate(
+            PropVelocityUpdate {
+                velocity: *rigid_body.vels(),
+                id: self.id,
+                area_id,
+            }
         );
+
+        match ctx {
+            TickContext::Client(ctx) => {
+                ctx.network_io.send_network_packet(packet);
+            },
+            TickContext::Server(ctx) => {
+                ctx.network_io.send_all_clients(packet);
+            },
+        };
         
         // if health < 0 {}
 
-        self.dissolve(ctx.textures, space, dissolved_pixels, Some(ctx), area_id);
+        // Server cannot dissolve props right now but we arent even going to do that so im going to worry about it
+        if let TickContext::Client(ctx) = ctx {
+            self.dissolve(ctx.textures, space, dissolved_pixels, Some(ctx), area_id);
+        }
         
         self.mark_despawn();
 
-        ctx.network_io.send_network_packet(
-            RemovePropUpdate {
-                prop_id: self.id,
-                area_id,
-            }.into()
-        );
+        let packet = RemovePropUpdate {
+            prop_id: self.id,
+            area_id,
+        }.into();
+
+        match ctx {
+            TickContext::Client(ctx) => {
+                ctx.network_io.send_network_packet(packet);
+            },
+            TickContext::Server(ctx) => {
+                ctx.network_io.send_all_clients(packet);
+            },
+        };
+    
     }
 
     
@@ -383,51 +409,81 @@ impl Prop {
         }
     }
 
-    pub fn owner_tick(&mut self, ctx: &mut ClientTickContext, space: &mut Space, area_id: AreaId, dissolved_pixels: &mut Vec<DissolvedPixel>) {
+    pub fn owner_tick(
+        &mut self, 
+        ctx: &mut TickContext, 
+        space: &mut Space, 
+        area_id: AreaId, 
+        dissolved_pixels: &mut Vec<DissolvedPixel>
+    ) {
 
-        self.play_impact_sound(space, ctx);
+        if let TickContext::Client(ctx) = ctx {
+            self.play_impact_sound(space, ctx);
+        }
+        
 
         let current_velocity = *space.rigid_body_set.get(self.rigid_body_handle).unwrap().vels();
-
         let current_position = space.rigid_body_set.get(self.rigid_body_handle).unwrap().position();
 
         if self.last_pos_update.elapsed().as_secs() > 3 {
-            ctx.network_io.send_network_packet(
-                NetworkPacket::PropPositionUpdate(
-                    PropPositionUpdate {
-                        area_id,
-                        pos: *current_position,
-                        prop_id: self.id,
-                    }
-                )
+
+            let packet = NetworkPacket::PropPositionUpdate(
+                PropPositionUpdate {
+                    area_id,
+                    pos: *current_position,
+                    prop_id: self.id,
+                }
             );
+
+            match ctx {
+                TickContext::Client(ctx) => {
+                    ctx.network_io.send_network_packet(packet);
+                },
+                TickContext::Server(ctx) => {
+                    ctx.network_io.send_all_clients(packet);
+                },
+            }
+
 
         }
         
 
         // need to add a cooldown?
         if current_velocity != self.previous_velocity {
-            //println!("sending pos update");
-            ctx.network_io.send_network_packet (
-                NetworkPacket::PropVelocityUpdate(
-                    PropVelocityUpdate {
-                        velocity: current_velocity,
-                        id: self.id,
-                        area_id: area_id
-                    }
-                )
+
+            let packet = NetworkPacket::PropVelocityUpdate(
+                PropVelocityUpdate {
+                    velocity: current_velocity,
+                    id: self.id,
+                    area_id: area_id
+                }
             );
+            
+            match ctx {
+                TickContext::Client(ctx) => {
+                    ctx.network_io.send_network_packet(packet);
+                },
+                TickContext::Server(ctx) => {
+                    ctx.network_io.send_all_clients(packet);
+                },
+            };
         }
     }   
 
-    pub fn client_tick(&mut self, space: &mut Space, area_id: AreaId, ctx: &mut ClientTickContext, dissolved_pixels: &mut Vec<DissolvedPixel>) {
+    pub fn tick(
+        &mut self, 
+        space: &mut Space, 
+        area_id: AreaId, 
+        ctx: &mut TickContext, 
+        dissolved_pixels: &mut Vec<DissolvedPixel>
+    ) {
 
         if self.despawn {
             return;
         }
 
         if let Some(owner) = self.owner {
-            if owner == *ctx.client_id {
+            if owner == ctx.id() {
                 self.owner_tick(ctx, space, area_id, dissolved_pixels);
             }
         }
@@ -599,7 +655,7 @@ pub struct PropSave {
     pub sprite_path: PathBuf,
     pub id: Option<PropId>,
     #[serde(default)]
-    pub owner: Option<ClientId>,
+    pub owner: Option<Owner>,
     #[serde(default)]
     pub material: PropMaterial,
     #[serde(default = "default_prop_name")]
@@ -635,7 +691,7 @@ pub struct PropVelocityUpdate {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PropUpdateOwner {
-    pub owner: Option<ClientId>,
+    pub owner: Option<Owner>,
     pub id: PropId,
     pub area_id: AreaId
 }

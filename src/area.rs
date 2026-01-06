@@ -5,7 +5,7 @@ use nalgebra::{vector, Isometry2, Vector2};
 use noise::{NoiseFn, Perlin};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, ClientTickContext, Prefabs, ServerIO, SwapIter, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, selectable_object_id::{SelectableObject, SelectableObjectId}, space::Space, texture_loader::TextureLoader, tile::{Tile, TileSave}, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::weapon::Shotgun, smg::weapon::SMG, weapon_type::WeaponType}};
+use crate::{ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, selectable_object_id::{SelectableObject, SelectableObjectId}, space::Space, texture_loader::TextureLoader, tile::{Tile, TileSave}, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::weapon::Shotgun, smg::weapon::SMG, weapon_type::WeaponType}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -76,12 +76,16 @@ impl WaveData {
 
 impl Area { 
 
-    pub fn client_tick(&mut self, ctx: &mut ClientTickContext) {
-        self.space.step(*ctx.last_tick_duration);
-        self.start_ambiance(ctx);
-        self.spawn_player_if_not_in_game(ctx);
-        self.debug_spawn_prop(ctx);
-        self.debug_spawn_enemy(ctx);
+    pub fn tick(&mut self, ctx: &mut TickContext) {
+        self.space.step(ctx.last_tick_duration());
+
+        if let TickContext::Client(ctx) = ctx {
+            self.start_ambiance(ctx);
+            self.spawn_player_if_not_in_game(ctx);
+            self.debug_spawn_prop(ctx);
+            self.debug_spawn_enemy(ctx);
+        };
+        
         self.tick_entities(ctx);
         self.despawn_entities();
     }
@@ -92,17 +96,23 @@ impl Area {
 
         self.space.step(dt);
 
-        self.designate_master(io);
+        //self.designate_master(io);
     }
 
 
-    pub fn tick_entities(&mut self, ctx: &mut ClientTickContext) {
+    pub fn tick_entities(&mut self, ctx: &mut TickContext) {
         self.tick_enemies(ctx);
         self.tick_props(ctx);
-        self.tick_dissolved_pixels(ctx);
-        self.tick_bullet_trails(ctx);
+        self.tick_dissolved_pixels();
+        self.tick_bullet_trails(ctx);   
         self.tick_players(ctx); 
-        self.tick_computer(ctx);
+
+        // might want to make this server + client side eventually
+        if let TickContext::Client(ctx) = ctx {
+            
+            self.tick_computer(ctx);
+        }
+        
     }
 
     
@@ -165,7 +175,7 @@ impl Area {
         }
     }
 
-    pub fn tick_enemies(&mut self, ctx: &mut ClientTickContext) {
+    pub fn tick_enemies(&mut self, ctx: &mut TickContext) {
 
         //let mut wasted_time = Duration::ZERO;
 
@@ -179,7 +189,7 @@ impl Area {
             // let then = Instant::now();
             let (enemies, mut enemy) = enemy_iter.next();
             //wasted_time += then.elapsed();
-            enemy.client_tick(
+            enemy.tick(
                 &mut self.space, 
                 ctx, 
                 &mut self.players, 
@@ -199,25 +209,25 @@ impl Area {
         //log::debug!("{:?}", wasted_time);
     }
 
-    pub fn tick_props(&mut self, ctx: &mut ClientTickContext) {
+    pub fn tick_props(&mut self, ctx: &mut TickContext) {
         for prop in &mut self.props {
-            prop.client_tick(&mut self.space, self.id, ctx, &mut self.dissolved_pixels);
+            prop.tick(&mut self.space, self.id, ctx, &mut self.dissolved_pixels);
         }
     }
 
-    pub fn tick_dissolved_pixels(&mut self, ctx: &mut ClientTickContext) {
+    pub fn tick_dissolved_pixels(&mut self) {
         for dissolved_pixel in &mut self.dissolved_pixels {
-            dissolved_pixel.client_tick(&mut self.space, ctx);
+            dissolved_pixel.tick();
         }
     }
 
-    pub fn tick_bullet_trails(&mut self, ctx: &mut ClientTickContext) {
+    pub fn tick_bullet_trails(&mut self, ctx: &mut TickContext) {
         for bullet_trail in &mut self.bullet_trails {
-            bullet_trail.client_tick(ctx);
+            bullet_trail.tick(ctx);
         }
     } 
     
-    pub fn tick_players(&mut self, ctx: &mut ClientTickContext) {
+    pub fn tick_players(&mut self, ctx: &mut TickContext) {
 
         let mut players_iter = SwapIter::new(&mut self.players);
         
@@ -481,28 +491,28 @@ impl Area {
     }
 
 
-    pub fn designate_master(&mut self, server_io: &mut ServerIO) {
-        if self.master == None {
-            if let Some(player) = self.players.get(0) {
-                self.master = Some(player.owner);
+    // pub fn designate_master(&mut self, server_io: &mut ServerIO) {
+    //     if self.master == None {
+    //         if let Some(player) = self.players.get(0) {
+    //             self.master = Some(player.owner);
 
-                server_io.send_all_clients(
-                    NetworkPacket::MasterUpdate(
-                        MasterUpdate {
-                            area_id: self.id,
-                            master: self.master.unwrap().clone(),
-                        }
-                    ), 
-                );
-            }
-        }
-    }
+    //             server_io.send_all_clients(
+    //                 NetworkPacket::MasterUpdate(
+    //                     MasterUpdate {
+    //                         area_id: self.id,
+    //                         master: self.master.unwrap().clone(),
+    //                     }
+    //                 ), 
+    //             );
+    //         }
+    //     }
+    // }
 
     pub fn spawn_player(&mut self, ctx: &mut ClientTickContext) {
 
         let mouse_pos = rapier_mouse_world_pos(&ctx.camera_rect);
 
-        let player = Player::new(vector![mouse_pos.x, mouse_pos.y].into(), &mut self.space, *ctx.client_id);
+        let player = Player::new(vector![mouse_pos.x, mouse_pos.y].into(), &mut self.space, Owner::ClientId(*ctx.client_id));
 
         ctx.network_io.send_network_packet(
             NetworkPacket::NewPlayer(
@@ -524,7 +534,7 @@ impl Area {
 
             let mut new_prop = Prop::from_save(prefab_save, &mut self.space);
 
-            new_prop.owner = Some(*ctx.client_id);
+            new_prop.owner = Some(Owner::ClientId(*ctx.client_id));
 
             let mouse_pos = rapier_mouse_world_pos(&ctx.camera_rect);
 
@@ -552,7 +562,7 @@ impl Area {
         }
         let mouse_pos = rapier_mouse_world_pos(&ctx.camera_rect);
         
-        let enemy = Enemy::new( Isometry2::new(mouse_pos, 0.), *ctx.client_id, &mut self.space, None);
+        let enemy = Enemy::new( Isometry2::new(mouse_pos, 0.), crate::Owner::ClientId(*ctx.client_id), &mut self.space, None);
 
         ctx.network_io.send_network_packet(crate::updates::NetworkPacket::NewEnemyUpdate(
             NewEnemyUpdate {
@@ -567,14 +577,12 @@ impl Area {
     // the player should be spawned by the server - this is temporary
     pub fn spawn_player_if_not_in_game(&mut self, ctx: &mut ClientTickContext) {
 
-        match self.players.iter().find(|player| player.owner == *ctx.client_id) {
+        match self.players.iter().find(|player| player.owner == Owner::ClientId(*ctx.client_id)) {
             Some(_) => return,
             None => {
 
-                let mut player = Player::new(self.spawn_point.into(), &mut self.space, *ctx.client_id);
-
-                
-
+                let mut player = Player::new(self.spawn_point.into(), &mut self.space, Owner::ClientId(*ctx.client_id));
+            
                 ctx.network_io.send_network_packet(
                     NetworkPacket::NewPlayer(
                         NewPlayer {
@@ -613,6 +621,7 @@ impl Area {
     }
 
     pub fn start_ambiance(&mut self, ctx: &mut ClientTickContext) {
+        
         for ambiance in &mut self.ambiance {
             if ambiance.sound.is_none() {
 
@@ -666,7 +675,7 @@ impl Area {
 
                 let enemy = Enemy::new(
                     vector![2400. + (i as f32 * 50.), 200.].into(), 
-                    self.master.unwrap().clone(), 
+                    crate::Owner::Server, 
                     &mut self.space, 
                     None
                 

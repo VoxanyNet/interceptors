@@ -4,7 +4,7 @@ use macroquad::{audio::{PlaySoundParams, play_sound}, color::Color, input::{is_k
 use nalgebra::{point, vector, Vector2};
 use rapier2d::{math::Vector, parry::query::Ray, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 
-use crate::{ClientId, ClientTickContext, IntersectionData, area::AreaId, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, enemy::EnemyId, get_intersections, get_preview_resolution, player::{Facing, PlayerId}, prop::StupidDissolvedPixelVelocityUpdate, space::Space, texture_loader::TextureLoader, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon_save::WeaponSave, weapon_fire_context::WeaponFireContext}};
+use crate::{ClientId, ClientTickContext, IntersectionData, TickContext, area::AreaId, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, enemy::EnemyId, get_intersections, get_preview_resolution, player::{Facing, PlayerId}, prop::StupidDissolvedPixelVelocityUpdate, space::Space, texture_loader::TextureLoader, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon_save::WeaponSave, weapon_fire_context::WeaponFireContext}};
 
 
 #[derive(Clone)]
@@ -305,7 +305,7 @@ impl WeaponBase {
 
     pub fn handle_entity_impacts(
         &mut self, 
-        ctx: &mut ClientTickContext,
+        ctx: &mut TickContext,
         weapon_fire_context: &mut WeaponFireContext, 
         impacts: Vec<BulletImpactData>,
     ) {
@@ -357,18 +357,21 @@ impl WeaponBase {
         };
     }
 
-    pub fn reload_on_zero_bullets(&mut self, ctx: &mut ClientTickContext){
+    pub fn reload_on_zero_bullets(&mut self, ctx: &mut TickContext){
         // automatically reload if zero bullets
         if self.rounds == 0 {
             self.reload();
 
-            if is_mouse_button_released(macroquad::input::MouseButton::Left) {
-                let sound = ctx.sounds.get(PathBuf::from("assets\\sounds\\pistol_dry_fire.wav"));
-                play_sound(sound, PlaySoundParams {
-                    looped: false,
-                    volume: 0.2,
-                });
+            if let TickContext::Client(ctx) = ctx {
+                if is_mouse_button_released(macroquad::input::MouseButton::Left) {
+                    let sound = ctx.sounds.get(PathBuf::from("assets\\sounds\\pistol_dry_fire.wav"));
+                    play_sound(sound, PlaySoundParams {
+                        looped: false,
+                        volume: 0.2,
+                    });
+                }
             }
+            
 
             
 
@@ -413,7 +416,7 @@ impl WeaponBase {
 
     fn get_bullet_impacts(
         &mut self, 
-        ctx: &mut ClientTickContext,
+        ctx: &mut TickContext,
         bullet_vectors: Vec<Vector2<f32>>,
         weapon_fire_context: &mut WeaponFireContext
     ) -> Vec<BulletImpactData> {
@@ -487,11 +490,11 @@ impl WeaponBase {
     pub fn send_stupid_updates(
         &mut self, 
         bullet_vectors: &Vec<Vector2<f32>>, 
-        ctx: &mut ClientTickContext,
+        ctx: &mut TickContext,
         weapon_fire_context: &WeaponFireContext
     ) {
         for bullet_vector in bullet_vectors {
-            ctx.network_io.send_network_packet(
+            ctx.send_network_packet(
                 StupidDissolvedPixelVelocityUpdate {
                     area_id: weapon_fire_context.area_id,
                     bullet_vector: *bullet_vector,
@@ -503,15 +506,18 @@ impl WeaponBase {
     
     pub fn fire(
         &mut self, 
-        ctx: &mut ClientTickContext,
+        ctx: &mut TickContext,
         weapon_fire_context: &mut WeaponFireContext,
         innaccuracy_factor: Option<f32>,
         bullet_count: Option<u32>
         
     ) {
 
-        self.update_holding_fire(ctx);
-
+        if let TickContext::Client(ctx) = ctx {
+            self.update_holding_fire(ctx);
+            self.shake_screen(ctx);
+            self.play_fire_sound(ctx);
+        };
         // dont shoot while reloading
         if self.last_reload.elapsed() < self.reload_duration {
             //let sound = ctx.sounds.get(PathBuf::from("assets\\sounds\\pistol_dry_fire.wav"));
@@ -531,8 +537,7 @@ impl WeaponBase {
         
         self.rounds -= 1;
         self.last_fire = web_time::Instant::now();
-        self.shake_screen(ctx);
-        self.play_fire_sound(ctx);
+        
         let bullet_vectors = self.get_bullet_vectors(bullet_count, innaccuracy_factor, weapon_fire_context);
         self.send_stupid_updates(&bullet_vectors, ctx, weapon_fire_context);
         let bullet_impacts = self.get_bullet_impacts(ctx, bullet_vectors, weapon_fire_context);
@@ -540,7 +545,7 @@ impl WeaponBase {
 
     }
     
-    pub fn create_bullet_trail(&mut self, ctx: &mut ClientTickContext, bullet_vector: Vector2<f32>, space: &Space, area_id: AreaId, bullet_trails: &mut Vec<BulletTrail>) {
+    pub fn create_bullet_trail(&mut self, ctx: &mut TickContext, bullet_vector: Vector2<f32>, space: &Space, area_id: AreaId, bullet_trails: &mut Vec<BulletTrail>) {
 
         let weapon_pos = space.rigid_body_set.get(self.rigid_body.unwrap()).unwrap().position();
 
@@ -557,17 +562,25 @@ impl WeaponBase {
             self.owner.clone()
         ); 
 
-
-        ctx.network_io.send_network_packet(
-            crate::updates::NetworkPacket::SpawnBulletTrail(SpawnBulletTrail {
+        let packet = crate::updates::NetworkPacket::SpawnBulletTrail(
+            SpawnBulletTrail {
                 area_id: area_id,
                 save: bullet_trail.save()
-            })
+            }
         );
+        match ctx {
+            TickContext::Client(ctx) => {
+                ctx.network_io.send_network_packet(packet);
+            },
+            TickContext::Server(ctx) => {
+                ctx.network_io.send_all_clients(packet);
+            },
+        }
 
         bullet_trails.push(
             bullet_trail
         );
+
     }
 
     pub fn get_bullet_vector_macroquad(&mut self, space: &Space, facing: Facing, innacuracy_factor: f32) {

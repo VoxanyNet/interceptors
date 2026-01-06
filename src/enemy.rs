@@ -5,7 +5,7 @@ use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::{parry::query::Ray, prelude::{ColliderHandle, Group, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, ClientTickContext, angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, drawable::{DrawContext, Drawable}, get_angle_between_rapier_points, player::{Facing, Player, PlayerId}, prop::{DissolvedPixel, Prop}, rapier_to_macroquad, space::Space, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
+use crate::{ClientId, ClientTickContext, Owner, ServerTickContext, TickContext, angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, drawable::{DrawContext, Drawable}, get_angle_between_rapier_points, player::{Facing, Player, PlayerId}, prop::{DissolvedPixel, Prop}, rapier_to_macroquad, space::Space, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct EnemyId {
@@ -32,7 +32,7 @@ pub struct Enemy {
     pub body: BodyPart,
     pub health: i32,
     facing: Facing,
-    pub owner: ClientId,
+    pub owner: Owner,
     head_body_joint: Option<ImpulseJointHandle>,
     last_jump: web_time::Instant,
     player_target: Option<PlayerId>,
@@ -174,7 +174,7 @@ impl Enemy {
         &mut self, 
         props: &mut Vec<Prop>, 
         space: &mut Space, 
-        ctx: &mut ClientTickContext, 
+        ctx: &mut TickContext, 
         players: &mut Vec<Player>, 
         bullet_trails: &mut Vec<BulletTrail>,
         area_id: AreaId,
@@ -282,7 +282,7 @@ impl Enemy {
     }
 
 
-    pub fn new(position: Isometry2<f32>, owner: ClientId, space: &mut Space, weapon: Option<WeaponType>) -> Self {
+    pub fn new(position: Isometry2<f32>, owner: Owner, space: &mut Space, weapon: Option<WeaponType>) -> Self {
 
         let head = BodyPart::new(
             PathBuf::from("assets/cat/head.png"), 
@@ -375,7 +375,7 @@ impl Enemy {
     pub fn handle_bullet_impact(
         &mut self, 
         area_id: AreaId, 
-        ctx: &mut ClientTickContext, 
+        ctx: &mut TickContext, 
         space: &mut Space, 
         bullet_impact: BulletImpactData, 
         weapon_owner: WeaponOwner
@@ -405,7 +405,7 @@ impl Enemy {
 
         }
 
-        ctx.network_io.send_network_packet(
+        ctx.send_network_packet(
             NetworkPacket::EnemyHealthUpdate(
                 EnemyHealthUpdate {
                     area_id,
@@ -415,7 +415,7 @@ impl Enemy {
             )
         );
 
-        ctx.network_io.send_network_packet(
+        ctx.send_network_packet(
             NetworkPacket::EnemyVelocityUpdate(
                 EnemyVelocityUpdate {
                     area_id,
@@ -429,43 +429,74 @@ impl Enemy {
 
     }
 
-    pub fn despawn_if_dead(&mut self, ctx: &mut ClientTickContext, space: &mut Space, area_id: AreaId) {
+    pub fn despawn_if_dead(&mut self, ctx: &mut TickContext, space: &mut Space, area_id: AreaId) {
         
         if let Some(death_time) = self.death_time {
             if death_time.elapsed().as_secs_f32() > 3. {
                 self.mark_despawn();
 
-                ctx.network_io.send_network_packet(
-                    NetworkPacket::EnemyDespawnUpdate(
-                        EnemyDespawnUpdate {
-                            area_id,
-                            enemy_id: self.id,
-                        }
-                    )
+                let packet = NetworkPacket::EnemyDespawnUpdate(
+                    EnemyDespawnUpdate {
+                        area_id,
+                        enemy_id: self.id,
+                    }
                 );
+
+                match ctx {
+                    TickContext::Client(ctx) => {
+                        ctx.network_io.send_network_packet(packet);
+                    },
+                    TickContext::Server(ctx) => {
+                        ctx.network_io.send_all_clients(packet);
+                    },
+                }
+               
             }
         }
     }
-    pub fn despawn_if_below_level(&mut self, area_id: AreaId, ctx: &mut ClientTickContext, space: &mut Space, despawn_y: f32) {
+    pub fn despawn_if_below_level(
+        &mut self, 
+        area_id: AreaId, 
+        ctx: &mut TickContext, 
+        space: &mut Space, 
+        despawn_y: f32
+    ) {
         let pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation;
 
         if pos.y < despawn_y {
             self.mark_despawn();
 
-            ctx.network_io.send_network_packet(
-                NetworkPacket::EnemyDespawnUpdate(
-                    EnemyDespawnUpdate {
-                        area_id,
-                        enemy_id: self.id,
-                    }
-                )
+            let packet = NetworkPacket::EnemyDespawnUpdate(
+                EnemyDespawnUpdate {
+                    area_id,
+                    enemy_id: self.id,
+                }
             );
+            
+            match ctx {
+                TickContext::Client(ctx) => {
+                    ctx.network_io.send_network_packet(packet);
+                },
+                TickContext::Server(ctx) => {
+                    ctx.network_io.send_all_clients(packet);
+                },
+            }
             
         }
 
     }
 
-    pub fn fire_weapon(&mut self, props: &mut Vec<Prop>, space: &mut Space, ctx: &mut ClientTickContext, players: &mut Vec<Player>, bullet_trails: &mut Vec<BulletTrail>, area_id: AreaId, dissolved_pixels: &mut Vec<DissolvedPixel>, enemies: &mut Vec<Enemy>) {
+    pub fn fire_weapon(
+        &mut self, 
+        props: &mut Vec<Prop>, 
+        space: &mut Space, 
+        ctx: &mut TickContext, 
+        players: &mut Vec<Player>, 
+        bullet_trails: &mut Vec<BulletTrail>, 
+        area_id: AreaId, 
+        dissolved_pixels: &mut Vec<DissolvedPixel>, 
+        enemies: &mut Vec<Enemy>
+    ) {
 
         if let Some(weapon) = &mut self.weapon {
 
@@ -491,7 +522,7 @@ impl Enemy {
         &mut self, 
         props: &mut Vec<Prop>, 
         space: &mut Space, 
-        ctx: &mut ClientTickContext, 
+        ctx: &mut TickContext, 
         players: &mut Vec<Player>, 
         bullet_trails: &mut Vec<BulletTrail>, 
         area_id: AreaId, 
@@ -515,27 +546,49 @@ impl Enemy {
         let pos = body.position();
 
         if *velocity != self.previous_velocity {
-            ctx.network_io.send_network_packet(
-                NetworkPacket::EnemyVelocityUpdate(
-                    EnemyVelocityUpdate {
-                        area_id,
-                        enemy_id: self.id,
-                        velocity: *velocity,
-                    }
-                )
+
+            let packet = NetworkPacket::EnemyVelocityUpdate(
+                EnemyVelocityUpdate {
+                    area_id,
+                    enemy_id: self.id,
+                    velocity: *velocity,
+                }
             );
+
+            match ctx {
+                TickContext::Client(ctx) => {
+                    ctx.network_io.send_network_packet(packet);
+                },
+                TickContext::Server(ctx) => {
+                    ctx.network_io.send_all_clients(packet);
+                },
+            }
+            
         }
 
         if *pos != self.previous_position && self.last_position_update.elapsed().as_secs_f32() < 3. {
-            ctx.network_io.send_network_packet(
-                NetworkPacket::EnemyPositionUpdate(
-                    EnemyPositionUpdate {
-                        area_id,
-                        enemy_id: self.id,
-                        position: *pos,
-                    }
-                )
+
+            let packet = NetworkPacket::EnemyPositionUpdate(
+                EnemyPositionUpdate {
+                    area_id,
+                    enemy_id: self.id,
+                    position: *pos,
+                }
             );
+
+            match ctx {
+                TickContext::Client(ctx) => {
+                    ctx.network_io.send_network_packet(
+                        packet
+                    );
+                },
+                TickContext::Server(ctx) => {
+                    ctx.network_io.send_all_clients(
+                        packet
+                    );
+                },
+            };
+            
 
             self.last_position_update = web_time::Instant::now();
         }
@@ -592,10 +645,11 @@ impl Enemy {
         self.despawn = true;
     }
 
-    pub fn client_tick(
+
+    pub fn tick(
         &mut self, 
         space: &mut Space, 
-        ctx: &mut ClientTickContext, 
+        ctx: &mut TickContext, 
         players: &mut Vec<Player>, 
         despawn_y: f32,
         props: &mut Vec<Prop>,
@@ -614,7 +668,7 @@ impl Enemy {
         
 
         if self.health > 0 {
-            self.upright(space, ctx);
+            self.upright(space);
 
             self.target_player(players, space);
 
@@ -630,13 +684,7 @@ impl Enemy {
 
         
 
-        self.head.tick(space, ctx);
-
-        self.body.tick(space, ctx);
-
-        
-
-        if *ctx.client_id == self.owner {
+        if ctx.id() == self.owner {
             self.owner_tick(props, space, ctx, players, bullet_trails, area_id, dissolved_pixels, enemies, despawn_y);
         }
 
@@ -770,7 +818,7 @@ impl Enemy {
         }
         
     }
-    pub fn upright(&mut self, space: &mut Space, ctx: &mut ClientTickContext) {
+    pub fn upright(&mut self, space: &mut Space) {
         
         let body = space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
 
@@ -824,6 +872,8 @@ impl Enemy {
     }
 }
 
+
+
 #[async_trait::async_trait]
 impl Drawable for Enemy {
     async fn draw(&mut self, draw_context: &DrawContext) {
@@ -855,7 +905,7 @@ impl Drawable for Enemy {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct EnemySave {
     pos: Isometry2<f32>,
-    owner: ClientId,
+    owner: Owner,
     id: EnemyId,
     weapon: Option<WeaponTypeSave>
 }

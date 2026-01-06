@@ -2,7 +2,7 @@ use macroquad::{color::{Color, WHITE}, shapes::draw_line};
 use nalgebra::Vector2;
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, ClientTickContext, area::AreaId, drawable::Drawable, rapier_to_macroquad, uuid_u64};
+use crate::{ClientId, ClientTickContext, TickContext, area::AreaId, drawable::Drawable, rapier_to_macroquad, uuid_u64};
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct BulletTrailId {
@@ -27,8 +27,8 @@ pub struct BulletTrail {
 
 impl BulletTrail {
 
-    pub fn client_tick(&mut self, ctx: &ClientTickContext) {
-        self.color.a -= 0.3 * ctx.last_tick_duration.as_secs_f32();
+    pub fn tick(&mut self, ctx: &TickContext) {
+        self.color.a -= 0.3 * ctx.last_tick_duration().as_secs_f32();
     }
 
     pub fn save(&self) -> BulletTrailSave {

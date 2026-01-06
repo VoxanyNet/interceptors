@@ -1,13 +1,12 @@
 use std::{f32::consts::PI, mem::take, path::PathBuf, str::FromStr, usize};
 
 use cs_utils::drain_filter;
-use gilrs::{Button, Event};
 use macroquad::{color::{BLACK, WHITE}, input::{KeyCode, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_position, mouse_wheel}, math::{Rect, Vec2}, shapes::draw_rectangle, text::{TextParams, draw_text, draw_text_ex}, window::{screen_height, screen_width}};
 use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, ClientTickContext, IntersectionData, Prefabs, angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, mouse_world_pos, prop::{DissolvedPixel, Prop}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
+use crate::{ClientId, ClientTickContext, IntersectionData, Owner, Prefabs, TickContext, angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, mouse_world_pos, prop::{DissolvedPixel, Prop}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -63,7 +62,7 @@ pub struct Player {
     pub head: BodyPart,
     pub body: BodyPart,
     max_speed: Vector2<f32>,
-    pub owner: ClientId,
+    pub owner: Owner,
     previous_velocity: RigidBodyVelocity,
     head_joint_handle: Option<ImpulseJointHandle>,
     pub facing: Facing,
@@ -158,7 +157,7 @@ impl Player {
         &mut self, 
         dropped_items: &mut Vec<DroppedItem>, 
         space: &mut Space, 
-        ctx: &mut ClientTickContext,
+        ctx: &mut TickContext,
         area_id: AreaId
     ) {
 
@@ -184,14 +183,21 @@ impl Player {
         for item in &mut picked_up_items {
             item.mark_despawn();
 
-            ctx.network_io.send_network_packet(
-                NetworkPacket::RemoveDroppedItemUpdate(
-                    RemoveDroppedItemUpdate {
-                        dropped_item_id: item.id.clone(),
-                        area_id,
-                    }
-                )
+            let packet = NetworkPacket::RemoveDroppedItemUpdate(
+                RemoveDroppedItemUpdate {
+                    dropped_item_id: item.id.clone(),
+                    area_id,
+                }
             );
+
+            match ctx {
+                TickContext::Client(ctx) => {
+                    ctx.network_io.send_network_packet(packet);
+                },
+                TickContext::Server(ctx) => {
+                    ctx.network_io.send_all_clients(packet);
+                },
+            }
         }
 
         'drop_item_loop: for dropped_item in picked_up_items {
@@ -203,16 +209,23 @@ impl Player {
                         if item_slot.item == dropped_item.item {
                             item_slot.quantity += 1;
 
-                            ctx.network_io.send_network_packet(
-                                NetworkPacket::ItemSlotQuantityUpdate(
-                                    ItemSlotQuantityUpdate {
-                                        area_id: area_id,
-                                        player_id: self.id,
-                                        inventory_index: item_slot_index,
-                                        quantity: item_slot.quantity, // we can only pick up one item at a time
-                                    }
-                                )
+                            let packet = NetworkPacket::ItemSlotQuantityUpdate(
+                                ItemSlotQuantityUpdate {
+                                    area_id: area_id,
+                                    player_id: self.id,
+                                    inventory_index: item_slot_index,
+                                    quantity: item_slot.quantity, // we can only pick up one item at a time
+                                }
                             );
+
+                            match ctx {
+                                TickContext::Client(ctx) => {
+                                    ctx.network_io.send_network_packet(packet);
+                                },
+                                TickContext::Server(ctx) => {
+                                    ctx.network_io.send_all_clients(packet);
+                                },
+                            };
                         }
 
                         continue 'drop_item_loop;
@@ -230,16 +243,23 @@ impl Player {
                             None => None, // this shouldnt ever be None because we are picking up
                         };
 
-                        ctx.network_io.send_network_packet(
-                            NetworkPacket::ItemSlotUpdate(
-                                ItemSlotUpdate {
-                                    area_id,
-                                    player_id: self.id,
-                                    inventory_index: item_slot_index,
-                                    item_slot: item_slot_save,
-                                }
-                            )
+                        let packet = NetworkPacket::ItemSlotUpdate(
+                            ItemSlotUpdate {
+                                area_id,
+                                player_id: self.id,
+                                inventory_index: item_slot_index,
+                                item_slot: item_slot_save,
+                            }
                         );
+
+                        match ctx {
+                            TickContext::Client(ctx) => {
+                                ctx.network_io.send_network_packet(packet);
+                            },
+                            TickContext::Server(ctx) => {
+                                ctx.network_io.send_all_clients(packet);
+                            },
+                        };
 
                         continue 'drop_item_loop;
                     },
@@ -390,7 +410,7 @@ impl Player {
         self.cursor_pos_rapier = pos;
     }
 
-    pub fn new(pos: Isometry2<f32>, space: &mut Space, owner: ClientId) -> Self {
+    pub fn new(pos: Isometry2<f32>, space: &mut Space, owner: Owner) -> Self {
         let head = BodyPart::new(PathBuf::from_str("assets/cat/head.png").unwrap(), 2, 100., pos, space, owner, Vec2::new(30., 28.));
 
         let body = BodyPart::new(PathBuf::from_str("assets/cat/body.png").unwrap(), 2, 1000., pos, space, owner, Vec2::new(22., 19.));
@@ -500,7 +520,7 @@ impl Player {
 
     pub fn use_item(
         &mut self, 
-        ctx: &mut ClientTickContext, 
+        ctx: &mut TickContext, 
         space: &mut Space, 
         props: &mut Vec<Prop>, 
         players: &mut Vec<Player>, 
@@ -579,61 +599,61 @@ impl Player {
 
     pub fn control_controller(&mut self, space: &mut Space, ctx: &mut ClientTickContext) {
 
-        let body = space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
+        // let body = space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
 
 
-        if let Some(event) = ctx.gilrs.next_event() {
-            match event.event {
-                gilrs::EventType::ButtonPressed(button, code) => {
-                    match button {
-                        Button::South => self.jump(body, ctx),
-                        Button::DPadLeft => self.move_left_toggle = true,
-                        Button::DPadRight => self.move_right_toggle = true,
-                        _ => {}
-                    }
-                },
-                gilrs::EventType::ButtonReleased(button, code) => {
-                    match button {
-                        Button::DPadLeft => self.move_left_toggle = false,
-                        Button::DPadRight => self.move_right_toggle = false,
-                        _ => {}
-                    }
-                },
-                gilrs::EventType::ButtonChanged(button, _, code) => {},
-                gilrs::EventType::AxisChanged(axis, data, code) => {
-                    match axis {
-                        gilrs::Axis::LeftStickX => {},
-                        gilrs::Axis::LeftStickY => {},
-                        gilrs::Axis::LeftZ => {},
-                        gilrs::Axis::RightStickX => {
+        // if let Some(event) = ctx.gilrs.next_event() {
+        //     match event.event {
+        //         gilrs::EventType::ButtonPressed(button, code) => {
+        //             match button {
+        //                 Button::South => self.jump(body, ctx),
+        //                 Button::DPadLeft => self.move_left_toggle = true,
+        //                 Button::DPadRight => self.move_right_toggle = true,
+        //                 _ => {}
+        //             }
+        //         },
+        //         gilrs::EventType::ButtonReleased(button, code) => {
+        //             match button {
+        //                 Button::DPadLeft => self.move_left_toggle = false,
+        //                 Button::DPadRight => self.move_right_toggle = false,
+        //                 _ => {}
+        //             }
+        //         },
+        //         gilrs::EventType::ButtonChanged(button, _, code) => {},
+        //         gilrs::EventType::AxisChanged(axis, data, code) => {
+        //             match axis {
+        //                 gilrs::Axis::LeftStickX => {},
+        //                 gilrs::Axis::LeftStickY => {},
+        //                 gilrs::Axis::LeftZ => {},
+        //                 gilrs::Axis::RightStickX => {
                            
     
-                        },
-                        gilrs::Axis::RightStickY => {
+        //                 },
+        //                 gilrs::Axis::RightStickY => {
                             
-                        },
-                        gilrs::Axis::RightZ => {},
-                        gilrs::Axis::DPadX => {},
-                        gilrs::Axis::DPadY => {},
-                        gilrs::Axis::Unknown => {},
-                    }
-                },
-                gilrs::EventType::Connected => {},
-                gilrs::EventType::Disconnected => {},
-                gilrs::EventType::Dropped => {},
-                gilrs::EventType::ForceFeedbackEffectCompleted => {},
-                _ => {},
-            }
+        //                 },
+        //                 gilrs::Axis::RightZ => {},
+        //                 gilrs::Axis::DPadX => {},
+        //                 gilrs::Axis::DPadY => {},
+        //                 gilrs::Axis::Unknown => {},
+        //             }
+        //         },
+        //         gilrs::EventType::Connected => {},
+        //         gilrs::EventType::Disconnected => {},
+        //         gilrs::EventType::Dropped => {},
+        //         gilrs::EventType::ForceFeedbackEffectCompleted => {},
+        //         _ => {},
+        //     }
 
-        }
+        // }
 
-        if self.move_left_toggle {
-            self.move_left(body);
-        }
+        // if self.move_left_toggle {
+        //     self.move_left(body);
+        // }
 
-        if self.move_right_toggle {
-            self.move_right(body);
-        }
+        // if self.move_right_toggle {
+        //     self.move_right(body);
+        // }
     }
 
     pub fn move_left(&mut self, body: &mut RigidBody) {
@@ -705,7 +725,7 @@ impl Player {
 
     pub fn client_tick(
         &mut self, 
-        ctx: &mut ClientTickContext, 
+        ctx: &mut TickContext, 
         space: &mut Space, 
         area_id: AreaId,
         players: &mut Vec<Player>,
@@ -723,12 +743,26 @@ impl Player {
 
         let current_velocity = space.rigid_body_set.get(self.body.body_handle).unwrap().vels().clone();
 
-        self.angle_weapon_to_mouse(space, &ctx.camera_rect);
+        self.angle_weapon_to_mouse(space);
         self.angle_head_to_mouse(space);
+        
         self.materialize_tiles(space, tiles);
 
-        if self.owner == *ctx.client_id {
-            self.owner_tick(space, ctx, area_id, players, enemies, props, bullet_trails, dissolved_pixels, dropped_items, max_camera_y, minimum_camera_width, minimum_camera_height);
+        if self.owner == ctx.id() {
+            self.owner_tick(
+                space, 
+                ctx, 
+                area_id, 
+                players, 
+                enemies, 
+                props, 
+                bullet_trails, 
+                dissolved_pixels, 
+                dropped_items, 
+                max_camera_y, 
+                minimum_camera_width, 
+                minimum_camera_height
+            );
         }   
 
         self.unequip_previous_weapon(space);
@@ -853,7 +887,7 @@ impl Player {
         }
     }
 
-    pub fn angle_weapon_to_mouse(&mut self, space: &mut Space, camera_rect: &Rect) {
+    pub fn angle_weapon_to_mouse(&mut self, space: &mut Space) {
 
         match &mut self.inventory.items[self.selected_item] {
             Some(item_slot) => match &mut item_slot.item {
@@ -909,48 +943,73 @@ impl Player {
         }
     }
 
-    pub fn send_position_network_update(&mut self, ctx: &mut ClientTickContext, space: &mut Space, area_id: AreaId) {
+    pub fn send_position_network_update(
+        &mut self, 
+        ctx: &mut TickContext, 
+        space: &mut Space, 
+        area_id: AreaId
+    ) {
 
         let pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position();
 
         if (self.last_position_update.elapsed().as_secs_f32() > 3.) && *pos != self.previous_pos {
 
-            ctx.network_io.send_network_packet(
-                NetworkPacket::PlayerPositionUpdate(
-                    PlayerPositionUpdate {
-                        area_id,
-                        pos: *pos,
-                        player_id: self.id,
-                    }
-                )
+            let packet = NetworkPacket::PlayerPositionUpdate(
+                PlayerPositionUpdate {
+                    area_id,
+                    pos: *pos,
+                    player_id: self.id,
+                }
             );
 
+            match ctx {
+                TickContext::Client(ctx) => {
+                    ctx.network_io.send_network_packet(packet);
+                },
+                TickContext::Server(ctx) => {
+                    ctx.network_io.send_all_clients(packet);
+                },
+            }
+    
             self.last_position_update = web_time::Instant::now();
         }
     }
 
-    pub fn send_velocity_network_update(&mut self, ctx: &mut ClientTickContext, area_id: AreaId, space: &Space) {
+    pub fn send_velocity_network_update(
+        &mut self, 
+        ctx: &mut TickContext, 
+        area_id: AreaId, 
+        space: &Space
+    ) {
 
         let current_velocity = space.rigid_body_set.get(self.body.body_handle).unwrap().vels();
 
         if self.previous_velocity != *current_velocity {
-            ctx.network_io.send_network_packet(
-                crate::updates::NetworkPacket::PlayerVelocityUpdate(
-                    PlayerVelocityUpdate { 
-                        id: self.id.clone(), 
-                        area_id, 
-                        velocity: *current_velocity
-                        
-                    }
-                )
+
+            let packet = crate::updates::NetworkPacket::PlayerVelocityUpdate(
+                PlayerVelocityUpdate { 
+                    id: self.id.clone(), 
+                    area_id, 
+                    velocity: *current_velocity
+                    
+                }
             );
+
+            match ctx {
+                TickContext::Client(ctx) => {
+                    ctx.network_io.send_network_packet(packet);
+                },
+                TickContext::Server(ctx) => {
+                    ctx.network_io.send_all_clients(packet);
+                },
+            }
         }
     }
 
     pub fn owner_tick(
         &mut self, 
         space: &mut Space, 
-        ctx: &mut ClientTickContext, 
+        ctx: &mut TickContext, 
         area_id: AreaId,
         players: &mut Vec<Player>,
         enemies: &mut Vec<Enemy>,
@@ -963,18 +1022,23 @@ impl Player {
         minimum_camera_height: f32,
     ) {
 
+
+        if let TickContext::Client(ctx) = ctx {
+            self.update_cursor_pos(ctx, area_id);
+            self.change_active_inventory_slot(ctx, area_id, space);
+            self.change_facing_direction(space, ctx, area_id);
+            self.control_controller(space, ctx);
+            self.control_mkb(space, ctx);
+            self.move_camera(space, max_camera_y, ctx, minimum_camera_width, minimum_camera_height);
+            self.face_towards_mouse(space, ctx, area_id);
+        }
+
         self.use_item(ctx, space, props, players, bullet_trails, self.facing, area_id, enemies, dissolved_pixels, dropped_items);
         self.send_position_network_update(ctx, space, area_id);
-        self.update_cursor_pos(ctx, area_id);
         self.dash(space);
         self.pickup_item(dropped_items, space, ctx, area_id);
-        self.change_active_inventory_slot(ctx, area_id, space);
-        self.change_facing_direction(space, ctx, area_id);
-        self.control_controller(space, ctx);
-        self.control_mkb(space, ctx);
-        self.move_camera(space, max_camera_y, ctx, minimum_camera_width, minimum_camera_height);
         self.send_velocity_network_update(ctx, area_id, space);
-        self.face_towards_mouse(space, ctx, area_id);
+        
         
     }
 
@@ -1048,7 +1112,7 @@ impl Drawable for Player {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct PlayerSave {
     pos: Isometry2<f32>,
-    owner: ClientId,
+    owner: Owner,
     id: PlayerId, // we arent storing the player as a prefab so the player will always have an id
     items: Vec<Option<ItemSlotSave>>
 }

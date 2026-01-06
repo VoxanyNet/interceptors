@@ -151,10 +151,18 @@ impl AreaEditor {
         }
 
 
-        let selected_object = if let Some(selectable_obje)
+        let selected_object = if let Some(selected_object_id) = self.selected_objects.get(0) {
+            if let Some(selected_object) = self.area.get_selectable_object_mut(*selected_object_id)  {
+                selected_object
+            } else {
+                return;
+            }
+        } else {
+            return;
+        };
 
         // might not be a good idea to be controlling this variable from outside the structure
-        self.layer_toggle_ui.active_layer = self.area.get_selectable_object_mut(self.selected_objects[0]).unwrap().get_layer();
+        self.layer_toggle_ui.active_layer = selected_object.get_layer();
 
 
 

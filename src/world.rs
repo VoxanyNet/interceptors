@@ -1,16 +1,16 @@
 
 use macroquad::{camera::Camera2D, math::Rect};
 
-use crate::{area::Area, font_loader::FontLoader, texture_loader::TextureLoader, ClientTickContext, Prefabs, ServerIO};
+use crate::{ClientTickContext, Prefabs, ServerIO, TickContext, area::Area, font_loader::FontLoader, texture_loader::TextureLoader};
 
 pub struct World {
     pub areas: Vec<Area>
 }
 
 impl World {
-    pub fn client_tick(&mut self, ctx: &mut ClientTickContext) {
+    pub fn tick(&mut self, ctx: &mut TickContext) {
         for area in &mut self.areas {
-            area.client_tick(ctx);
+            area.tick(ctx);
         }
     }
 

@@ -4,7 +4,7 @@ use macroquad::math::Vec2;
 use nalgebra::Vector2;
 use rapier2d::prelude::RigidBodyHandle;
 
-use crate::{player::Facing, space::Space, texture_loader::TextureLoader, weapons::{lmg::{weapon_save::LMGSave}, weapon::weapon::WeaponBase, weapon_fire_context::WeaponFireContext}, ClientId};
+use crate::{ClientId, TickContext, player::Facing, space::Space, texture_loader::TextureLoader, weapons::{lmg::weapon_save::LMGSave, weapon::weapon::WeaponBase, weapon_fire_context::WeaponFireContext}};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct LMG {
@@ -28,7 +28,7 @@ impl LMG {
         self.weapon.despawn_callback(space);
     }
 
-    pub fn fire(&mut self, ctx: &mut crate::ClientTickContext, weapon_fire_context: &mut WeaponFireContext) {
+    pub fn fire(&mut self, ctx: &mut TickContext, weapon_fire_context: &mut WeaponFireContext) {
         self.weapon.fire(ctx, weapon_fire_context, None, Some(1));
     }
 

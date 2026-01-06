@@ -1,6 +1,6 @@
 use std::{fs::read_to_string, process::exit};
 
-use interceptors_lib::{ClientId, Prefabs, ServerIO, area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, get_intersections, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket, PlayerDespawnUpdate}, weapons::weapon_type::WeaponType, world::World};
+use interceptors_lib::{ClientId, Owner, Prefabs, ServerIO, area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, get_intersections, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket, PlayerDespawnUpdate}, weapons::weapon_type::WeaponType, world::World};
 use rapier2d::math::Vector;
 use tungstenite::Message;
 
@@ -13,7 +13,7 @@ pub struct Server {
     last_tick_duration: web_time::Duration,
     network_io: ServerIO,
     total_bits_sent: usize,
-    previous_tick_connected_clients: Vec<ClientId>
+    previous_tick_connected_clients: Vec<ClientId>,
 }
 
 impl Server {
@@ -72,7 +72,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
         if self.network_io.clients.len() == 1 {
             for area in &mut self.world.areas {
                 for prop in &mut area.props {
-                    self.network_io.send_all_clients(NetworkPacket::PropUpdateOwner(PropUpdateOwner{ owner: Some(new_client), id: prop.id, area_id: area.id }));
+                    self.network_io.send_all_clients(NetworkPacket::PropUpdateOwner(PropUpdateOwner{ owner: Some(Owner::ClientId(new_client)), id: prop.id, area_id: area.id }));
                 }
             }
         }
@@ -95,7 +95,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
             let disconnected_player = area.players.iter_mut().find(
                 |player| 
                 {
-                    player.owner == client_id
+                    player.owner == Owner::ClientId(client_id)
                 }
             );
 
@@ -631,7 +631,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
         let megabits = self.total_bits_sent as f32 / 1000000 as f32;
 
-        self.world.server_tick(&mut self.network_io, self.last_tick_duration);
+        self.world.tick(ctx);
 
         self.network_io.flush(&mut self.total_bits_sent);
 

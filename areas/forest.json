@@ -650,20 +650,6 @@
     },
     {
       "pos": [
-        156.92241,
-        947.6408
-      ],
-      "size": [
-        50.0,
-        50.0
-      ],
-      "sprite_path": "assets/grass_bottomright.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
         -343.07758,
         947.6408
       ],
@@ -1025,20 +1011,1227 @@
       "animated_sprite_paths": null,
       "frame_duration": null,
       "layer": 0
+    },
+    {
+      "pos": [
+        156.92241,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        206.92241,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        256.92242,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        356.92242,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        306.92242,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        406.92242,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        406.92242,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        356.92242,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        306.92242,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        256.92242,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        206.92241,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        156.92241,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        156.92241,
+        847.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        206.92241,
+        847.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        256.92242,
+        847.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        306.92242,
+        847.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        356.92242,
+        847.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        406.92242,
+        847.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        406.92242,
+        897.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        356.92242,
+        897.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        306.92242,
+        897.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        256.92242,
+        897.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        206.92241,
+        897.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        156.92241,
+        897.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        56.92241,
+        625.6408
+      ],
+      "size": [
+        178.0,
+        72.0
+      ],
+      "sprite_path": "assets/bush2.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        -243.07759,
+        515.6408
+      ],
+      "size": [
+        174.0,
+        182.0
+      ],
+      "sprite_path": "assets\\well.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        456.92242,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        506.92242,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        556.9224,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        606.9224,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        656.9224,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        706.9224,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        756.9224,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        806.9224,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        856.9224,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        906.9224,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        956.9224,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1006.9224,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1056.9224,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1106.9224,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1156.9224,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1206.9224,
+        697.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_topmiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        456.92242,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        556.9224,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        506.92242,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        606.9224,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        656.9224,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        756.9224,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        706.9224,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        806.9224,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        856.9224,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        906.9224,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        956.9224,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1006.9224,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1056.9224,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1106.9224,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1206.9224,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1156.9224,
+        747.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1206.9224,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1156.9224,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1106.9224,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1056.9224,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1006.92236,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        956.92236,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        906.92236,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        856.92236,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        806.92236,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        756.92236,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        706.92236,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        656.92236,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        606.92236,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        556.92236,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        506.92236,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        456.92236,
+        797.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        456.92236,
+        847.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        506.92236,
+        847.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        606.92236,
+        847.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        556.92236,
+        847.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        656.92236,
+        847.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        756.92236,
+        847.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        706.92236,
+        847.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        806.92236,
+        847.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        906.92236,
+        847.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        856.92236,
+        847.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1006.92236,
+        847.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        956.92236,
+        847.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1056.9224,
+        847.6408
+      ],
+      "size": [
+        50.0,
+        50.0
+      ],
+      "sprite_path": "assets/grass_middlemiddle.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
     }
   ],
   "clips": [
-    {
-      "size": [
-        604.4575,
-        149.50116
-      ],
-      "pos": [
-        -93.69025,
-        -54.164154
-      ],
-      "layer": 1
-    },
     {
       "size": [
         0.0,
@@ -1047,6 +2240,28 @@
       "pos": [
         411.27988,
         77.50421
+      ],
+      "layer": 0
+    },
+    {
+      "size": [
+        0.0,
+        0.0
+      ],
+      "pos": [
+        917.3333,
+        428.66403
+      ],
+      "layer": 0
+    },
+    {
+      "size": [
+        1648.0001,
+        140.06769
+      ],
+      "pos": [
+        432.00006,
+        -49.501495
       ],
       "layer": 0
     }
@@ -1067,7 +2282,133 @@
       "parallax": 0.1
     }
   ],
-  "generic_physics_props": [],
+  "generic_physics_props": [
+    {
+      "size": [
+        50.0,
+        50.0
+      ],
+      "pos": {
+        "rotation": [
+          0.9999993,
+          -0.001169409
+        ],
+        "translation": [
+          619.0534,
+          45.475166
+        ]
+      },
+      "mass": 1000.0,
+      "sprite_path": "assets/box2.png",
+      "id": {
+        "id": 1586479785229978373
+      },
+      "owner": null,
+      "material": "Wood",
+      "name": "Crate",
+      "layer": 0
+    },
+    {
+      "size": [
+        50.0,
+        50.0
+      ],
+      "pos": {
+        "rotation": [
+          0.9999972,
+          -0.002340277
+        ],
+        "translation": [
+          636.39996,
+          95.37788
+        ]
+      },
+      "mass": 1000.0,
+      "sprite_path": "assets/box2.png",
+      "id": {
+        "id": 4864278531017368262
+      },
+      "owner": null,
+      "material": "Wood",
+      "name": "Crate",
+      "layer": 0
+    },
+    {
+      "size": [
+        50.0,
+        50.0
+      ],
+      "pos": {
+        "rotation": [
+          1.0,
+          0.0
+        ],
+        "translation": [
+          699.3334,
+          45.503235
+        ]
+      },
+      "mass": 1000.0,
+      "sprite_path": "assets/box2.png",
+      "id": {
+        "id": 11278345514648790054
+      },
+      "owner": null,
+      "material": "Wood",
+      "name": "Crate",
+      "layer": 0
+    },
+    {
+      "size": [
+        50.0,
+        50.0
+      ],
+      "pos": {
+        "rotation": [
+          1.0,
+          0.0
+        ],
+        "translation": [
+          861.6666,
+          45.50323
+        ]
+      },
+      "mass": 1000.0,
+      "sprite_path": "assets/box2.png",
+      "id": {
+        "id": 12049679912894330934
+      },
+      "owner": null,
+      "material": "Wood",
+      "name": "Crate",
+      "layer": 0
+    },
+    {
+      "size": [
+        50.0,
+        50.0
+      ],
+      "pos": {
+        "rotation": [
+          1.0,
+          0.0
+        ],
+        "translation": [
+          967.0,
+          45.503235
+        ]
+      },
+      "mass": 1000.0,
+      "sprite_path": "assets/box2.png",
+      "id": {
+        "id": 13100242416046768926
+      },
+      "owner": null,
+      "material": "Wood",
+      "name": "Crate",
+      "layer": 0
+    }
+  ],
   "enemies": [],
   "computer_pos": null,
   "dropped_items": [],

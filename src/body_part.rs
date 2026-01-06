@@ -4,7 +4,7 @@ use macroquad::math::Vec2;
 use nalgebra::Isometry2;
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle};
 
-use crate::{draw_texture_onto_physics_body, space::Space, texture_loader::TextureLoader, ClientId, ClientTickContext};
+use crate::{ClientId, ClientTickContext, Owner, TickContext, draw_texture_onto_physics_body, space::Space, texture_loader::TextureLoader};
 
 #[derive(Debug)]
 pub struct BodyPart {
@@ -12,7 +12,7 @@ pub struct BodyPart {
     pub body_handle: RigidBodyHandle,
     sprite_path: PathBuf,
     scale: u16, 
-    owner: ClientId,
+    owner: Owner,
 }
 
 impl BodyPart {
@@ -27,7 +27,7 @@ impl BodyPart {
         mass: f32,
         pos: Isometry2<f32>,
         space: &mut Space,
-        owner: ClientId,
+        owner: Owner,
         texture_size: Vec2
     ) -> Self {
 
@@ -71,15 +71,4 @@ impl BodyPart {
         ).await
     }
 
-    pub fn owner_tick(&mut self, ctx: &mut ClientTickContext, space: &mut Space) {
-        
-    }
-
-    pub fn tick(&mut self, space: &mut Space, ctx: &mut ClientTickContext) {
-        if *ctx.client_id != self.owner {
-            self.owner_tick(ctx, space);
-        }
-
-
-    }
 }
