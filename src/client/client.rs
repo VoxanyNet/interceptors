@@ -667,7 +667,7 @@ impl Client {
         //     self.spawned = true;
         // }
 
-        self.world.tick(&mut ctx);
+        self.world.tick(&mut interceptors_lib::TickContext::Client(ctx));
 
         self.network_io.flush();
         

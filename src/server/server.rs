@@ -1,6 +1,6 @@
 use std::{fs::read_to_string, process::exit};
 
-use interceptors_lib::{ClientId, Owner, Prefabs, ServerIO, area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, get_intersections, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket, PlayerDespawnUpdate}, weapons::weapon_type::WeaponType, world::World};
+use interceptors_lib::{ClientId, Owner, Prefabs, ServerIO, ServerTickContext, TickContext, area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, get_intersections, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket, PlayerDespawnUpdate}, weapons::weapon_type::WeaponType, world::World};
 use rapier2d::math::Vector;
 use tungstenite::Message;
 
@@ -631,7 +631,12 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
         let megabits = self.total_bits_sent as f32 / 1000000 as f32;
 
-        self.world.tick(ctx);
+        let mut ctx = ServerTickContext {
+            network_io: &mut self.network_io,
+            last_tick_duration: self.last_tick_duration,
+        };
+
+        self.world.tick(&mut TickContext::Server(ctx));
 
         self.network_io.flush(&mut self.total_bits_sent);
 
