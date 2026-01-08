@@ -1,6 +1,6 @@
 use macroquad::{color::WHITE, math::{Rect, Vec2}};
 use nalgebra::vector;
-use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle};
+use rapier2d::prelude::{ActiveHooks, ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 
 use crate::{draw_hitbox, drawable::{DrawContext, Drawable}, editor_context_menu::{DataEditorContext, EditorContextMenu, EditorContextMenuData}, rapier_to_macroquad, space::Space};
@@ -11,7 +11,8 @@ pub struct Clip {
     pub rigid_body_handle: RigidBodyHandle,
     pub despawn: bool,
     pub context_menu_data: Option<EditorContextMenuData>,
-    pub layer: u32
+    pub layer: u32,
+    pub one_way: bool
 }
 
 impl Clip {
@@ -36,11 +37,18 @@ impl Clip {
                 .position(vector![save.pos.x, save.pos.y].into())
         );
 
+        let user_data = match save.one_way {
+            true => 1,
+            false => 0,
+        };
+
         let collider_handle = space.collider_set.insert_with_parent(
             ColliderBuilder::cuboid(
                 save.size.x / 2., 
                 save.size.y / 2.
-            ),
+            )
+                .active_hooks(ActiveHooks::FILTER_CONTACT_PAIRS)
+                .user_data(user_data),
             rigid_body_handle,
             &mut space.rigid_body_set
         );
@@ -51,7 +59,8 @@ impl Clip {
             collider_handle,
             despawn: false,
             context_menu_data: None,
-            layer: save.layer
+            layer: save.layer,
+            one_way: save.one_way
         }
     }
 
@@ -65,7 +74,8 @@ impl Clip {
         ClipSave {
             size: Vec2::new(shape.half_extents.x * 2., shape.half_extents.y * 2.),
             pos: Vec2::new(position.translation.x, position.translation.y),
-            layer: self.layer
+            layer: self.layer,
+            one_way: self.one_way
         }
     }
 }
@@ -117,7 +127,9 @@ impl EditorContextMenu for Clip {
 pub struct ClipSave {
     pub size: Vec2,
     pub pos: Vec2,
-    pub layer: u32
+    pub layer: u32,
+    #[serde(default)]
+    pub one_way: bool
 }
 #[async_trait::async_trait]
 impl Drawable for Clip {

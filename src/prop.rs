@@ -3,7 +3,7 @@ use std::{fs::read_to_string, path::PathBuf};
 use async_trait::async_trait;
 use macroquad::{audio::play_sound_once, color::Color, math::{Rect, Vec2}, shapes::{DrawRectangleParams, draw_rectangle_ex}};
 use nalgebra::{Isometry2, Vector2};
-use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
+use rapier2d::{parry::utils::hashmap::HashMap, prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
@@ -144,6 +144,60 @@ impl Drawable for DissolvedPixel {
     fn draw_layer(&self) -> u32 {
         1
     }
+}
+
+pub trait PropTrait: EditorContextMenu + Drawable {
+    fn name(&self) -> String;
+    fn mark_despawn(&self);
+    fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32);
+    fn get_preview_resolution(&self, size: f32, prefabs: &Prefabs, textures: &TextureLoader) -> Vec2;
+    fn handle_bullet_impact(
+        &mut self, 
+        ctx: &mut TickContext, 
+        impact: &BulletImpactData, 
+        space: &mut Space, 
+        area_id: AreaId,
+        dissolved_pixels: &mut Vec<DissolvedPixel>
+    );
+
+    fn despawn_callback(&mut self, space: &mut Space, area_id: AreaId);
+
+    fn from_prefab(prefab_path: String, space: &mut Space) -> Self;
+
+    fn dissolve(
+        &mut self, 
+        textures: &TextureLoader, 
+        space: &mut Space, 
+        dissolved_pixels: &mut Vec<DissolvedPixel>, 
+        ctx: Option<&mut ClientTickContext>, 
+        area_id: AreaId
+    );
+
+    fn play_impact_sound(&mut self, space: &Space, ctx: &mut ClientTickContext);
+
+    fn owner_tick(
+        &mut self, 
+        ctx: &mut TickContext, 
+        space: &mut Space, 
+        area_id: AreaId, 
+        dissolved_pixels: &mut Vec<DissolvedPixel>
+    );
+
+    fn tick(
+        &mut self, 
+        space: &mut Space, 
+        area_id: AreaId, 
+        ctx: &mut TickContext, 
+        dissolved_pixels: &mut Vec<DissolvedPixel>
+    );
+
+    fn set_pos(&mut self, position: Isometry2<f32>, space: &mut Space);
+
+    fn set_velocity(&mut self, velocity: RigidBodyVelocity, space: &mut Space);
+
+    fn from_save(save: PropSave, space: &mut Space) -> Self;
+
+    fn save(&self, space: &Space) -> PropSave;
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -288,9 +342,6 @@ impl Prop {
         let prop = Prop::from_save(prop_save, space);
 
         prop
-    }
-    pub fn server_tick(&mut self, space: &mut Space, area_id: AreaId, server_io: &mut ServerIO) {
-
     }
 
     pub fn dissolve(

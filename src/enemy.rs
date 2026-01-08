@@ -1,4 +1,4 @@
-use std::{f32::consts::PI, path::PathBuf};
+use std::{f32::consts::PI, path::PathBuf, time::Instant};
 
 use macroquad::{color::{BLACK, GREEN}, math::Vec2, shapes::{draw_rectangle, draw_rectangle_lines}};
 use nalgebra::{vector, Isometry2, Vector2};
@@ -20,13 +20,13 @@ impl EnemyId {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Task {
     BreakingProps,
     AttackPlayer,
     ChasePlayer
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Enemy {
     pub head: BodyPart,
     pub body: BodyPart,
@@ -654,6 +654,10 @@ impl Enemy {
         enemies: &mut Vec<Enemy>,
     ) {
 
+        let then = web_time::Instant::now();
+        let copy = self.clone();
+        *self = copy;
+        log::debug!("{:?}", then.elapsed());
         if self.despawn {
             return;
         }

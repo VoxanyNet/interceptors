@@ -2274,34 +2274,6 @@
     },
     {
       "pos": [
-        306.92242,
-        609.6408
-      ],
-      "size": [
-        122.0,
-        88.0
-      ],
-      "sprite_path": "assets/bridge_center.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        184.92242,
-        609.6408
-      ],
-      "size": [
-        122.0,
-        88.0
-      ],
-      "sprite_path": "assets/bridge_center.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
         1256.9224,
         697.6408
       ],
@@ -3416,18 +3388,8 @@
         782.00006,
         -49.501495
       ],
-      "layer": 1
-    },
-    {
-      "size": [
-        246.50578,
-        14.9021
-      ],
-      "pos": [
-        307.23242,
-        103.208984
-      ],
-      "layer": 1
+      "layer": 1,
+      "one_way": false
     },
     {
       "size": [
@@ -3438,7 +3400,8 @@
         -144.39305,
         197.41214
       ],
-      "layer": 1
+      "layer": 1,
+      "one_way": true
     },
     {
       "size": [
@@ -3449,7 +3412,8 @@
         2238.7441,
         15.119232
       ],
-      "layer": 1
+      "layer": 1,
+      "one_way": false
     }
   ],
   "players": [],

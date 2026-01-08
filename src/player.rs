@@ -1042,6 +1042,7 @@ impl Player {
         
     }
 
+
     pub fn from_save(save: PlayerSave, space: &mut Space) -> Self {
         let mut player = Self::new(save.pos, space, save.owner);
 

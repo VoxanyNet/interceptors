@@ -561,7 +561,8 @@ impl AreaEditor {
                 rigid_body_handle: rigid_body,
                 context_menu_data: None,
                 despawn: false,
-                layer: self.layer_toggle_ui.active_layer
+                layer: self.layer_toggle_ui.active_layer,
+                one_way: false
             }
         );
 

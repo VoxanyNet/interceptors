@@ -1,6 +1,24 @@
 
-use rapier2d::{na::vector, prelude::{CCDSolver, ColliderSet, DefaultBroadPhase, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, NarrowPhase, PhysicsPipeline, QueryPipeline, RigidBodySet}};
+use rapier2d::{na::vector, prelude::{CCDSolver, ColliderSet, ContactModificationContext, DefaultBroadPhase, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, NarrowPhase, PhysicsHooks, PhysicsPipeline, QueryPipeline, RigidBodySet, SolverFlags}};
 
+pub struct MyPhysicsHooks;
+
+impl PhysicsHooks for MyPhysicsHooks {
+    fn filter_contact_pair(&self, context: &rapier2d::prelude::PairFilterContext) -> Option<rapier2d::prelude::SolverFlags> {
+        
+        
+        let user_data = context.colliders.get(context.collider1).unwrap().user_data;
+        let y_vel= context.bodies.get(context.rigid_body2.unwrap()).unwrap().vels().linvel.y;
+
+        if y_vel > 0. && user_data == 1 {
+            return None
+        }
+
+        //log::debug!("{}", y);
+
+        Some(SolverFlags::COMPUTE_IMPULSES)
+    }
+}
 #[derive(Default)]
 pub struct Space {
     pub rigid_body_set: RigidBodySet,
@@ -34,7 +52,7 @@ impl Space {
             &mut self.multibody_joint_set, 
             &mut self.ccd_solver, 
             Some(&mut self.query_pipeline), 
-            &(), 
+            &MyPhysicsHooks, 
             &()
         );
     }

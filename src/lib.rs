@@ -46,6 +46,7 @@ pub mod tile;
 pub mod drawable;
 pub mod editor_context_menu;
 pub mod selectable_object_id;
+pub mod connection;
 
 #[derive(Clone, Debug)]
 pub struct IntersectionData {
