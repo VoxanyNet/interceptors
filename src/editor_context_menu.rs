@@ -108,10 +108,7 @@ pub trait EditorContextMenu {
         
         menu_data.data_editor_last_edit = Some(fs::metadata(&menu_data.data_editor_file_path).unwrap().created().unwrap());
 
-        Command::new("powershell")
-            //.arg("--new-window")
-            .arg("-Command")
-            .arg("code")
+        Command::new("codium")
             .arg(&menu_data.data_editor_file_path)
             .spawn().unwrap();
     }

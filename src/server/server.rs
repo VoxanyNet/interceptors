@@ -379,13 +379,13 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                 NetworkPacket::RemovePropUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let prop = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}).unwrap();
+                    if let Some(prop) = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}) {
+                        prop.mark_despawn();
+                    }
 
-                    log::debug!("Despawning prop: {:?}", prop.id);
-
-                    prop.mark_despawn();
-
+                    
                     self.network_io.send_all_except(network_packet, client_id);
+                    
                 },
                 NetworkPacket::ActiveItemSlotUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();

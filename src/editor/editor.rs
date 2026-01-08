@@ -573,14 +573,16 @@ impl AreaEditor {
     pub fn update_camera(&mut self) {
         if mouse_wheel().1 < 0. {
             self.camera_rect.w *= 1.1;
-            self.camera_rect.h *= 1.1;
         }
 
         if mouse_wheel().1 > 0. {
 
             self.camera_rect.w /= 1.1;
-            self.camera_rect.h /= 1.1;
         }
+
+        let ratio = screen_height() / screen_width();
+
+        self.camera_rect.h = self.camera_rect.w * ratio;
 
         if !is_key_down(KeyCode::LeftAlt) {
             return;

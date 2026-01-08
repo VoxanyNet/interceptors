@@ -1,4 +1,4 @@
-use std::{collections::HashMap, f32::consts::PI, fs::read_to_string, net::{TcpListener, TcpStream}, path::PathBuf, process::exit};
+use std::{collections::HashMap, f32::consts::PI, fs::read_to_string, net::{TcpListener, TcpStream}, path::PathBuf, process::exit, str::FromStr};
 
 use derive_more::From;
 use ewebsock::{WsReceiver, WsSender};
@@ -272,7 +272,7 @@ fn normalize_path(path: &PathBuf) -> PathBuf {
     
     let s = path
         .to_string_lossy()
-        .replace('/', "\\");
+        .replace('\\', "/");
 
     PathBuf::from(s)
 }
@@ -559,7 +559,7 @@ pub struct ServerIO {
 impl ServerIO {
 
     pub fn new() -> Self {
-        let listener = match TcpListener::bind("127.0.0.1:5560") {
+        let listener = match TcpListener::bind("0.0.0.0:5560") {
             Ok(listener) => listener,
             Err(error) => panic!("failed to bind listener: {}", error),
         };
@@ -828,10 +828,9 @@ impl Prefabs {
     }
     pub fn get_prefab_data(&self, path: impl ToString) -> String {
 
-        #[cfg(target_os = "linux")]
-        let path = path.to_string().replace("\\", "/");
-        
-        self.prefabs.get(&path.to_string()).unwrap().clone()
+        // this is all very silly
+        let normalized_path = normalize_path(&PathBuf::from_str(&path.to_string()).unwrap());
+        self.prefabs.get(&normalized_path.to_string_lossy().to_string()).unwrap().clone()
     }
 
     pub async fn load_prefab_data(&mut self, path: impl ToString) {
