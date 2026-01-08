@@ -500,10 +500,10 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                         }
                     ).unwrap();
 
-                    let enemy = area.enemies.iter_mut().find(|enemy| {enemy.id == update.enemy_id}).unwrap();
-
-                    enemy.health = update.health;
-
+                    if let Some(enemy) = area.enemies.iter_mut().find(|enemy| {enemy.id == update.enemy_id}) {
+                        enemy.health = update.health;
+                    }
+                    
                     self.network_io.send_all_except(network_packet, client_id);
                 },
                 NetworkPacket::EnemyDespawnUpdate(update) => {

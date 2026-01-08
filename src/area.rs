@@ -562,7 +562,7 @@ impl Area {
         }
         let mouse_pos = rapier_mouse_world_pos(&ctx.camera_rect);
         
-        let enemy = Enemy::new( Isometry2::new(mouse_pos, 0.), crate::Owner::ClientId(*ctx.client_id), &mut self.space, None);
+        let enemy = Enemy::new( Isometry2::new(mouse_pos, 0.), crate::Owner::Server, &mut self.space, None);
 
         ctx.network_io.send_network_packet(crate::updates::NetworkPacket::NewEnemyUpdate(
             NewEnemyUpdate {

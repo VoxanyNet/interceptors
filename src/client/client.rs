@@ -563,11 +563,11 @@ impl Client {
                         }
                     ).unwrap();
 
-                    let enemy = area.enemies.iter_mut().find(|enemy| {enemy.id == update.enemy_id}).unwrap();
-
-                    enemy.last_health_update = web_time::Instant::now();
-
-                    enemy.health = update.health
+                    if let Some(enemy) = area.enemies.iter_mut().find(|enemy| {enemy.id == update.enemy_id}) {
+                        enemy.last_health_update = web_time::Instant::now();
+                        enemy.health = update.health
+                    }
+                    
                 },
                 NetworkPacket::PlayerHealthUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();

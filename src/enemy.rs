@@ -45,6 +45,7 @@ pub struct Enemy {
     pub previous_velocity: RigidBodyVelocity,
     pub previous_position: Isometry2<f32>,
     pub last_position_update: web_time::Instant,
+    pub last_velocity_update: web_time::Instant,
     pub last_health_update: web_time::Instant,
     pub death_time: Option<web_time::Instant>
 }
@@ -335,6 +336,7 @@ impl Enemy {
             previous_position: Isometry2::default(),
             previous_velocity: RigidBodyVelocity::zero(),
             last_position_update: web_time::Instant::now(),
+            last_velocity_update: web_time::Instant::now(),
             last_health_update: web_time::Instant::now(),
             death_time: None
             
@@ -566,7 +568,7 @@ impl Enemy {
             
         }
 
-        if *pos != self.previous_position && self.last_position_update.elapsed().as_secs_f32() < 3. {
+        if *pos != self.previous_position && self.last_position_update.elapsed().as_secs_f32() > 3. {
 
             let packet = NetworkPacket::EnemyPositionUpdate(
                 EnemyPositionUpdate {
@@ -576,18 +578,7 @@ impl Enemy {
                 }
             );
 
-            match ctx {
-                TickContext::Client(ctx) => {
-                    ctx.network_io.send_network_packet(
-                        packet
-                    );
-                },
-                TickContext::Server(ctx) => {
-                    ctx.network_io.send_all_clients(
-                        packet
-                    );
-                },
-            };
+            ctx.send_network_packet(packet);
             
 
             self.last_position_update = web_time::Instant::now();
@@ -625,6 +616,10 @@ impl Enemy {
         self.despawn_if_below_level(area_id, ctx, space, despawn_y);
 
     }
+
+    // pub fn send_velocity_update(&mut self) {
+    //     if self.last_velocity_update.elapsed().as_secs_f32()
+    // }
 
 
     pub fn set_weapon(&mut self, area_id: AreaId, ctx: &mut ClientTickContext, space: &mut Space, weapon: WeaponType) {

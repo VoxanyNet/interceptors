@@ -515,8 +515,6 @@ impl WeaponBase {
 
         if let TickContext::Client(ctx) = ctx {
             self.update_holding_fire(ctx);
-            self.shake_screen(ctx);
-            self.play_fire_sound(ctx);
         };
         // dont shoot while reloading
         if self.last_reload.elapsed() < self.reload_duration {
@@ -536,6 +534,11 @@ impl WeaponBase {
 
         
         self.rounds -= 1;
+
+        if let TickContext::Client(ctx) = ctx {
+            self.shake_screen(ctx);
+            self.play_fire_sound(ctx);
+        };
         self.last_fire = web_time::Instant::now();
         
         let bullet_vectors = self.get_bullet_vectors(bullet_count, innaccuracy_factor, weapon_fire_context);
