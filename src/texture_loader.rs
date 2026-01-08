@@ -35,9 +35,17 @@ impl TextureLoader {
         }
     }
     pub fn get(&self, texture_path: &PathBuf) -> &Texture2D {   
+
+        web_sys::console::log_1(&format!("{:?}", texture_path).into());
+        web_sys::console::log_1(&format!("{:?}", self.cache.keys()).into());
+        web_sys::console::log_1(&format!("{:?}", self.cache.contains_key(texture_path)).into());
         let normalized_path = normalize_path(texture_path);
 
-        self.cache.get(&normalized_path).unwrap()
+        let texture = self.cache.get(&normalized_path).unwrap();
+
+        web_sys::console::log_1(&format!("got it!").into());
+
+        texture
     }
 
     

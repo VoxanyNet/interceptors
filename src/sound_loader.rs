@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use fxhash::FxHashMap;
 use macroquad::audio::{load_sound, Sound};
 
+use crate::normalize_path;
+
 pub struct SoundLoader {
     pub cache: FxHashMap<PathBuf, Sound>
 }
@@ -29,6 +31,8 @@ impl SoundLoader {
     }
     pub fn get(&self, sound_path: PathBuf) -> &Sound {
 
-        self.cache.get(&sound_path).unwrap()
+        let normalized_path = normalize_path(&sound_path);
+
+        self.cache.get(&normalized_path).unwrap()
     }
 }

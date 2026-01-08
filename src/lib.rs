@@ -269,6 +269,7 @@ pub fn uuid_u64() -> u64 {
 
 #[cfg(target_arch = "wasm32")]
 fn normalize_path(path: &PathBuf) -> PathBuf {
+    
     let s = path
         .to_string_lossy()
         .replace('/', "\\");
@@ -276,10 +277,29 @@ fn normalize_path(path: &PathBuf) -> PathBuf {
     PathBuf::from(s)
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+// #[cfg(not(target_arch = "wasm32"))]
+// fn normalize_path(path: &PathBuf) -> PathBuf {
+//     path.clone()
+// }
+
+#[cfg(target_os = "windows")]
 fn normalize_path(path: &PathBuf) -> PathBuf {
-    path.clone()
+    let s = path
+        .to_string_lossy()
+        .replace("/", "\\");
+
+    PathBuf::from(s)
 }
+
+#[cfg(target_os = "linux")]
+fn normalize_path(path: &PathBuf) -> PathBuf {
+    let s = path
+        .to_string_lossy()
+        .replace("\\", "/");
+
+    PathBuf::from(s)
+}
+
 
 pub async fn draw_texture_onto_physics_body(
     rigid_body_handle: RigidBodyHandle,
