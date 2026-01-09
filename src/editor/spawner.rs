@@ -332,7 +332,7 @@ impl Spawner {
 
                 generic_physics_prop.set_pos(vector![rapier_cursor.x + generic_physics_prop_save.size.x / 2., rapier_cursor.y - generic_physics_prop_save.size.y / 2.].into(), &mut area.space);
 
-                area.props.push(generic_physics_prop);
+                area.props.push(Box::new(generic_physics_prop));
             },
 
             SpawnerCategory::Tile => {

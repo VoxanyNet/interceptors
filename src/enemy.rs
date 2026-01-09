@@ -5,7 +5,7 @@ use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::{parry::query::Ray, prelude::{ColliderHandle, Group, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, ClientTickContext, Owner, ServerTickContext, TickContext, angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, drawable::{DrawContext, Drawable}, get_angle_between_rapier_points, player::{Facing, Player, PlayerId}, prop::{DissolvedPixel, Prop}, rapier_to_macroquad, space::Space, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
+use crate::{ClientId, ClientTickContext, Owner, ServerTickContext, TickContext, angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, drawable::{DrawContext, Drawable}, get_angle_between_rapier_points, player::{Facing, Player, PlayerId}, prop::{DissolvedPixel, Prop, PropTrait}, rapier_to_macroquad, space::Space, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct EnemyId {
@@ -173,7 +173,7 @@ impl Enemy {
     }
     pub fn break_obstacles(
         &mut self, 
-        props: &mut Vec<Prop>, 
+        props: &mut Vec<Box<dyn PropTrait>>, 
         space: &mut Space, 
         ctx: &mut TickContext, 
         players: &mut Vec<Player>, 
@@ -217,8 +217,8 @@ impl Enemy {
         let mut blocking_prop_collider = None;
 
         for prop in &mut *props {
-            if blocking_colliders.contains(&prop.collider_handle) {
-                blocking_prop_collider = Some(prop.collider_handle);
+            if blocking_colliders.contains(&prop.as_prop().collider_handle) {
+                blocking_prop_collider = Some(prop.as_prop().collider_handle);
 
                 break;
             }
@@ -248,7 +248,7 @@ impl Enemy {
     }
 
 
-    pub fn set_task(&mut self, space: &Space, players: &Vec<Player>, props: &Vec<Prop>) {
+    pub fn set_task(&mut self, space: &Space, players: &Vec<Player>, props: &Vec<Box<dyn PropTrait>>) {
         
         if self.last_task_change.elapsed().as_secs_f32() < 0.5 {
             return;
@@ -257,7 +257,7 @@ impl Enemy {
         let colliders = self.get_colliders_between_enemy_and_target(space, players);
 
         for prop in props {
-            if colliders.contains(&prop.collider_handle) {
+            if colliders.contains(&prop.as_prop().collider_handle) {
                 self.task = Task::BreakingProps;
 
                 self.last_task_change = web_time::Instant::now();
@@ -490,7 +490,7 @@ impl Enemy {
 
     pub fn fire_weapon(
         &mut self, 
-        props: &mut Vec<Prop>, 
+        props: &mut Vec<Box<dyn PropTrait>>, 
         space: &mut Space, 
         ctx: &mut TickContext, 
         players: &mut Vec<Player>, 
@@ -522,7 +522,7 @@ impl Enemy {
 
     pub fn owner_tick(
         &mut self, 
-        props: &mut Vec<Prop>, 
+        props: &mut Vec<Box<dyn PropTrait>>, 
         space: &mut Space, 
         ctx: &mut TickContext, 
         players: &mut Vec<Player>, 
@@ -647,7 +647,7 @@ impl Enemy {
         ctx: &mut TickContext, 
         players: &mut Vec<Player>, 
         despawn_y: f32,
-        props: &mut Vec<Prop>,
+        props: &mut Vec<Box<dyn PropTrait>>,
         bullet_trails: &mut Vec<BulletTrail>,
         area_id: AreaId,
         dissolved_pixels: &mut Vec<DissolvedPixel>, 

@@ -5,7 +5,7 @@ use nalgebra::{vector, Isometry2, Vector2};
 use noise::{NoiseFn, Perlin};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, selectable_object_id::{SelectableObject, SelectableObjectId}, space::Space, texture_loader::TextureLoader, tile::{Tile, TileSave}, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::weapon::Shotgun, smg::weapon::SMG, weapon_type::WeaponType}};
+use crate::{ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave, PropTrait}, rapier_mouse_world_pos, selectable_object_id::{SelectableObject, SelectableObjectId}, space::Space, texture_loader::TextureLoader, tile::{Tile, TileSave}, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::weapon::Shotgun, smg::weapon::SMG, weapon_type::WeaponType}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -26,7 +26,7 @@ pub struct Area {
     pub decorations: Vec<Decoration>,
     pub clips: Vec<Clip>,
     pub players: Vec<Player>,
-    pub props: Vec<Prop>,
+    pub props: Vec<Box<dyn PropTrait>>,
     pub id: AreaId,
     pub bullet_trails: Vec<BulletTrail>,
     pub dissolved_pixels: Vec<DissolvedPixel>,
@@ -276,7 +276,7 @@ impl Area {
                 None
             },
             SelectableObjectId::Prop(prop_id) => {
-                if let Some(prop) = self.props.iter_mut().find(|prop| {prop.id == prop_id}) {
+                if let Some(prop) = self.props.iter_mut().find(|prop| {prop.as_ref().as_prop().id == prop_id}) {
                     Some(SelectableObject::Prop(prop))
                 } else {
                     None
@@ -402,7 +402,7 @@ impl Area {
     pub fn get_drawable_objects<'a> (
         backgrounds: &'a Vec<Background>,
         decorations: &'a Vec<Decoration>,
-        props: &'a Vec<Prop>,
+        props: &'a Vec<Box<dyn PropTrait>>,
         dropped_items: &'a Vec<DroppedItem>,
         computer: &'a Option<Computer>,
         players: &'a Vec<Player>,
@@ -420,7 +420,7 @@ impl Area {
             drawable_objects.push(decoration);
         }
         for prop in props {
-            drawable_objects.push(prop);
+            drawable_objects.push(prop.as_prop());
         }
         for dropped_item in dropped_items {
             drawable_objects.push(dropped_item);
@@ -448,7 +448,7 @@ impl Area {
     }
     pub fn get_drawable_objects_mut<'a> (
         decorations: &'a mut Vec<Decoration>,
-        props: &'a mut Vec<Prop>,
+        props: &'a mut Vec<Box<dyn PropTrait>>,
         dropped_items: &'a mut Vec<DroppedItem>,
         computer: &'a mut Option<Computer>,
         players: &'a mut Vec<Player>,
@@ -463,7 +463,7 @@ impl Area {
             drawable_objects.push(decoration);
         }
         for prop in props {
-            drawable_objects.push(prop);
+            drawable_objects.push(prop.as_prop_mut());
         }
         for dropped_item in dropped_items {
             drawable_objects.push(dropped_item);
@@ -551,7 +551,7 @@ impl Area {
                 )
             );
 
-            self.props.push(new_prop);
+            self.props.push(Box::new(new_prop));
         }
     }
 
@@ -715,7 +715,7 @@ impl Area {
         self.props.retain_mut(
             |prop|
             {
-                if !prop.despawn {
+                if !prop.as_prop().despawn {
                     return true;
                 }
 
@@ -785,17 +785,17 @@ impl Area {
         );
     }
 
-    pub fn find_prop_mut(&mut self, id: PropId) -> Option<&mut Prop> {
-        if let Some(p) = self.props.iter_mut().find(|p| p.id == id) {
+    pub fn find_prop_mut(&mut self, id: PropId) -> Option<&mut Box<dyn PropTrait>> {
+        if let Some(p) = self.props.iter_mut().find(|p| p.as_prop().id == id) {
             return Some(p);
         }
-        if let Some(c) = &mut self.computer {
+        // if let Some(c) = &mut self.computer {
 
-            if c.prop.id == id {
-                return Some(&mut c.prop)
-            }
+        //     if c.prop.id == id {
+        //         return Some(&mut c.prop)
+        //     }
             
-        }
+        // }
         None
     }
 
@@ -807,7 +807,7 @@ impl Area {
         let mut clips: Vec<Clip> = Vec::new();
         let mut players: Vec<Player> = Vec::new();
         let mut backgrounds: Vec<Background> = Vec::new();
-        let mut generic_physics_props: Vec<Prop> = Vec::new();
+        let mut generic_physics_props: Vec<Box<dyn PropTrait>> = Vec::new();
         let mut enemies: Vec<Enemy> = Vec::new();
         let mut dropped_items: Vec<DroppedItem> = Vec::new();
         let mut ambiance: Vec<Ambiance> = Vec::new();  
@@ -839,7 +839,7 @@ impl Area {
         
         for generic_physics_prop in save.generic_physics_props {
             generic_physics_props.push(
-                Prop::from_save(generic_physics_prop, &mut space)
+                Box::new(Prop::from_save(generic_physics_prop, &mut space))
             );
         }
 

@@ -327,22 +327,22 @@ impl Client {
                 NetworkPacket::PropVelocityUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id} ).unwrap();
 
-                    let prop = area.props.iter_mut().find(|prop| {prop.id == update.id});
+                    let prop = area.props.iter_mut().find(|prop| {prop.as_prop().id == update.id});
 
                     if let Some(prop) = prop { prop.set_velocity(update.velocity, &mut area.space) }
                 },
                 NetworkPacket::PropUpdateOwner(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let prop = area.props.iter_mut().find(|prop| {prop.id} == update.id).unwrap();
+                    let prop = area.props.iter_mut().find(|prop| {prop.as_prop().id} == update.id).unwrap();
 
-                    prop.owner = update.owner;
+                    prop.as_prop_mut().owner = update.owner;
 
                 },
                 NetworkPacket::NewProp(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    area.props.push(Prop::from_save(update.prop, &mut area.space));
+                    area.props.push(Box::new(Prop::from_save(update.prop, &mut area.space)));
 
 
                 },
@@ -395,9 +395,9 @@ impl Client {
                 NetworkPacket::PropPositionUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let prop = if let Some(prop) = area.props.iter_mut().find(|prop| {prop.id} == update.prop_id) {prop} else {continue};
+                    let prop = if let Some(prop) = area.props.iter_mut().find(|prop| {prop.as_prop().id} == update.prop_id) {prop} else {continue};
 
-                    let current_pos = match area.space.rigid_body_set.get(prop.rigid_body_handle) {
+                    let current_pos = match area.space.rigid_body_set.get(prop.as_prop().rigid_body_handle) {
                         Some(body) => body.position(),
                         None => {
                             continue;
@@ -413,14 +413,14 @@ impl Client {
 
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let prop = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}).unwrap();
+                    let prop = area.props.iter_mut().find(|prop|{prop.as_prop().id == update.prop_id}).unwrap();
 
                     prop.dissolve(&self.textures, &mut area.space, &mut area.dissolved_pixels,None, area.id);
                 }
                 NetworkPacket::RemovePropUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let prop = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}).unwrap();
+                    let prop = area.props.iter_mut().find(|prop|{prop.as_prop().id == update.prop_id}).unwrap();
 
                     prop.mark_despawn();
 

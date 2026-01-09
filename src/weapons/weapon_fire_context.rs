@@ -1,9 +1,9 @@
-use crate::{area::AreaId, bullet_trail::BulletTrail, enemy::Enemy, player::{Facing, Player}, prop::{DissolvedPixel, Prop}, space::Space, weapons::weapon::weapon::WeaponOwner};
+use crate::{area::AreaId, bullet_trail::BulletTrail, enemy::Enemy, player::{Facing, Player}, prop::{DissolvedPixel, Prop, PropTrait}, space::Space, weapons::weapon::weapon::WeaponOwner};
 
 pub struct WeaponFireContext<'a> {
     pub space: &'a mut Space,
     pub players: &'a mut Vec<Player>,
-    pub props: &'a mut Vec<Prop>,
+    pub props: &'a mut Vec<Box<dyn PropTrait>>,
     pub bullet_trails: &'a mut Vec<BulletTrail>,
     pub facing: Facing,
     pub area_id: AreaId,

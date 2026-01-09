@@ -1,4 +1,4 @@
-use crate::{clip::Clip, decoration::Decoration, drawable::Drawable, prop::{Prop, PropId}, tile::Tile};
+use crate::{clip::Clip, decoration::Decoration, drawable::Drawable, prop::{Prop, PropId, PropTrait}, tile::Tile};
 use nalgebra::Vector2;
 
 #[derive(Clone, PartialEq, Copy, Debug)]
@@ -12,7 +12,7 @@ pub enum SelectableObjectId {
 pub enum SelectableObject<'a> {
     Decoration(&'a mut Decoration),
     Tile(&'a mut Tile),
-    Prop(&'a mut Prop),
+    Prop(&'a mut Box<dyn PropTrait>),
     Clip(&'a mut Clip)
 }
 
@@ -30,7 +30,7 @@ impl<'a> SelectableObject<'a> {
 impl SelectableObjectId {
 
     pub fn get_object<'a> (&self, 
-        props: &'a mut Vec<Prop>, 
+        props: &'a mut Vec<Box<dyn PropTrait>>, 
         tiles: &'a mut Vec<Vec<Option<Tile>>>, 
         decorations: &'a mut Vec<Decoration>,
         clips: &'a mut Vec<Clip>
@@ -49,7 +49,7 @@ impl SelectableObjectId {
                 None
             },
             SelectableObjectId::Prop(prop_id) => {
-                if let Some(prop) = props.iter_mut().find(|prop| {prop.id == *prop_id}) {
+                if let Some(prop) = props.iter_mut().find(|prop| {prop.as_prop().id == *prop_id}) {
                     Some(SelectableObject::Prop(prop))
                 } else {
                     None
