@@ -151,7 +151,7 @@ pub trait PropTrait: EditorContextMenu + Drawable {
     fn owner_mut(&mut self) -> &mut Option<Owner>;
     fn name(&self) -> String;
     fn id(&self) -> PropId;
-    fn mark_despawn(&self);
+    fn mark_despawn(&mut self);
     fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32);
     fn get_preview_resolution(&self, size: f32, prefabs: &Prefabs, textures: &TextureLoader) -> Vec2;
     fn handle_bullet_impact(
@@ -239,8 +239,8 @@ impl PropTrait for Prop {
         self.id
     }
 
-    fn mark_despawn(&self) {
-        self.mark_despawn()
+    fn mark_despawn(&mut self) {
+        self.mark_despawn();
     }
 
     fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
