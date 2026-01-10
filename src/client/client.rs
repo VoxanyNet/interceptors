@@ -3,8 +3,6 @@ use std::{collections::HashMap, path::PathBuf, process::exit, time::Instant};
 use interceptors_lib::{ClientIO, ClientId, ClientTickContext, Prefabs, area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, player::{ItemSlot, Player}, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, weapons::weapon_type::WeaponType, world::World};
 use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{BLACK, WHITE}, input::{is_key_released, KeyCode}, math::{vec2, Rect}, prelude::{gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
 use rapier2d::math::Vector;
-use rhai::{CustomType, Engine};
-use rhai::TypeBuilder;
 
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
 
@@ -108,14 +106,6 @@ pub struct ExampleEntity {
 impl Client {
     pub async fn connect() -> Self {
 
-        let mut engine = Engine::new();
-
-        engine.register_type_with_name::<ExampleEntity>("Entity")
-            .register_get_set(
-                "name", 
-                |entity: &mut ExampleEntity| entity.name.clone(), 
-                |entity: &mut ExampleEntity, new_val| entity.name = new_val
-            );
 
         let mut prefab_data = Prefabs::new();
 

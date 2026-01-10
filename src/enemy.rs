@@ -217,6 +217,9 @@ impl Enemy {
         let mut blocking_prop_collider = None;
 
         for prop in &mut *props {
+
+            let cool_prop: Option<&Prop> = prop.downcast_ref();
+
             if blocking_colliders.contains(&prop.as_prop().collider_handle) {
                 blocking_prop_collider = Some(prop.as_prop().collider_handle);
 

@@ -6,6 +6,8 @@ use nalgebra::{Isometry2, Vector2};
 use rapier2d::{parry::utils::hashmap::HashMap, prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
+use downcast_rs::impl_downcast;
+use downcast_rs::Downcast;
 
 use crate::{ClientId, ClientTickContext, Owner, Prefabs, ServerIO, TickContext, area::AreaId, draw_preview, draw_texture_onto_physics_body, drawable::{DrawContext, Drawable}, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, get_preview_resolution, player::PlayerId, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
@@ -146,7 +148,7 @@ impl Drawable for DissolvedPixel {
     }
 }
 
-pub trait PropTrait: EditorContextMenu + Drawable {
+pub trait PropTrait: Downcast + EditorContextMenu + Drawable {
     fn owner(&self) -> Option<Owner>;
     fn owner_mut(&mut self) -> &mut Option<Owner>;
     fn name(&self) -> String;
@@ -204,6 +206,8 @@ pub trait PropTrait: EditorContextMenu + Drawable {
 
     fn save(&self, space: &Space) -> PropSave;
 }
+
+impl_downcast!(PropTrait);
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct Prop {
