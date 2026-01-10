@@ -336,7 +336,7 @@ impl WeaponBase {
 
         for prop in &mut *weapon_fire_context.props {
 
-            let collider = prop.as_prop().collider_handle;
+            let collider = prop.collider_handle;
 
             for impact in impacts.iter().filter(|impact| {impact.impacted_collider == collider}) {
                 prop.handle_bullet_impact(ctx, &impact, weapon_fire_context.space, weapon_fire_context.area_id, weapon_fire_context.dissolved_pixels);

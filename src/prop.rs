@@ -6,8 +6,6 @@ use nalgebra::{Isometry2, Vector2};
 use rapier2d::{parry::utils::hashmap::HashMap, prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
-use downcast_rs::impl_downcast;
-use downcast_rs::Downcast;
 
 use crate::{ClientId, ClientTickContext, Owner, Prefabs, ServerIO, TickContext, area::AreaId, draw_preview, draw_texture_onto_physics_body, drawable::{DrawContext, Drawable}, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, get_preview_resolution, player::PlayerId, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
@@ -148,12 +146,9 @@ impl Drawable for DissolvedPixel {
     }
 }
 
-pub trait PropTrait: Downcast + EditorContextMenu + Drawable {
-    fn owner(&self) -> Option<Owner>;
-    fn owner_mut(&mut self) -> &mut Option<Owner>;
+pub trait PropTrait: EditorContextMenu + Drawable {
     fn name(&self) -> String;
-    fn id(&self) -> PropId;
-    fn mark_despawn(&mut self);
+    fn mark_despawn(&self);
     fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32);
     fn get_preview_resolution(&self, size: f32, prefabs: &Prefabs, textures: &TextureLoader) -> Vec2;
     fn handle_bullet_impact(
@@ -164,12 +159,10 @@ pub trait PropTrait: Downcast + EditorContextMenu + Drawable {
         area_id: AreaId,
         dissolved_pixels: &mut Vec<DissolvedPixel>
     );
-    fn as_prop(&self) -> &Prop;
-    fn as_prop_mut(&mut self) -> &mut Prop;
 
     fn despawn_callback(&mut self, space: &mut Space, area_id: AreaId);
 
-    fn from_prefab(prefab_path: String, space: &mut Space) -> Self where Self: Sized;
+    fn from_prefab(prefab_path: String, space: &mut Space) -> Self;
 
     fn dissolve(
         &mut self, 
@@ -202,12 +195,10 @@ pub trait PropTrait: Downcast + EditorContextMenu + Drawable {
 
     fn set_velocity(&mut self, velocity: RigidBodyVelocity, space: &mut Space);
 
-    fn from_save(save: PropSave, space: &mut Space) -> Self where Self: Sized;
+    fn from_save(save: PropSave, space: &mut Space) -> Self;
 
     fn save(&self, space: &Space) -> PropSave;
 }
-
-impl_downcast!(PropTrait);
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct Prop {
@@ -224,114 +215,6 @@ pub struct Prop {
     name: String,
     context_menu_data: Option<EditorContextMenuData>,
     layer: u32
-}
-
-impl PropTrait for Prop {
-    fn name(&self) -> String {
-        self.name.clone()
-    }
-
-    fn owner(&self) -> Option<Owner> {
-        self.owner
-    }
-    
-    fn owner_mut(&mut self) -> &mut Option<Owner> {
-        &mut self.owner
-    }
-
-    fn id(&self) -> PropId {
-        self.id
-    }
-
-    fn mark_despawn(&mut self) {
-        self.mark_despawn();
-    }
-
-    fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
-        self.draw_preview(textures, size, draw_pos, prefabs, color, rotation);
-    }
-
-    fn get_preview_resolution(&self, size: f32, prefabs: &Prefabs, textures: &TextureLoader) -> Vec2 {
-        self.get_preview_resolution(size, prefabs, textures)
-    }
-
-    fn handle_bullet_impact(
-        &mut self, 
-        ctx: &mut TickContext, 
-        impact: &BulletImpactData, 
-        space: &mut Space, 
-        area_id: AreaId,
-        dissolved_pixels: &mut Vec<DissolvedPixel>
-    ) {
-        self.handle_bullet_impact(ctx, impact, space, area_id, dissolved_pixels);
-    }
-
-    fn as_prop(&self) -> &Prop {
-        self
-    }
-
-    fn as_prop_mut(&mut self) -> &mut Prop {
-        self
-    }
-
-    fn despawn_callback(&mut self, space: &mut Space, area_id: AreaId) {
-        self.despawn_callback(space, area_id);
-    }
-
-    fn from_prefab(prefab_path: String, space: &mut Space) -> Self where Self: Sized {
-        Self::from_prefab(prefab_path, space)
-    }
-
-    fn dissolve(
-        &mut self, 
-        textures: &TextureLoader, 
-        space: &mut Space, 
-        dissolved_pixels: &mut Vec<DissolvedPixel>, 
-        ctx: Option<&mut ClientTickContext>, 
-        area_id: AreaId
-    ) {
-        self.dissolve(textures, space, dissolved_pixels, ctx, area_id);
-    }
-
-    fn play_impact_sound(&mut self, space: &Space, ctx: &mut ClientTickContext) {
-        self.play_impact_sound(space, ctx);
-    }
-
-    fn owner_tick(
-        &mut self, 
-        ctx: &mut TickContext, 
-        space: &mut Space, 
-        area_id: AreaId, 
-        dissolved_pixels: &mut Vec<DissolvedPixel>
-    ) {
-        self.owner_tick(ctx, space, area_id, dissolved_pixels);
-    }
-
-    fn tick(
-        &mut self, 
-        space: &mut Space, 
-        area_id: AreaId, 
-        ctx: &mut TickContext, 
-        dissolved_pixels: &mut Vec<DissolvedPixel>
-    ) {
-        self.tick(space, area_id, ctx, dissolved_pixels);
-    }
-
-    fn set_pos(&mut self, position: Isometry2<f32>, space: &mut Space) {
-        self.set_pos(position, space);
-    }
-
-    fn set_velocity(&mut self, velocity: RigidBodyVelocity, space: &mut Space) {
-        self.set_velocity(velocity, space);
-    }
-
-    fn from_save(save: PropSave, space: &mut Space) -> Self where Self: Sized {
-        Self::from_save(save, space)
-    }
-
-    fn save(&self, space: &Space) -> PropSave {
-        self.save(space)
-    }
 }
 
 
@@ -807,6 +690,13 @@ impl Drawable for Prop {
     }
 }
 
+// this SHOULD be a temporary fix to make dissolved pixels react to bullets
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct StupidDissolvedPixelVelocityUpdate {
+    pub area_id: AreaId,
+    pub bullet_vector: Vector2<f32>,
+    pub weapon_pos: Vector2<f32>
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct PropSave {
@@ -881,15 +771,6 @@ pub struct DissolveProp {
     pub prop_id: PropId,
     pub area_id: AreaId
 }
-
-// this SHOULD be a temporary fix to make dissolved pixels react to bullets
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct StupidDissolvedPixelVelocityUpdate {
-    pub area_id: AreaId,
-    pub bullet_vector: Vector2<f32>,
-    pub weapon_pos: Vector2<f32>
-}
-
 
 
 

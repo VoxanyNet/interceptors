@@ -72,7 +72,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
         if self.network_io.clients.len() == 1 {
             for area in &mut self.world.areas {
                 for prop in &mut area.props {
-                    self.network_io.send_all_clients(NetworkPacket::PropUpdateOwner(PropUpdateOwner{ owner: Some(Owner::ClientId(new_client)), id: prop.id(), area_id: area.id }));
+                    self.network_io.send_all_clients(NetworkPacket::PropUpdateOwner(PropUpdateOwner{ owner: Some(Owner::ClientId(new_client)), id: prop.id, area_id: area.id }));
                 }
             }
         }
@@ -184,7 +184,15 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                         }
                     ).unwrap();
 
-                    let mut prop = area.props.iter_mut().find(|prop| {prop.id() == update.id});
+                    let mut prop = area.props.iter_mut().find(|prop| {prop.id == update.id});
+
+                    if prop.is_none() {
+                        if let Some(computer) = &mut area.computer {
+                            if computer.prop.id == update.id {
+                                prop = Some(&mut computer.prop);
+                            }
+                        }
+                    }
 
                     if let Some(prop) = prop {
                         prop.set_velocity(update.velocity, &mut area.space);
@@ -202,7 +210,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                         }
                     ).unwrap();
 
-                    area.props.push(Box::new(Prop::from_save(update.prop.clone(), &mut area.space)));
+                    area.props.push(Prop::from_save(update.prop.clone(), &mut area.space));
 
                     self.network_io.send_all_except(network_packet, client_id);
 
@@ -331,7 +339,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                 NetworkPacket::PropPositionUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let prop = match area.props.iter_mut().find(|prop| {prop.id()} == update.prop_id) {
+                    let prop = match area.props.iter_mut().find(|prop| {prop.id} == update.prop_id) {
                         Some(prop) => prop,
                         None => {
                             log::warn!("Received bad prop position update");
@@ -340,7 +348,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                         },
                     };
 
-                    let current_pos = area.space.rigid_body_set.get(prop.as_prop().rigid_body_handle).unwrap().position();
+                    let current_pos = area.space.rigid_body_set.get(prop.rigid_body_handle).unwrap().position();
 
                     if (update.pos.translation.x - current_pos.translation.x).abs() > 20. {
                         prop.set_pos(update.pos, &mut area.space);
@@ -355,9 +363,9 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                 NetworkPacket::PropUpdateOwner(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let prop = area.props.iter_mut().find(|prop| {prop.id()} == update.id).unwrap();
+                    let prop = area.props.iter_mut().find(|prop| {prop.id} == update.id).unwrap();
 
-                    *prop.owner_mut() = update.owner;
+                    prop.owner = update.owner;
 
                     self.network_io.send_all_except(network_packet, client_id);
                 },
@@ -371,7 +379,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                 NetworkPacket::RemovePropUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    if let Some(prop) = area.props.iter_mut().find(|prop|{prop.id() == update.prop_id}) {
+                    if let Some(prop) = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}) {
                         prop.mark_despawn();
                     }
 

@@ -6,7 +6,7 @@ use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, ClientTickContext, IntersectionData, Owner, Prefabs, TickContext, angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, mouse_world_pos, prop::{DissolvedPixel, Prop, PropTrait}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
+use crate::{ClientId, ClientTickContext, IntersectionData, Owner, Prefabs, TickContext, angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, mouse_world_pos, prop::{DissolvedPixel, Prop}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -522,7 +522,7 @@ impl Player {
         &mut self, 
         ctx: &mut TickContext, 
         space: &mut Space, 
-        props: &mut Vec<Box<dyn PropTrait>>, 
+        props: &mut Vec<Prop>, 
         players: &mut Vec<Player>, 
         bullet_trails: &mut Vec<BulletTrail>,
         facing: Facing,
@@ -730,7 +730,7 @@ impl Player {
         area_id: AreaId,
         players: &mut Vec<Player>,
         enemies: &mut Vec<Enemy>,
-        props: &mut Vec<Box<dyn PropTrait>>,
+        props: &mut Vec<Prop>,
         bullet_trails: &mut Vec<BulletTrail>,
         dissolved_pixels: &mut Vec<DissolvedPixel>,
         dropped_items: &mut Vec<DroppedItem>,
@@ -1013,7 +1013,7 @@ impl Player {
         area_id: AreaId,
         players: &mut Vec<Player>,
         enemies: &mut Vec<Enemy>,
-        props: &mut Vec<Box<dyn PropTrait>>,
+        props: &mut Vec<Prop>,
         bullet_trails: &mut Vec<BulletTrail>,
         dissolved_pixels: &mut Vec<DissolvedPixel>,
         dropped_items: &mut Vec<DroppedItem>,

@@ -1,8 +1,10 @@
-use std::{collections::HashMap, path::PathBuf, process::exit, time::Instant};
+use std::{collections::HashMap, path::PathBuf, process::exit};
 
 use interceptors_lib::{ClientIO, ClientId, ClientTickContext, Prefabs, area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, player::{ItemSlot, Player}, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, weapons::weapon_type::WeaponType, world::World};
 use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{BLACK, WHITE}, input::{is_key_released, KeyCode}, math::{vec2, Rect}, prelude::{gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
 use rapier2d::math::Vector;
+use rhai::{CustomType, Engine};
+use rhai::TypeBuilder;
 
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
 
@@ -106,6 +108,14 @@ pub struct ExampleEntity {
 impl Client {
     pub async fn connect() -> Self {
 
+        let mut engine = Engine::new();
+
+        engine.register_type_with_name::<ExampleEntity>("Entity")
+            .register_get_set(
+                "name", 
+                |entity: &mut ExampleEntity| entity.name.clone(), 
+                |entity: &mut ExampleEntity, new_val| entity.name = new_val
+            );
 
         let mut prefab_data = Prefabs::new();
 
@@ -317,22 +327,22 @@ impl Client {
                 NetworkPacket::PropVelocityUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id} ).unwrap();
 
-                    let prop = area.props.iter_mut().find(|prop| {prop.as_prop().id == update.id});
+                    let prop = area.props.iter_mut().find(|prop| {prop.id == update.id});
 
                     if let Some(prop) = prop { prop.set_velocity(update.velocity, &mut area.space) }
                 },
                 NetworkPacket::PropUpdateOwner(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let prop = area.props.iter_mut().find(|prop| {prop.as_prop().id} == update.id).unwrap();
+                    let prop = area.props.iter_mut().find(|prop| {prop.id} == update.id).unwrap();
 
-                    prop.as_prop_mut().owner = update.owner;
+                    prop.owner = update.owner;
 
                 },
                 NetworkPacket::NewProp(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    area.props.push(Box::new(Prop::from_save(update.prop, &mut area.space)));
+                    area.props.push(Prop::from_save(update.prop, &mut area.space));
 
 
                 },
@@ -385,9 +395,9 @@ impl Client {
                 NetworkPacket::PropPositionUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let prop = if let Some(prop) = area.props.iter_mut().find(|prop| {prop.as_prop().id} == update.prop_id) {prop} else {continue};
+                    let prop = if let Some(prop) = area.props.iter_mut().find(|prop| {prop.id} == update.prop_id) {prop} else {continue};
 
-                    let current_pos = match area.space.rigid_body_set.get(prop.as_prop().rigid_body_handle) {
+                    let current_pos = match area.space.rigid_body_set.get(prop.rigid_body_handle) {
                         Some(body) => body.position(),
                         None => {
                             continue;
@@ -403,14 +413,14 @@ impl Client {
 
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let prop = area.props.iter_mut().find(|prop|{prop.as_prop().id == update.prop_id}).unwrap();
+                    let prop = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}).unwrap();
 
                     prop.dissolve(&self.textures, &mut area.space, &mut area.dissolved_pixels,None, area.id);
                 }
                 NetworkPacket::RemovePropUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let prop = area.props.iter_mut().find(|prop|{prop.as_prop().id == update.prop_id}).unwrap();
+                    let prop = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}).unwrap();
 
                     prop.mark_despawn();
 
@@ -676,9 +686,7 @@ impl Client {
         //     self.spawned = true;
         // }
 
-        let then = Instant::now();
         self.world.tick(&mut interceptors_lib::TickContext::Client(ctx));
-        log::debug!("{:?}", then.elapsed());
 
         self.network_io.flush();
         
