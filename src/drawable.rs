@@ -11,7 +11,8 @@ pub struct DrawContext<'a> {
     pub camera_rect: &'a Rect,
     pub tiles: &'a Vec<Vec<Option<Tile>>>,
     pub elapsed_time: &'a web_time::Duration,
-    pub default_camera: &'a Camera2D
+    pub default_camera: &'a Camera2D,
+    pub editor: bool
 }
 #[async_trait]
 pub trait Drawable {

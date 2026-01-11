@@ -389,7 +389,7 @@ impl Player {
         ctx.camera_rect.h = ctx.camera_rect.w * ratio;    
 
         // camera cannot go below (above) this value
-        ctx.camera_rect.y = ctx.camera_rect.y.min(360.)
+        //ctx.camera_rect.y = ctx.camera_rect.y.min(360.)
         
     }
 

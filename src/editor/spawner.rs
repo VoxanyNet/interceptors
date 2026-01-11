@@ -278,6 +278,7 @@ impl Spawner {
                     tiles: draw_context.tiles,
                     elapsed_time: draw_context.elapsed_time,
                     default_camera: draw_context.default_camera,
+                    editor: true
                 };
 
                 generic_physics_prop.draw(&draw_context).await;

@@ -1,0 +1,14 @@
+{
+  "pos": [
+    0.0,
+    0.0
+  ],
+  "size": [
+    60.0,
+    56.0
+  ],
+  "sprite_path": "assets/cat/head.png",
+  "animated_sprite_paths": null,
+  "frame_duration": null,
+  "layer": 0
+}

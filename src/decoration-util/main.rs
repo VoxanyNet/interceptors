@@ -1,4 +1,4 @@
-use std::{env::{self, current_dir, set_current_dir}, fs, io, path::{Path, PathBuf}, process::exit, time::Duration};
+use std::{env::{self, current_dir, set_current_dir}, fs::{self, create_dir_all}, io, path::{Component, Path, PathBuf}, process::exit, time::Duration};
 
 use clap::{Arg, Parser};
 use image::{GenericImageView, ImageReader};
@@ -38,11 +38,6 @@ fn error_print(message: String) {
 
 
 fn main() {
-
-
-
-    
-
 
     pretty_env_logger::init();
 
@@ -235,14 +230,21 @@ fn asset_to_decoration_prefab(relative_path: PathBuf) {
 
     let save = serde_json::to_string_pretty(&decoration_save).unwrap();
 
-    let prefab_path = format!("prefabs/decorations/{}.json", &relative_path.file_stem().unwrap().to_string_lossy().to_string());
+    // we want to copy the directory structure from the assets folder but we gotta get rid of the assets/ part of the path
+    let mut prefab_save_path_structure: PathBuf = relative_path.components().skip(1).collect();
 
-    match fs::write(&prefab_path, save) {
+    prefab_save_path_structure.set_extension("");
+
+    let prefab_path_string = format!("prefabs/decorations/{}.json", &prefab_save_path_structure.to_string_lossy().to_string());
+
+    // this is the stupidest thing i've written
+    create_dir_all(format!("prefabs/decorations/{}", prefab_save_path_structure.parent().unwrap().to_str().unwrap().to_string())).unwrap();
+    match fs::write(&prefab_path_string, save) {
         Ok(_) => {},
-        Err(error) => error_print(format!("Error writing destination file '{}': {}", &prefab_path, error)),
+        Err(error) => error_print(format!("Error writing destination file '{}': {}", &prefab_path_string, error)),
     }
 
-    log::info!("Successfully wrote prefab to: {}", prefab_path);
+    log::info!("Successfully wrote prefab to: {}", prefab_path_string);
 
 }
 

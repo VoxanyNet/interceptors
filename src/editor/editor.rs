@@ -51,7 +51,8 @@ pub struct AreaEditor {
     last_checkpoint_save: web_time::Instant,
     last_undo: web_time::Instant,
     modifying: bool,
-    last_area_save: AreaSave
+    last_area_save: AreaSave,
+    current_area_path: PathBuf
 }
 
 impl AreaEditor {
@@ -374,7 +375,8 @@ impl AreaEditor {
             last_checkpoint_save: web_time::Instant::now() - Duration::from_secs(50),
             last_undo: web_time::Instant::now(),
             modifying: false,
-            last_area_save: area_save
+            last_area_save: area_save,
+            current_area_path: PathBuf::from(area_path)
         }
     }
 
@@ -512,7 +514,7 @@ impl AreaEditor {
     pub fn save_area(&self) {
 
         std::fs::write(
-            "areas/forest.json", 
+            &self.current_area_path, 
             serde_json::to_string_pretty(
                 &self.area.save()
             ).unwrap()
@@ -649,7 +651,8 @@ impl AreaEditor {
             &camera, 
             &self.fonts, 
             self.start.elapsed(), 
-            self.layer_toggle_ui.get_invisible_layers()
+            self.layer_toggle_ui.get_invisible_layers(),
+            true
         ).await;
 
         
@@ -663,6 +666,7 @@ impl AreaEditor {
             tiles: &self.area.tiles,
             elapsed_time: &self.start.elapsed(),
             default_camera: &camera,
+            editor: true
         };
 
         if self.current_mode() == EditorMode::PrefabPlacement {

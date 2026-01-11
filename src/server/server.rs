@@ -23,7 +23,7 @@ impl Server {
 
 
         //let lobby_save: AreaSave = serde_json::from_str(&read_to_string("areas/ship.json").unwrap()).unwrap();
-        let forest_save: AreaSave = serde_json::from_str(&read_to_string("areas/forest.json").unwrap()).unwrap();
+        let forest_save: AreaSave = serde_json::from_str(&read_to_string("areas/office.json").unwrap()).unwrap();
 
         
         
@@ -115,7 +115,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
         
         if self.network_io.clients.keys().len() == 0 {
 
-            let lobby: AreaSave = serde_json::from_str(&read_to_string("areas/forest.json").unwrap()).unwrap();
+            let lobby: AreaSave = serde_json::from_str(&read_to_string("areas/office.json").unwrap()).unwrap();
             self.world.areas[0] = Area::from_save(lobby, Some(AreaId::new()), &self.prefabs);
             self.world.areas[0].generate_terrain(0);
         }

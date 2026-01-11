@@ -134,6 +134,10 @@ pub struct ClipSave {
 #[async_trait::async_trait]
 impl Drawable for Clip {
     async fn draw(&mut self, draw_context: &DrawContext) {
+
+        if !draw_context.editor {
+            return
+        }
         let mut color = WHITE;
 
         color.a = 0.2;

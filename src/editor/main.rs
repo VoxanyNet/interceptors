@@ -19,12 +19,13 @@ pub mod layer_toggle_ui;
 
 pub fn list_dir_entries<P: AsRef<Path>>(path: P) -> std::io::Result<Vec<String>> {
     let path = path.as_ref(); // keep the original path reference
-    let entries = fs::read_dir(path)?
+    let mut entries: Vec<String> = fs::read_dir(path)?
         .filter_map(|entry| entry.ok())
         .map(|entry| entry.path()) // convert to full PathBuf
         .filter_map(|p: PathBuf| p.to_str().map(|s| s.to_string())) // PathBuf -> String
         .collect();
 
+    entries.sort();
     Ok(entries)
 }
 

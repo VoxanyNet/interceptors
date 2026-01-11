@@ -4,6 +4,8 @@ use macroquad::{miniquad::conf::Platform, window::Conf};
 use crate::client::Client;
 
 mod client;
+mod main_menu;
+mod shaders;
 
 
 fn window_conf() -> Conf {

@@ -124,8 +124,10 @@ impl Area {
         camera: &Camera2D, 
         fonts: &FontLoader, 
         elapsed: web_time::Duration,
-        exclude_layers: Vec<u32>
+        exclude_layers: Vec<u32>,
+        editor: bool
     ) {
+
 
         let mut drawable_objects = Self::get_drawable_objects_mut(
             &mut self.decorations, 
@@ -150,6 +152,7 @@ impl Area {
             tiles: &self.tiles,
             elapsed_time: &elapsed,
             default_camera: camera,
+            editor,
         };
 
         // backgrounds are handled seperately because they are always drawn below everything and dont have a layer
