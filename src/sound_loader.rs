@@ -5,6 +5,7 @@ use macroquad::audio::{load_sound, Sound};
 
 use crate::normalize_path;
 
+#[derive(Clone)]
 pub struct SoundLoader {
     pub cache: FxHashMap<PathBuf, Sound>
 }

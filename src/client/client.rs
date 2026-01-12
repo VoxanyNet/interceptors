@@ -4,7 +4,7 @@ use interceptors_lib::{ClientIO, ClientId, ClientTickContext, Prefabs, area::Are
 use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{BLACK, WHITE}, input::{is_key_released, KeyCode}, math::{vec2, Rect}, prelude::{gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
 use rapier2d::math::Vector;
 
-use crate::shaders::{CRT_FRAGMENT_SHADER, CRT_VERTEX_SHADER};
+use crate::{Assets, shaders::{CRT_FRAGMENT_SHADER, CRT_VERTEX_SHADER}};
 
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
 
@@ -36,13 +36,9 @@ pub struct Client {
 }
 
 impl Client {
-    pub async fn connect() -> Self {
+    pub async fn connect(assets: Assets) -> Self {
 
-        let mut prefab_data = Prefabs::new();
-
-        for prefab_path in PREFAB_PATHS {
-            prefab_data.load_prefab_data(prefab_path).await
-        }
+        
 
         let url = "ws://127.0.0.1:5560";
 
@@ -119,8 +115,6 @@ impl Client {
             packet_queue: Vec::new()
         };
 
-        let mut textures = TextureLoader::new();
-
         // create world camera
         let camera_rect = Rect {
             x: 0.,
@@ -138,26 +132,6 @@ impl Client {
             &camera
         );   
 
-
-        let mut sounds = SoundLoader::new();
-
-        let mut fonts = FontLoader::new();
-
-        for asset in ASSET_PATHS {
-            if asset.ends_with(".wav") {
-                sounds.load(PathBuf::from(asset)).await
-            }
-
-            if asset.ends_with(".png") {
-                textures.load(PathBuf::from(asset)).await;
-            }
-
-            if asset.ends_with(".ttf") {
-                fonts.load(PathBuf::from(asset)).await;
-            }
-
-        }
-
         let test_button = Button::new(Rect {
             x: 0.,
             y: 0.,
@@ -171,20 +145,20 @@ impl Client {
             world: World::empty(),
             client_id,
             camera_rect,
-            textures,
+            textures: assets.textures,
             last_tick: web_time::Instant::now(),
             last_tick_duration: web_time::Duration::from_millis(1),
             latency: web_time::Duration::from_millis(1),
             last_ping_sample: web_time::Instant::now(),
-            prefab_data,
+            prefab_data: assets.prefabs,
             material,
             render_target: world_render_target,
             screen_shake: ScreenShakeParameters::default(None, None),
             start: web_time::Instant::now(),
-            sounds,
+            sounds: assets.sounds,
             spawned: false,
             camera,
-            fonts,
+            fonts: assets.fonts,
             test_button
 
         }

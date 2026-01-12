@@ -2,6 +2,7 @@ use std::{collections::HashMap, path::PathBuf};
 
 use macroquad::text::{load_ttf_font, Font};
 
+#[derive(Clone)]
 pub struct FontLoader {
     fonts: HashMap<PathBuf, Font>
 }

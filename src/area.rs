@@ -5,7 +5,7 @@ use nalgebra::{vector, Isometry2, Vector2};
 use noise::{NoiseFn, Perlin};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, selectable_object_id::{SelectableObject, SelectableObjectId}, space::Space, texture_loader::TextureLoader, tile::{Tile, TileSave}, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::weapon::Shotgun, smg::weapon::SMG, weapon_type::WeaponType}};
+use crate::{ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, selectable_object_id::{SelectableObject, SelectableObjectId}, sound_loader::SoundLoader, space::Space, texture_loader::TextureLoader, tile::{Tile, TileSave}, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::weapon::Shotgun, smg::weapon::SMG, weapon_type::WeaponType}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -80,7 +80,7 @@ impl Area {
         self.space.step(ctx.last_tick_duration());
 
         if let TickContext::Client(ctx) = ctx {
-            self.start_ambiance(ctx);
+            self.start_ambiance(ctx.sounds);
             self.spawn_player_if_not_in_game(ctx);
             self.debug_spawn_prop(ctx);
             self.debug_spawn_enemy(ctx);
@@ -623,22 +623,10 @@ impl Area {
         }
     }
 
-    pub fn start_ambiance(&mut self, ctx: &mut ClientTickContext) {
+    pub fn start_ambiance(&mut self, sounds: &mut SoundLoader) {
         
         for ambiance in &mut self.ambiance {
-            if ambiance.sound.is_none() {
-
-                let sound = ctx.sounds.get(ambiance.path.clone());
-                play_sound(
-                    sound, 
-                    PlaySoundParams {
-                        looped: true,
-                        volume: ambiance.volume,
-                    }
-                );
-
-                ambiance.sound = Some(sound.clone());
-            }
+            ambiance.start_if_stopped(sounds);
 
 
         }

@@ -6,6 +6,7 @@ use web_sys::console;
 
 use crate::normalize_path;
 
+#[derive(Clone)]
 pub struct TextureLoader {
     pub cache: FxHashMap<PathBuf, Texture2D>
 }

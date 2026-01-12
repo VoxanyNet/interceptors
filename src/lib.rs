@@ -816,6 +816,7 @@ fn round_to_nearest(x: i32, n: i32) -> i32 {
     ((x + n / 2) / n) * n
 }
 
+#[derive(Clone)]
 pub struct Prefabs {
     prefabs: HashMap<String, String>
 }
