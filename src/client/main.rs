@@ -70,6 +70,8 @@ async fn load_assets() -> Assets {
     }
 
     for asset in ASSET_PATHS {
+        
+        log::debug!("{:?}", asset);
         if asset.ends_with(".wav") {
             sounds.load(PathBuf::from(asset)).await
         }

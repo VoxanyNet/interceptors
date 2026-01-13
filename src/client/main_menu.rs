@@ -1,9 +1,10 @@
 use std::path::PathBuf;
 
 use interceptors_lib::{ambiance::Ambiance, button::Button, font_loader::FontLoader, sound_loader::SoundLoader, texture_loader::TextureLoader};
-use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, WHITE}, input::mouse_position, math::{Rect, vec2}, prelude::{Material, ShaderSource, gl_use_default_material, gl_use_material, load_material}, text::draw_text, texture::{DrawTextureParams, RenderTarget, draw_texture_ex, render_target}, window::{clear_background, next_frame, screen_height, screen_width}};
+use macroquad::{audio::{PlaySoundParams, Sound, play_sound, play_sound_once}, camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, RED, WHITE}, input::{KeyCode, is_key_released, mouse_position, show_mouse}, math::{Rect, Vec2, vec2}, miniquad::window::{high_dpi, set_mouse_cursor}, prelude::{Material, ShaderSource, gl_use_default_material, gl_use_material, load_material}, rand::RandomRange, text::{TextParams, draw_text, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, draw_texture, draw_texture_ex, render_target}, window::{clear_background, next_frame, screen_height, screen_width}};
+use web_sys::{HtmlCanvasElement, HtmlElement, wasm_bindgen::JsCast, window};
 
-use crate::{Assets, client::ASSET_PATHS, shaders::{CRT_FRAGMENT_SHADER, CRT_VERTEX_SHADER}};
+use crate::{Assets, client::ASSET_PATHS, load_assets, shaders::{CRT_FRAGMENT_SHADER, CRT_VERTEX_SHADER}};
 
 pub struct MainMenu {
     material: Material,
@@ -13,11 +14,42 @@ pub struct MainMenu {
     textures: TextureLoader,
     camera_rect: Rect,
     ui: MainMenuUI,
-    ambiance: Vec<Ambiance>
+    ambiance: Vec<Ambiance>,
+    played_radio_chatter: bool,
+    start: web_time::Instant,
 }
 
 
 impl MainMenu {
+
+    async fn reload_textures(&mut self) {
+        self.textures = load_assets().await.textures
+    }
+
+    fn draw_cursor(textures: &TextureLoader) {
+        let cursor_pos: Vec2 = mouse_position().into();
+
+        let texture = textures.get(&"assets/cursor.png".into());
+        draw_texture_ex(
+            texture, 
+            cursor_pos.x - 10., 
+            cursor_pos.y, 
+            WHITE,
+            DrawTextureParams {
+                dest_size: vec2(texture.size().x * 2., texture.size().y * 2.).into(),
+                source: None,
+                rotation: 0.,
+                flip_x: false,
+                flip_y: false,
+                pivot: None,
+            }
+        );
+    }
+    fn update_window_size(&mut self) {
+        let ratio = screen_width() / screen_height();
+        self.camera_rect.h = 720.;
+        self.camera_rect.w = self.camera_rect.h * ratio;
+    }
 
     fn start_ambiance(&mut self) {
         for ambiance in &mut self.ambiance {
@@ -33,6 +65,11 @@ impl MainMenu {
                 None => {},
             }
 
+            if is_key_released(KeyCode::R) {
+                self.reload_textures().await
+            }
+
+
             self.draw().await;
 
             next_frame().await
@@ -40,9 +77,34 @@ impl MainMenu {
 
         }
     }
+
+    fn play_startup_sounds(sounds: &SoundLoader) {
+        play_sound(
+            sounds.get("assets/sounds/crt_on_button.wav".into()), 
+            PlaySoundParams::default()
+        );
+
+        play_sound(
+            sounds.get("assets/sounds/hard_drive_spinning.wav".into()),
+            PlaySoundParams {
+                looped: true,
+                volume: 0.3,
+            }
+        );
+
+        play_sound(
+            sounds.get("assets/sounds/drive_spin_up.wav".into()), 
+            PlaySoundParams {
+                looped: false,
+                volume: 0.3,
+            }
+        );
+    }
     pub async fn new(
         assets: Assets
     ) -> Self {
+
+        show_mouse(false);
 
         let material = load_material(
             ShaderSource::Glsl {
@@ -53,6 +115,8 @@ impl MainMenu {
         ).unwrap();
 
         let render_target = render_target(1280, 720);
+
+        MainMenu::play_startup_sounds(&assets.sounds);
 
         let camera_rect = Rect {
             x: 0.,
@@ -69,12 +133,7 @@ impl MainMenu {
         let ui = MainMenuUI::new();
 
         let ambiance = vec![
-            Ambiance { 
-                path: "assets/sounds/radio_chatter.wav".into(), 
-                pos: vec2(0., 0.), 
-                volume: 1., 
-                sound: None 
-            }
+
         ];
         
         Self {
@@ -85,17 +144,51 @@ impl MainMenu {
             textures: assets.textures,
             camera_rect: camera_rect,
             ui,
-            ambiance
+            ambiance,
+            played_radio_chatter: false,
+            start: web_time::Instant::now()
         }
     }
 
-    
+    fn play_radio_chatter(&mut self) {
+        if !self.played_radio_chatter && RandomRange::gen_range(0, 2) == 1 {
+
+            self.played_radio_chatter = true;
+
+            play_sound(
+                self.sounds.get("assets/sounds/radio_chatter.wav".into()),
+                PlaySoundParams {
+                    looped: false,
+                    volume: 0.1,
+                }
+            );
+
+        }
+
+    }
     pub fn tick(&mut self) -> Option<MainMenuResult> {
-        self.ui.tick();
+        self.ui.tick(&self.sounds);
         self.start_ambiance();
+        //self.play_radio_chatter();
+        self.update_window_size();
+
+        
 
         None
     }
+
+    fn draw_title(&self) {
+        draw_text_ex("INTERCEPTORS", 70., 100., TextParams {
+            font: Some(&self.fonts.get("assets/fonts/FuturaHeavy.ttf".into())),
+            font_size: 50,        
+            rotation: 0.,
+            color: WHITE,
+            ..Default::default()
+        });
+
+    }
+
+
     
     pub async fn draw(&self) {
         let mut camera = Camera2D::from_display_rect(self.camera_rect);
@@ -103,9 +196,12 @@ impl MainMenu {
         camera.zoom.y = -camera.zoom.y; 
         set_camera(&camera);
         clear_background(BLACK);
-        self.ui.draw();
+        self.ui.draw(&self.fonts);
 
-        draw_text("Interceptors", 50., 50., 35., WHITE);
+
+        self.draw_title();
+
+        Self::draw_cursor(&self.textures);
         
         set_default_camera();
         
@@ -135,12 +231,15 @@ pub enum MainMenuResult {
 }
 
 pub struct MainMenuUI {
+    connect_text: String,
+    quit_text: String,
     play_button: Button,    
     quit_button: Button
 }
 
 impl MainMenuUI {
     pub fn new() -> Self {
+
         MainMenuUI {
             play_button: Button::new(
                 Rect::new(
@@ -159,16 +258,46 @@ impl MainMenuUI {
                     50.
                 ),
                 None
-            )   
+            ),
+            connect_text: "connect".into(),
+            quit_text: "quit".into(),   
         }
     }
 
-    pub fn draw(&self) {
+    pub fn draw(&self, fonts: &FontLoader) {
+        // draw_text(&self.connect_text, 70., 400., 50., WHITE);
+        // draw_text(&self.quit_text, 70., 450., 50., RED);
 
+        draw_text_ex(&self.connect_text, 70., 400., TextParams {
+            font: Some(&fonts.get("assets/fonts/FuturaHeavy.ttf".into())),
+            font_size: 30,        
+            rotation: 0.,
+            color: WHITE,
+            ..Default::default()
+        });
+
+        draw_text_ex(&self.quit_text, 70., 450., TextParams {
+            font: Some(&fonts.get("assets/fonts/FuturaHeavy.ttf".into())),
+            font_size: 30,        
+            rotation: 0.,
+            color: WHITE,
+            ..Default::default()
+        });
     }
 
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self, sounds: &SoundLoader) {
         self.play_button.update(mouse_position().into());
         self.quit_button.update(mouse_position().into());
+
+
+        if self.play_button.hovered || self.quit_button.hovered {
+            play_sound(sounds.get(
+                "assets/sounds/menu_navigation_beep.wav".into()), 
+                PlaySoundParams {
+                    looped: false,
+                    volume: 0.5,
+                }
+            );
+        }
     }
 }

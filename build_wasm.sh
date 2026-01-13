@@ -92,6 +92,7 @@ HTML=$(
             height: 100%;
             display: block; /* Removes inline spacing issues */
             outline: none; /* Removes the blue focus border */
+            cursor: none;
         }
     </style>
 </head>
