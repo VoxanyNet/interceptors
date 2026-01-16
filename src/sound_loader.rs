@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use fxhash::FxHashMap;
-use macroquad::audio::{load_sound, Sound};
+use macroquad::audio::{Sound, load_sound, load_sound_from_bytes, stop_sound};
 
 use crate::normalize_path;
 
@@ -22,10 +22,11 @@ impl SoundLoader {
         SoundLoader { cache: FxHashMap::default() }
     }
 
-    pub async fn load(&mut self, sound_path: PathBuf) {
+    pub async fn load(&mut self, sound_path: PathBuf, bytes: &[u8]) {
 
         if !self.cache.contains_key(&sound_path) {
-            let sound = load_sound(&sound_path.to_string_lossy()).await.unwrap();
+
+            let sound = load_sound_from_bytes(bytes).await.unwrap();
 
             self.cache.insert(sound_path, sound);
         }
@@ -35,5 +36,7 @@ impl SoundLoader {
         let normalized_path = normalize_path(&sound_path);
 
         self.cache.get(&normalized_path).unwrap()
+
+
     }
 }

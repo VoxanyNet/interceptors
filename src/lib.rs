@@ -8,8 +8,9 @@ use rapier2d::{parry::query::Ray, prelude::{ColliderBuilder, ColliderHandle, Que
 use serde::{Deserialize, Serialize};
 use tungstenite::WebSocket;
 use nalgebra::point;
+use include_dir::include_dir;
 
-use crate::{all_keys::ALL_KEYS, player::Facing, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, weapons::weapon_type::WeaponType};
+use crate::{all_keys::ALL_KEYS, font_loader::FontLoader, player::Facing, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, weapons::weapon_type::WeaponType};
 
 pub mod space;
 pub mod updates;
@@ -835,14 +836,12 @@ impl Prefabs {
         self.prefabs.get(&normalized_path.to_string_lossy().to_string()).unwrap().clone()
     }
 
-    pub async fn load_prefab_data(&mut self, path: impl ToString) {
+    pub fn load_prefab_data(&mut self, path: impl ToString, bytes: &[u8]) {
 
 
-    
+        let json_string = String::from_utf8(bytes.into()).unwrap();
 
-        let data = load_string(&path.to_string()).await.unwrap();
-
-        self.prefabs.insert(path.to_string(), data);
+        self.prefabs.insert(path.to_string(), json_string);
     }
 
     pub fn load_prefab_data_blocking(&mut self, path: impl ToString) {
@@ -850,6 +849,101 @@ impl Prefabs {
         let data = read_to_string(path.to_string()).unwrap();
         self.prefabs.insert(path.to_string(), data);
     }
+}
+
+#[derive(Clone)]
+/// Safe to clone because these are all handles
+pub struct Assets {
+    pub sounds: SoundLoader,
+    pub fonts: FontLoader,
+    pub textures: TextureLoader,
+    pub prefabs: Prefabs
+}
+
+pub fn load_prefabs() -> Prefabs {
+    let mut prefab_loader = Prefabs::new();
+
+    let prefabs = include_dir!("prefabs");
+
+    let glob = "**/*";
+    
+    for prefab in prefabs.find(glob).unwrap() {
+
+        let path = prefab.path().to_path_buf();
+
+        let prefab = match prefab.as_file() {
+            Some(prefab) => prefab,
+            None => continue,
+        };
+
+        let data = prefab.contents();
+
+        if path.extension().unwrap() == "json" {
+            prefab_loader.load_prefab_data("prefabs/".to_string() + &path.to_string_lossy().to_string(), data);
+        }
+    };
+
+    prefab_loader
+    
+}
+pub async fn load_assets() -> Assets {
+
+    let assets = include_dir!("assets");
+
+    let mut sounds = SoundLoader::new();
+    let mut fonts = FontLoader::new();
+    let mut textures = TextureLoader::new();
+    let prefabs = load_prefabs();
+    
+
+    let glob = "**/*";
+
+    log::info!("Loading assets...");
+
+    let mut asset_count = 0;
+
+    for asset in assets.find(glob).unwrap() {
+
+
+        let path = PathBuf::from("assets/").join(asset.path().to_path_buf());
+
+        let asset = match asset.as_file() {
+            Some(asset) => asset,
+            None => continue,
+        };
+
+        asset_count += 1;
+
+        let data = asset.contents();
+
+        
+        if path.extension().unwrap() == "wav" {
+
+            sounds.load(path.clone(), data).await
+        }
+
+        if path.extension().unwrap() == "png" {
+            textures.load(path.clone(), data);
+        }
+
+        if path.extension().unwrap() == "ttf" {
+            fonts.load(path.clone(), data);
+        }
+        
+
+        
+    }
+
+    log::info!("Finished loading {} assets", asset_count);
+    
+
+    Assets {
+        sounds,
+        fonts,
+        textures,
+        prefabs,
+    }
+
 }
 
 #[cfg(target_arch = "x86_64")]

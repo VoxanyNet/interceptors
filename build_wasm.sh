@@ -67,6 +67,14 @@ HTML=$(
 	cat <<-END
 <html lang="en">
 <head>
+
+    <script type="importmap">
+    {
+    "imports": {
+        "@discord/embedded-app-sdk": "https://cdn.jsdelivr.net/npm/@discord/embedded-app-sdk@1.9.0/+esm"
+    }
+    }
+    </script>
     <meta charset="utf-8">
     <title>Liquidators</title>
     <style>
@@ -100,7 +108,7 @@ HTML=$(
     <div id="canvas-container">
         <canvas id="glcanvas" tabindex="1" hidden></canvas>
     </div>
-    <script src="https://dl.vxny.io/193547000489312256/bundle.js"></script>
+    <script src="macroquad_bundle.js"></script>
     <script type="module">
         import init, { set_wasm } from "./${PROJECT_NAME}.js";
         async function impl_run() {
@@ -161,6 +169,8 @@ cp -R assets/ dist/assets/
 cp -R prefabs/ dist/prefabs/
 cp -R areas/ dist/areas/
 
+cp macroquad_bundle.js dist/macroquad_bundle.js
+
 cd dist
 
-miniserve . -p 8001
+python -m http.server

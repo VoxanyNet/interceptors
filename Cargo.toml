@@ -2,7 +2,7 @@
 name = "interceptors"
 version = "0.1.0"
 edition = "2024"
-build = "build.rs"
+#build = "build.rs"
 
 [target.'cfg(target_os = "linux")']
 rustflags = ["-C", "link-arg=-fuse-ld=mold"]
@@ -35,6 +35,8 @@ env_logger = "0.11.8"
 pretty_env_logger = "0.5.0"
 colored = "3.0.0"
 derive_more = { version = "2.1.1", features = ["from"] }
+include_dir = { version = "0.7.4", features = ["glob"] }
+activity = "0.9.0"
 #rhai = "1.23.6"
 #gilrs = "0.11.0"
 #web-sys = { version = "0.3.72", features = ["console"] }
@@ -66,4 +68,4 @@ opt-level = 3
 debug = true
 
 [features]
-preload = []
+discord = []

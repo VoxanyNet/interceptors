@@ -1,15 +1,15 @@
 use std::path::PathBuf;
 
-use interceptors_lib::{ambiance::Ambiance, button::Button, font_loader::FontLoader, sound_loader::SoundLoader, texture_loader::TextureLoader};
-use macroquad::{audio::{PlaySoundParams, Sound, play_sound, play_sound_once}, camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, RED, WHITE}, input::{KeyCode, is_key_released, mouse_position, show_mouse}, math::{Rect, Vec2, vec2}, miniquad::window::{high_dpi, set_mouse_cursor}, prelude::{Material, ShaderSource, gl_use_default_material, gl_use_material, load_material}, rand::RandomRange, text::{TextParams, draw_text, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, draw_texture, draw_texture_ex, render_target}, window::{clear_background, next_frame, screen_height, screen_width}};
+use interceptors_lib::{Assets, ambiance::Ambiance, button::Button, font_loader::FontLoader, load_assets, macroquad_to_rapier, sound_loader::SoundLoader, texture_loader::TextureLoader};
+use macroquad::{audio::{PlaySoundParams, Sound, play_sound, play_sound_once, stop_sound}, camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, RED, WHITE}, input::{KeyCode, is_key_released, mouse_position, show_mouse}, math::{Rect, Vec2, vec2}, miniquad::window::{high_dpi, set_mouse_cursor}, prelude::{Material, ShaderSource, gl_use_default_material, gl_use_material, load_material}, rand::RandomRange, shapes::draw_rectangle_lines, text::{TextParams, draw_text, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, draw_texture, draw_texture_ex, render_target}, window::{clear_background, next_frame, screen_height, screen_width}};
 use web_sys::{HtmlCanvasElement, HtmlElement, wasm_bindgen::JsCast, window};
 
-use crate::{Assets, client::ASSET_PATHS, load_assets, shaders::{CRT_FRAGMENT_SHADER, CRT_VERTEX_SHADER}};
+use crate::{shaders::{CRT_FRAGMENT_SHADER, CRT_VERTEX_SHADER}};
 
 pub struct MainMenu {
     material: Material,
     render_target: RenderTarget,
-    sounds: SoundLoader,
+    sound_loader: SoundLoader,
     fonts: FontLoader,
     textures: TextureLoader,
     camera_rect: Rect,
@@ -17,10 +17,19 @@ pub struct MainMenu {
     ambiance: Vec<Ambiance>,
     played_radio_chatter: bool,
     start: web_time::Instant,
+    sounds: Vec<Sound>
 }
 
 
 impl MainMenu {
+
+
+    pub fn draw_coords(&self, cursor: Vec2) {
+        let rapier_coords = macroquad_to_rapier(&cursor);
+        
+        draw_text(&format!("{:?}", cursor), 0., screen_height() - 20., 24., WHITE);
+        draw_text(&format!("{:?}", rapier_coords), 0., screen_height() - 40., 24., WHITE);
+    }
 
     async fn reload_textures(&mut self) {
         self.textures = load_assets().await.textures
@@ -53,7 +62,7 @@ impl MainMenu {
 
     fn start_ambiance(&mut self) {
         for ambiance in &mut self.ambiance {
-            ambiance.start_if_stopped(&mut self.sounds);
+            ambiance.start_if_stopped(&mut self.sound_loader);
         }
     }
 
@@ -61,12 +70,10 @@ impl MainMenu {
         loop {
 
             match self.tick() {
-                Some(_) => {},
+                Some(result) => {
+                    return result
+                },
                 None => {},
-            }
-
-            if is_key_released(KeyCode::R) {
-                self.reload_textures().await
             }
 
 
@@ -78,22 +85,35 @@ impl MainMenu {
         }
     }
 
-    fn play_startup_sounds(sounds: &SoundLoader) {
-        play_sound(
-            sounds.get("assets/sounds/crt_on_button.wav".into()), 
-            PlaySoundParams::default()
-        );
+    fn play_startup_sounds(&mut self) {
+
+        let sound = self.sound_loader.get("assets/sounds/crt_on_button.wav".into());
+        self.sounds.push(sound.clone());
 
         play_sound(
-            sounds.get("assets/sounds/hard_drive_spinning.wav".into()),
+            sound, 
+            PlaySoundParams {
+                looped: false,
+                volume: 1.,
+            }
+        );
+
+        let sound = self.sound_loader.get("assets/sounds/hard_drive_spinning.wav".into());
+        self.sounds.push(sound.clone());
+        
+        play_sound(
+            sound,
             PlaySoundParams {
                 looped: true,
                 volume: 0.3,
             }
         );
 
+        let sound = self.sound_loader.get("assets/sounds/drive_spin_up.wav".into());
+        self.sounds.push(sound.clone());
+
         play_sound(
-            sounds.get("assets/sounds/drive_spin_up.wav".into()), 
+            sound, 
             PlaySoundParams {
                 looped: false,
                 volume: 0.3,
@@ -104,7 +124,6 @@ impl MainMenu {
         assets: Assets
     ) -> Self {
 
-        show_mouse(false);
 
         let material = load_material(
             ShaderSource::Glsl {
@@ -116,7 +135,7 @@ impl MainMenu {
 
         let render_target = render_target(1280, 720);
 
-        MainMenu::play_startup_sounds(&assets.sounds);
+        
 
         let camera_rect = Rect {
             x: 0.,
@@ -136,18 +155,25 @@ impl MainMenu {
 
         ];
         
-        Self {
+        let mut menu = Self {
             material: material,
             render_target: render_target,
-            sounds: assets.sounds,
+            sound_loader: assets.sounds,
             fonts: assets.fonts,
             textures: assets.textures,
             camera_rect: camera_rect,
             ui,
             ambiance,
             played_radio_chatter: false,
-            start: web_time::Instant::now()
-        }
+            start: web_time::Instant::now(),
+            sounds: Vec::new()
+
+            
+        };
+
+        menu.play_startup_sounds();
+
+        menu
     }
 
     fn play_radio_chatter(&mut self) {
@@ -156,7 +182,7 @@ impl MainMenu {
             self.played_radio_chatter = true;
 
             play_sound(
-                self.sounds.get("assets/sounds/radio_chatter.wav".into()),
+                self.sound_loader.get("assets/sounds/radio_chatter.wav".into()),
                 PlaySoundParams {
                     looped: false,
                     volume: 0.1,
@@ -167,7 +193,17 @@ impl MainMenu {
 
     }
     pub fn tick(&mut self) -> Option<MainMenuResult> {
-        self.ui.tick(&self.sounds);
+        self.ui.tick(&self.sound_loader);
+
+        if self.ui.play_button.down {
+            self.stop_sounds();
+            return Some(MainMenuResult::Connect) 
+        }
+
+        if self.ui.quit_button.released {
+            self.stop_sounds();
+            return Some(MainMenuResult::Quit);
+        }
         self.start_ambiance();
         //self.play_radio_chatter();
         self.update_window_size();
@@ -188,7 +224,11 @@ impl MainMenu {
 
     }
 
-
+    pub fn stop_sounds(&mut self) {
+        for sound in &self.sounds {
+            stop_sound(sound);
+        }
+    }
     
     pub async fn draw(&self) {
         let mut camera = Camera2D::from_display_rect(self.camera_rect);
@@ -200,6 +240,7 @@ impl MainMenu {
 
 
         self.draw_title();
+        //self.draw_coords(mouse_position().into());
 
         Self::draw_cursor(&self.textures);
         
@@ -220,6 +261,8 @@ impl MainMenu {
 
         
 
+        
+
         next_frame().await
 
     }
@@ -234,7 +277,8 @@ pub struct MainMenuUI {
     connect_text: String,
     quit_text: String,
     play_button: Button,    
-    quit_button: Button
+    quit_button: Button,
+    should_beep_on_button_hover: bool
 }
 
 impl MainMenuUI {
@@ -243,30 +287,60 @@ impl MainMenuUI {
         MainMenuUI {
             play_button: Button::new(
                 Rect::new(
-                    0., 
-                    0., 
+                    65., 
+                    370., 
                     100., 
-                    50.
+                    40.
                 ),
                 None    
             ),
             quit_button: Button::new(
                 Rect::new(
-                    0., 
-                    0., 
+                    65., 
+                    420., 
                     100., 
-                    50.
+                    40.
                 ),
                 None
             ),
             connect_text: "connect".into(),
             quit_text: "quit".into(),   
+            should_beep_on_button_hover: true
         }
     }
 
     pub fn draw(&self, fonts: &FontLoader) {
         // draw_text(&self.connect_text, 70., 400., 50., WHITE);
         // draw_text(&self.quit_text, 70., 450., 50., RED);
+
+        if self.play_button.hovered {
+            draw_text_ex(
+                ">", 
+                self.play_button.rect.x - 20., 
+                self.play_button.rect.y + 30.,
+                TextParams {
+                    font: Some(&fonts.get("assets/fonts/FuturaHeavy.ttf".into())),
+                    font_size: 30, 
+                    color: WHITE,
+                    ..Default::default()
+                }
+            );
+        }
+
+        if self.quit_button.hovered {
+            draw_text_ex(
+                ">", 
+                self.quit_button.rect.x - 20., 
+                self.quit_button.rect.y + 30.,
+                TextParams {
+                    font: Some(&fonts.get("assets/fonts/FuturaHeavy.ttf".into())),
+                    font_size: 30, 
+                    color: WHITE,
+                    ..Default::default()
+                }
+            );
+        }
+
 
         draw_text_ex(&self.connect_text, 70., 400., TextParams {
             font: Some(&fonts.get("assets/fonts/FuturaHeavy.ttf".into())),
@@ -283,6 +357,10 @@ impl MainMenuUI {
             color: WHITE,
             ..Default::default()
         });
+
+        // draw_rectangle_lines(self.play_button.rect.x, self.play_button.rect.y, self.play_button.rect.w, self.play_button.rect.h, 5., WHITE);
+        // draw_rectangle_lines(self.quit_button.rect.x, self.quit_button.rect.y, self.quit_button.rect.w, self.quit_button.rect.h, 5., WHITE);
+
     }
 
     pub fn tick(&mut self, sounds: &SoundLoader) {
@@ -290,7 +368,7 @@ impl MainMenuUI {
         self.quit_button.update(mouse_position().into());
 
 
-        if self.play_button.hovered || self.quit_button.hovered {
+        if (self.play_button.hovered || self.quit_button.hovered) && self.should_beep_on_button_hover {
             play_sound(sounds.get(
                 "assets/sounds/menu_navigation_beep.wav".into()), 
                 PlaySoundParams {
@@ -298,6 +376,17 @@ impl MainMenuUI {
                     volume: 0.5,
                 }
             );
+
+            self.should_beep_on_button_hover = false
+
+
         }
+
+        if !self.play_button.hovered && !self.quit_button.hovered {
+            self.should_beep_on_button_hover = true
+        }
+
+
+
     }
 }

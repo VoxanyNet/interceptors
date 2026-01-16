@@ -60,6 +60,7 @@ async fn main() {
 
     pretty_env_logger::init();
 
+
     let args = EditorArgs::parse();
 
     let mut area_editor = AreaEditor::new(args.area_path).await;

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::PathBuf};
 
-use macroquad::text::{load_ttf_font, Font};
+use macroquad::text::{Font, load_ttf_font, load_ttf_font_from_bytes};
 
 #[derive(Clone)]
 pub struct FontLoader {
@@ -15,8 +15,9 @@ impl FontLoader {
         }
     }
 
-    pub async fn load(&mut self, path: PathBuf) {
-        let font = load_ttf_font(path.to_str().unwrap()).await.unwrap();
+    pub fn load(&mut self, path: PathBuf, bytes: &[u8]) {
+
+        let font = load_ttf_font_from_bytes(bytes).unwrap();
 
         self.fonts.insert(path, font);
 

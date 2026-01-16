@@ -20,6 +20,14 @@ pub struct AmbianceSave {
 }
 impl Ambiance {
 
+    pub fn new(path: PathBuf, pos: Vec2, volume: f32) -> Self {
+        Self {
+            path: path,
+            pos: pos,
+            volume: volume,
+            sound: None,
+        }
+    }
     pub fn start_if_stopped(&mut self, sounds: &mut SoundLoader) {
         if self.sound.is_none() {
             let sound = sounds.get(self.path.clone());

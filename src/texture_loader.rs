@@ -23,12 +23,11 @@ impl TextureLoader {
         TextureLoader { cache: FxHashMap::default() }
     }
 
-    pub async fn load(&mut self, texture_path: PathBuf) {
+    pub fn load(&mut self, texture_path: PathBuf, bytes: &[u8]) {
 
         if !self.cache.contains_key(&texture_path) {
 
-            let texture = load_texture(&texture_path.to_string_lossy()).await.unwrap();
-            
+            let texture = Texture2D::from_file_with_format(bytes, None);
             texture.set_filter(texture::FilterMode::Nearest);
 
             self.cache.insert(texture_path.clone(), texture);

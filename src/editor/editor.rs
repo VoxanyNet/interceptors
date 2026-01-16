@@ -1,6 +1,6 @@
 use std::{fs::{self, read_to_string}, path::PathBuf, process::exit, time::{Duration, Instant}};
 
-use interceptors_lib::{Prefabs, area::{Area, AreaSave}, clip::Clip, decoration::Decoration, draw_hitbox, drawable::{DrawContext, Drawable}, editor_context_menu::EditorContextMenu, font_loader::FontLoader, macroquad_to_rapier, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, texture_loader::TextureLoader};
+use interceptors_lib::{Prefabs, area::{Area, AreaSave}, clip::Clip, decoration::Decoration, draw_hitbox, drawable::{DrawContext, Drawable}, editor_context_menu::EditorContextMenu, font_loader::FontLoader, load_assets, macroquad_to_rapier, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, texture_loader::TextureLoader};
 use log::info;
 use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, RED, WHITE}, input::{KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, time::draw_fps, window::{next_frame, screen_height, screen_width}};
 use nalgebra::{vector, Vector2};
@@ -9,8 +9,6 @@ use strum::Display;
 
 use crate::{editor_input_context::EditorInputContext, editor_mode_select_ui::EditorModeSelectUI, editor_ui_tick_context::EditorUITickContext, layer_toggle_ui::LayerToggleUI, spawner::Spawner};
 
-include!(concat!(env!("OUT_DIR"), "/prefabs.rs"));
-include!(concat!(env!("OUT_DIR"), "/assets.rs"));
 
 
 
@@ -290,23 +288,7 @@ impl AreaEditor {
 
     pub async fn new(area_path: String) -> Self {
 
-        let mut prefabs = Prefabs::new();
-
-        for prefab_path in PREFAB_PATHS {
-            prefabs.load_prefab_data(prefab_path).await
-        }
-        
-        let mut textures = TextureLoader::new();
-        let mut fonts = FontLoader::new();
-
-        for asset in ASSET_PATHS {
-            if asset.ends_with(".png") {
-                textures.load(PathBuf::from(asset)).await;
-            }
-            if asset.ends_with(".ttf") {
-                fonts.load(PathBuf::from(asset)).await
-            }
-        }
+        let assets = load_assets().await;
 
         let spawner = Spawner::new().await;
 
@@ -348,8 +330,8 @@ impl AreaEditor {
         let area_save: AreaSave = serde_json::from_str(&area_json).unwrap();
 
         Self {
-            area: Area::from_save(area_save.clone(), None, &prefabs),
-            textures,
+            area: Area::from_save(area_save.clone(), None, &assets.prefabs),
+            textures: assets.textures,
             spawner,
             selected_mode: 0,
             mode_options: vec![EditorMode::Select, EditorMode::PrefabPlacement, EditorMode::SetSpawnPoint, EditorMode::TilePlacement],
@@ -359,8 +341,8 @@ impl AreaEditor {
             clip_point_2: None,
             previous_cursor: Vec2::ZERO,
             last_cursor_move: web_time::Instant::now(),
-            prefab_data: prefabs,
-            fonts,
+            prefab_data: assets.prefabs,
+            fonts: assets.fonts,
             start: web_time::Instant::now(),
             selected_objects: Vec::new(),
             ui: EditorModeSelectUI::new(),

@@ -1,10 +1,8 @@
 use std::{fs::read_to_string, process::exit};
 
-use interceptors_lib::{ClientId, Owner, Prefabs, ServerIO, ServerTickContext, TickContext, area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, get_intersections, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket, PlayerDespawnUpdate}, weapons::weapon_type::WeaponType, world::World};
+use interceptors_lib::{ClientId, Owner, Prefabs, ServerIO, ServerTickContext, TickContext, area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, get_intersections, load_prefabs, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket, PlayerDespawnUpdate}, weapons::weapon_type::WeaponType, world::World};
 use rapier2d::math::Vector;
 use tungstenite::Message;
-
-include!(concat!(env!("OUT_DIR"), "/prefabs.rs"));
 
 pub struct Server {
     world: World,
@@ -27,13 +25,7 @@ impl Server {
 
         
         
-        let mut prefabs = Prefabs::new();
-
-
-
-        for prefab_path in PREFAB_PATHS {
-            prefabs.load_prefab_data_blocking(prefab_path)
-        }   
+        let prefabs = load_prefabs();
 
         let forest = Area::from_save(forest_save, None, &prefabs);
 
