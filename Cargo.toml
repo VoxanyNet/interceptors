@@ -65,7 +65,8 @@ path = "src/lib.rs"
 opt-level = 3
 
 [profile.release]
-debug = true
+debug = true  
+
 
 [features]
 discord = []

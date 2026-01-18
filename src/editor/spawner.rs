@@ -1,7 +1,7 @@
 use std::{fs::read_to_string, path::PathBuf, str::FromStr};
 
 use interceptors_lib::{area::Area, background::{Background, BackgroundSave}, button::Button, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, prop::{Prop, PropSave}, space::Space, texture_loader::TextureLoader, tile::{Tile, TileSave}};
-use macroquad::{color::{GREEN, LIGHTGRAY, WHITE}, input::{MouseButton, is_mouse_button_released, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle_lines, text::draw_text};
+use macroquad::{color::{GREEN, LIGHTGRAY, WHITE}, input::{MouseButton, is_mouse_button_released, mouse_position}, math::{Rect, Vec2, vec2}, shapes::draw_rectangle_lines, text::draw_text, texture::{DrawTextureParams, draw_texture_ex}};
 use nalgebra::{vector, Vector2};
 use strum::IntoEnumIterator;
 
@@ -205,7 +205,14 @@ impl Spawner {
                 // load the first entry in the directory
                 self.selected_prefab = 1;
                 let selected_prefab_path = self.menu.prefabs.get(&self.selected_category).unwrap().get(self.selected_prefab as usize).unwrap().clone();
-                self.selected_prefab_json = read_to_string(selected_prefab_path).unwrap();
+
+                // if its just a directory in this directory just dont update the selected prefab
+                if !PathBuf::from_str(&selected_prefab_path).unwrap().is_dir() {
+                    
+                    self.selected_prefab_json = read_to_string(selected_prefab_path).unwrap();
+
+                }
+               
                 
                 self.rebuild_buttons();
 
@@ -352,7 +359,12 @@ impl Spawner {
     }
 
 
-    pub async fn draw_menu(&self, camera_rect: &Rect, textures: &mut TextureLoader, cursor: Vec2) {
+    pub async fn draw_menu(
+        &self, 
+        camera_rect: &Rect, 
+        textures: &mut TextureLoader, 
+        cursor: Vec2
+    ) {
 
         let selected_category = &self.selected_category;
 
@@ -364,7 +376,7 @@ impl Spawner {
                 false => LIGHTGRAY,
             };
             
-
+            
             draw_text(format!("{}", category).as_str(), category_x, 20., 24., color);
 
             // this is silly
@@ -382,6 +394,17 @@ impl Spawner {
                 true => GREEN,
                 false => WHITE,
             };
+
+            // draw_texture_ex(
+            //     textures.get(&path.into()), 
+            //     path.len() as f32 * 10., 
+            //     ((index) * 20) as f32 + 40., 
+            //     WHITE, 
+            //     DrawTextureParams {
+            //         dest_size: vec2(20., 20.).into(),
+            //         ..Default::default()
+            //     }
+            // );
 
             draw_text(&path, 0., ((index) * 20) as f32 + 40., 20., color);
         }

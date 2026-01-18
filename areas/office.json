@@ -6,968 +6,230 @@
   "decorations": [
     {
       "pos": [
-        261.0966,
-        325.34708
+        579.0,
+        423.0
       ],
       "size": [
-        1272.0,
-        537.60004
+        36.0,
+        36.0
       ],
-      "sprite_path": "assets/office/building.png",
+      "sprite_path": "assets/kenney/construction/tile_0001.png",
       "animated_sprite_paths": null,
       "frame_duration": null,
       "layer": 0
     },
     {
       "pos": [
-        196.91745,
-        843.6139
+        615.0,
+        423.0
       ],
       "size": [
-        64.0,
-        64.0
+        36.0,
+        36.0
       ],
-      "sprite_path": "assets/concrete.png",
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
       "animated_sprite_paths": null,
       "frame_duration": null,
       "layer": 0
     },
     {
       "pos": [
-        132.91745,
-        843.6139
+        651.0,
+        423.0
       ],
       "size": [
-        64.0,
-        64.0
+        36.0,
+        36.0
       ],
-      "sprite_path": "assets/concrete.png",
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
       "animated_sprite_paths": null,
       "frame_duration": null,
       "layer": 0
     },
     {
       "pos": [
-        68.91745,
-        843.6139
+        687.0,
+        423.0
       ],
       "size": [
-        64.0,
-        64.0
+        36.0,
+        36.0
       ],
-      "sprite_path": "assets/concrete.png",
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
       "animated_sprite_paths": null,
       "frame_duration": null,
       "layer": 0
     },
     {
       "pos": [
-        4.91745,
-        843.6139
+        723.0,
+        423.0
       ],
       "size": [
-        64.0,
-        64.0
+        36.0,
+        36.0
       ],
-      "sprite_path": "assets/concrete.png",
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
       "animated_sprite_paths": null,
       "frame_duration": null,
       "layer": 0
     },
     {
       "pos": [
-        -59.08255,
-        843.6139
+        759.0,
+        423.0
       ],
       "size": [
-        64.0,
-        64.0
+        36.0,
+        36.0
       ],
-      "sprite_path": "assets/concrete.png",
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
       "animated_sprite_paths": null,
       "frame_duration": null,
       "layer": 0
     },
     {
       "pos": [
-        260.91745,
-        843.6139
+        795.0,
+        423.0
       ],
       "size": [
-        64.0,
-        64.0
+        36.0,
+        36.0
       ],
-      "sprite_path": "assets/concrete.png",
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
       "animated_sprite_paths": null,
       "frame_duration": null,
       "layer": 0
     },
     {
       "pos": [
-        324.91745,
-        843.6139
+        831.0,
+        423.0
       ],
       "size": [
-        64.0,
-        64.0
+        36.0,
+        36.0
       ],
-      "sprite_path": "assets/concrete.png",
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
       "animated_sprite_paths": null,
       "frame_duration": null,
       "layer": 0
     },
     {
       "pos": [
-        388.91745,
-        843.6139
+        867.0,
+        423.0
       ],
       "size": [
-        64.0,
-        64.0
+        36.0,
+        36.0
       ],
-      "sprite_path": "assets/concrete.png",
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
       "animated_sprite_paths": null,
       "frame_duration": null,
       "layer": 0
     },
     {
       "pos": [
-        452.91745,
-        843.6139
+        903.0,
+        423.0
       ],
       "size": [
-        64.0,
-        64.0
+        36.0,
+        36.0
       ],
-      "sprite_path": "assets/concrete.png",
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
       "animated_sprite_paths": null,
       "frame_duration": null,
       "layer": 0
     },
     {
       "pos": [
-        516.9175,
-        843.6139
+        939.0,
+        423.0
       ],
       "size": [
-        64.0,
-        64.0
+        36.0,
+        36.0
       ],
-      "sprite_path": "assets/concrete.png",
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
       "animated_sprite_paths": null,
       "frame_duration": null,
       "layer": 0
     },
     {
       "pos": [
-        580.9175,
-        843.6139
+        975.0,
+        423.0
       ],
       "size": [
-        64.0,
-        64.0
+        36.0,
+        36.0
       ],
-      "sprite_path": "assets/concrete.png",
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
       "animated_sprite_paths": null,
       "frame_duration": null,
       "layer": 0
     },
     {
       "pos": [
-        644.9175,
-        843.6139
+        1011.0,
+        423.0
       ],
       "size": [
-        64.0,
-        64.0
+        36.0,
+        36.0
       ],
-      "sprite_path": "assets/concrete.png",
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
       "animated_sprite_paths": null,
       "frame_duration": null,
       "layer": 0
     },
     {
       "pos": [
-        708.9175,
-        843.6139
+        1047.0,
+        423.0
       ],
       "size": [
-        64.0,
-        64.0
+        36.0,
+        36.0
       ],
-      "sprite_path": "assets/concrete.png",
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
       "animated_sprite_paths": null,
       "frame_duration": null,
       "layer": 0
     },
     {
       "pos": [
-        772.9175,
-        843.6139
+        1083.0,
+        423.0
       ],
       "size": [
-        64.0,
-        64.0
+        36.0,
+        36.0
       ],
-      "sprite_path": "assets/concrete.png",
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
       "animated_sprite_paths": null,
       "frame_duration": null,
       "layer": 0
     },
     {
       "pos": [
-        836.9175,
-        843.6139
+        1119.0,
+        423.0
       ],
       "size": [
-        64.0,
-        64.0
+        36.0,
+        36.0
       ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        900.9175,
-        843.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        964.9175,
-        843.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1028.9175,
-        843.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1092.9175,
-        843.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1156.9175,
-        843.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1220.9175,
-        843.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1284.9175,
-        843.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1348.9175,
-        843.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1412.9175,
-        843.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1476.9175,
-        843.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1540.9175,
-        843.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1604.9175,
-        843.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1668.9175,
-        843.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        -59.08255,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        4.91745,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        68.91745,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        132.91745,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        196.91745,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        260.91745,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        324.91745,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        388.91745,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        452.91745,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        516.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        580.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        644.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        708.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        772.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        836.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        900.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        964.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1028.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1092.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1156.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1220.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1284.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1348.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1476.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1412.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1540.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1604.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1668.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        -123.08255,
-        843.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        -123.08255,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1732.9175,
-        843.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1732.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        -187.08255,
-        843.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        -187.08255,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1796.9175,
-        843.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1796.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1860.9175,
-        843.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
-      "animated_sprite_paths": null,
-      "frame_duration": null,
-      "layer": 0
-    },
-    {
-      "pos": [
-        1860.9175,
-        907.6139
-      ],
-      "size": [
-        64.0,
-        64.0
-      ],
-      "sprite_path": "assets/concrete.png",
+      "sprite_path": "assets/kenney/construction/tile_0003.png",
       "animated_sprite_paths": null,
       "frame_duration": null,
       "layer": 0
     }
   ],
   "clips": [
-    {
-      "size": [
-        994.4465,
-        20.490356
-      ],
-      "pos": [
-        896.53796,
-        82.66083
-      ],
-      "layer": 1,
-      "one_way": false
-    },
-    {
-      "size": [
-        999.72394,
-        25.869934
-      ],
-      "pos": [
-        900.5536,
-        291.48865
-      ],
-      "layer": 1,
-      "one_way": false
-    },
     {
       "size": [
         15.421722,
@@ -1012,126 +274,6 @@
       "pos": [
         1382.7839,
         269.26337
-      ],
-      "layer": 1,
-      "one_way": false
-    },
-    {
-      "size": [
-        384.677,
-        38.904816
-      ],
-      "pos": [
-        573.237,
-        376.2154
-      ],
-      "layer": 1,
-      "one_way": false
-    },
-    {
-      "size": [
-        375.4275,
-        39.605774
-      ],
-      "pos": [
-        1216.6792,
-        374.81345
-      ],
-      "layer": 1,
-      "one_way": false
-    },
-    {
-      "size": [
-        30.588501,
-        50.980896
-      ],
-      "pos": [
-        1374.8557,
-        329.04285
-      ],
-      "layer": 1,
-      "one_way": false
-    },
-    {
-      "size": [
-        25.171875,
-        48.11322
-      ],
-      "pos": [
-        1050.1694,
-        330.20703
-      ],
-      "layer": 1,
-      "one_way": false
-    },
-    {
-      "size": [
-        26.44635,
-        49.069122
-      ],
-      "pos": [
-        738.1758,
-        332.22913
-      ],
-      "layer": 1,
-      "one_way": false
-    },
-    {
-      "size": [
-        289.85382,
-        14.657013
-      ],
-      "pos": [
-        895.6886,
-        339.87628
-      ],
-      "layer": 0,
-      "one_way": false
-    },
-    {
-      "size": [
-        21.985504,
-        52.574066
-      ],
-      "pos": [
-        414.98944,
-        330.47668
-      ],
-      "layer": 1,
-      "one_way": false
-    },
-    {
-      "size": [
-        2112.776,
-        70.05719
-      ],
-      "pos": [
-        869.35846,
-        -158.43991
-      ],
-      "layer": 1,
-      "one_way": false
-    },
-    {
-      "size": [
-        986.0364,
-        12.337341
-      ],
-      "pos": [
-        897.3696,
-        -114.85239
-      ],
-      "layer": 1,
-      "one_way": false
-    },
-    {
-      "size": [
-        953.2814,
-        9.815063
-      ],
-      "pos": [
-        897.4463,
-        97.175476
       ],
       "layer": 1,
       "one_way": false

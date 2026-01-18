@@ -1,10 +1,14 @@
-use std::{env::{self, current_dir, set_current_dir}, fs::{self, create_dir_all}, io, path::{Component, Path, PathBuf}, process::exit, time::Duration};
+use std::{
+    fs::{self, create_dir_all},
+    io,
+    path::{Path, PathBuf},
+    process::exit,
+};
 
 use clap::{Arg, Parser};
 use image::{GenericImageView, ImageReader};
 use interceptors_lib::{decoration::DecorationSave, prop::{PropMaterial, PropSave}};
-use macroquad::{math::Vec2, texture::load_image};
-use nalgebra::vector;
+use macroquad::math::Vec2;
 use colored::Colorize;
 use strum::IntoEnumIterator;
 
@@ -14,19 +18,35 @@ pub mod prefab_type;
 
 #[derive(Parser)]
 struct Args {
+    #[arg(long)]
+    prefab_type: Option<PrefabType>,
+    #[arg(long)]
+    scale: Option<f32>,
     /// Input file
-    asset_paths: Vec<String>
+    asset_paths: Vec<String>,
+    
 }
 
 fn get_user_input() -> String {
-     // pause execution
+    // pause execution
     let mut string_input = String::new();
     io::stdin()
         .read_line(&mut string_input)
         .expect("Failed to read line");
 
     string_input.trim().to_string()
-}   
+}
+
+fn parse_user_input<T: std::str::FromStr>(prompt: &str, error_message: &str) -> T {
+    println!("{prompt}");
+    match get_user_input().parse() {
+        Ok(value) => value,
+        Err(_) => {
+            error_print(error_message.to_string());
+            exit(1);
+        }
+    }
+}
 
 fn error_print(message: String) {
     log::error!("{}", message);
@@ -50,69 +70,63 @@ fn main() {
     };
 
     log::info!("Converting {} assets...", args.asset_paths.len());
-
-    //set_current_dir(env::current_exe().unwrap().parent().unwrap()).unwrap();
     
     for asset_path in args.asset_paths {
-        asset_to_prefab(asset_path);
+        asset_to_prefab(asset_path, args.prefab_type, args.scale);
     }
 
     get_user_input();
     
 }
 
-fn asset_to_prefab(asset_path: String) {
+fn asset_to_prefab(asset_path: String, prefab_type: Option<PrefabType>, scale: Option<f32>) {
 
     let relative_path = match get_path_relative_to_assets_folder(asset_path) {
         Ok(relative_path) => relative_path,
-        Err(error) => {
+        Err(()) => {
             error_print("Asset must exist in assets directory".to_string());
             return;
         },
     };
 
-    println!("{}", relative_path.to_string_lossy().to_string().bold().underline());
-    println!("Select prefab type:");
-    println!("({}){}", "D".blue().underline().bold(), "ecoration");
-    println!("({}){}", "P".red().underline().bold(), "rop");
-    let prefab_type = match get_user_input().to_lowercase().as_str() {
-        "d" => PrefabType::Decoration,
-        "p" => PrefabType::Prop,
-        _ => {
-            error_print("Invalid prefab input".to_string());
-            exit(1)
-        },
+    let prefab_type = match prefab_type {
+        Some(prefab_type) => prefab_type,
+        None => {
+            println!("{}", relative_path.to_string_lossy().to_string().bold().underline());
+            println!("Select prefab type:");
+            println!("({}){}", "D".blue().underline().bold(), "ecoration");
+            println!("({}){}", "P".red().underline().bold(), "rop");
+            match get_user_input().to_lowercase().as_str() {
+                "d" => PrefabType::Decoration,
+                "p" => PrefabType::Prop,
+                _ => {
+                    error_print("Invalid prefab input".to_string());
+                    exit(1)
+                }
 
+            }
+        },
     };
+    
 
     match prefab_type {
-        PrefabType::Decoration => asset_to_decoration_prefab(relative_path),
-        PrefabType::Prop => asset_to_prop(relative_path),
+        PrefabType::Decoration => asset_to_decoration_prefab(relative_path, scale),
+        PrefabType::Prop => asset_to_prop(relative_path, scale),
     }
 
 }
 
-fn asset_to_prop(relative_path: PathBuf) {
+fn asset_to_prop(relative_path: PathBuf, scale: Option<f32>) {
 
     let (width, height) = get_image_dimensions(&relative_path);
-
-    println!("Enter scaling factor: ");
-    let scale: f32 = match get_user_input().parse() {
-        Ok(scaling_factor) => scaling_factor,
-        Err(error) => {
-            error_print("Failed to parse scaling input".to_string()); 
-            exit(1);
+    
+    let scale = match scale {
+        Some(scale) => scale,
+        None => {
+            parse_user_input("Enter scaling factor: ", "Failed to parse scaling input")
         },
     };
-
-    println!("Enter mass: ");
-    let mass: f32 = match get_user_input().parse() {
-        Ok(mass) => mass,
-        Err(error) => {
-            error_print("Failed to parse mass input".to_string()); 
-            exit(1);
-        },
-    };
+    let mass: f32 = parse_user_input("Enter mass: ", "Failed to parse mass input");
 
     println!("Enter name: ");
     let name = get_user_input();
@@ -124,13 +138,10 @@ fn asset_to_prop(relative_path: PathBuf) {
         println!("({}) {}", index.to_string().bold(), material_string);
     }
     
-    let prop_material_selection_index: usize = match get_user_input().parse() {
-        Ok(prop_material_selection_index) => prop_material_selection_index,
-        Err(error) => {
-            error_print("Failed to parse prop material selection index input".to_string()); 
-            exit(1);
-        },
-    };
+    let prop_material_selection_index: usize = parse_user_input(
+        "Enter material index: ",
+        "Failed to parse prop material selection index input",
+    );
 
     // this is a little silly
     let prop_materials: Vec<PropMaterial> = PropMaterial::iter().collect();
@@ -203,21 +214,22 @@ fn get_image_dimensions(asset_path: &PathBuf) -> (u32, u32) {
 
 }
 
-fn asset_to_decoration_prefab(relative_path: PathBuf) {
+fn asset_to_decoration_prefab(relative_path: PathBuf, scale: Option<f32>) {
 
     let (width, height) = get_image_dimensions(&relative_path);
 
     log::info!("Loaded {} with dimensions: {:?}", &relative_path.to_string_lossy(), (width, height));
 
-    println!("Enter scaling factor: ");
+    
 
-    let scale: f32 = match get_user_input().parse() {
-        Ok(scaling_factor) => scaling_factor,
-        Err(error) => {
-            error_print("Failed to parse scaling factor".to_string()); 
-            exit(1);
+    let scale: f32 = match scale {
+        Some(scale) => scale,
+        None => {
+            parse_user_input("Enter scaling factor: ", "Failed to parse scaling factor")
         },
     };
+    
+    
 
     let decoration_save = DecorationSave {
         pos: Vec2::ZERO,
@@ -254,10 +266,9 @@ fn get_path_relative_to_assets_folder(asset_path: String) -> Result<PathBuf, ()>
 
     for (i, component) in path.components().enumerate() {
         if component.as_os_str() == "assets" {
-            return Result::Ok(path.components().skip(i).collect())
-
+            return Ok(path.components().skip(i).collect());
         }
-    };
+    }
 
-    return Result::Err(())
+    Err(())
 }

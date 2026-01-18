@@ -1,0 +1,14 @@
+{
+  "pos": [
+    0.0,
+    0.0
+  ],
+  "size": [
+    36.0,
+    36.0
+  ],
+  "sprite_path": "assets/kenney/construction/tile_0012.png",
+  "animated_sprite_paths": null,
+  "frame_duration": null,
+  "layer": 0
+}

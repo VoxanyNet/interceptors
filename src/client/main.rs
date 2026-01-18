@@ -34,24 +34,16 @@ async fn main() {
     #[cfg(feature = "dhat-heap")]
     let _profiler = dhat::Profiler::new_heap();
 
+    //web_sys::console::log_1(&"test".into());
+
     // let mut discord_sdk: Option<DiscordSDK> = None;
+    #[cfg(feature = "discord")] {
+        let client_id: i64 = 1461559630462451868;
+        let sdk = DiscordSDK::new(&client_id.to_string()).unwrap();
 
-    // let client_id: i64 = 1461448319179161660;
-    // let sdk = DiscordSDK::new(&client_id.to_string()).unwrap();
-
-    // sdk.ready().await.unwrap();
-
-
-
-    // println!("ready!");
-    // log::debug!("{:?}", sdk.client_id());
-
-    #[cfg(feature = "discord")] 
-    {
-
+        sdk.ready().await.unwrap();
     }
     
-
     let assets = load_assets().await;
 
     
