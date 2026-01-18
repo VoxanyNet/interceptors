@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::PathBuf, process::exit};
 
 use interceptors_lib::{Assets, ClientIO, ClientId, ClientTickContext, Prefabs, area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, player::{ItemSlot, Player}, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, weapons::weapon_type::WeaponType, world::World};
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{BLACK, WHITE}, input::{is_key_released, KeyCode}, math::{vec2, Rect}, prelude::{gl_use_default_material, gl_use_material, load_material, Material, ShaderSource}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
+use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, WHITE}, input::{KeyCode, is_key_released, show_mouse}, math::{Rect, vec2}, prelude::{Material, ShaderSource, gl_use_default_material, gl_use_material, load_material}, texture::{DrawTextureParams, RenderTarget, draw_texture_ex, render_target}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
 use rapier2d::math::Vector;
 
 use crate::{shaders::{CRT_FRAGMENT_SHADER, CRT_VERTEX_SHADER}};
@@ -31,14 +31,18 @@ pub struct Client {
 }
 
 impl Client {
-    pub async fn connect(assets: Assets) -> Self {
+    pub async fn connect(assets: Assets, client_id: i64) -> Self {
 
+
+        show_mouse(true);
         
-
         let url = "ws://127.0.0.1:5560";
 
         #[cfg(target_arch = "wasm32")]
         let url = "wss://interceptors.voxany.net/ws/";
+
+        #[cfg(feature = "discord")]
+        let url = format!("wss://{}.discordsays.com/ws/", client_id);
 
         let (mut server_send, server_receive) = match ewebsock::connect(url, ewebsock::Options::default()) {
             Ok(result) => result,

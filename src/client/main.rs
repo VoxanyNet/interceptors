@@ -29,16 +29,12 @@ fn window_conf() -> Conf {
 #[macroquad::main(window_conf)]
 async fn main() {
 
-    pretty_env_logger::init();
+    pretty_env_logger::init();  
 
-    #[cfg(feature = "dhat-heap")]
-    let _profiler = dhat::Profiler::new_heap();
+    let client_id: i64 = 1461559630462451868;
 
-    //web_sys::console::log_1(&"test".into());
-
-    // let mut discord_sdk: Option<DiscordSDK> = None;
     #[cfg(feature = "discord")] {
-        let client_id: i64 = 1461559630462451868;
+        
         let sdk = DiscordSDK::new(&client_id.to_string()).unwrap();
 
         sdk.ready().await.unwrap();
@@ -56,9 +52,7 @@ async fn main() {
             request_quit();
         },
         MainMenuResult::Connect => {
-            let mut client = Client::connect(assets).await;
-
-            show_mouse(true);
+            let mut client = Client::connect(assets, client_id).await;
 
             client.run().await;
         },

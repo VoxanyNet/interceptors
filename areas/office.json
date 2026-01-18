@@ -227,6 +227,384 @@
       "animated_sprite_paths": null,
       "frame_duration": null,
       "layer": 0
+    },
+    {
+      "pos": [
+        1191.0,
+        423.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0001.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1227.0,
+        423.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1263.0,
+        423.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1299.0,
+        423.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0003.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        867.0,
+        171.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        903.0,
+        171.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        939.0,
+        171.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        975.0,
+        171.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1011.0,
+        171.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        831.0,
+        207.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1047.0,
+        207.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        831.0,
+        243.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        903.0,
+        243.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        975.0,
+        243.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1047.0,
+        243.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        831.0,
+        279.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1047.0,
+        279.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        831.0,
+        315.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        903.0,
+        315.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        939.0,
+        315.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        975.0,
+        315.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1047.0,
+        315.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        867.0,
+        351.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        1011.0,
+        351.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        903.0,
+        387.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        939.0,
+        387.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    },
+    {
+      "pos": [
+        975.0,
+        387.0
+      ],
+      "size": [
+        36.0,
+        36.0
+      ],
+      "sprite_path": "assets/kenney/construction/tile_0002.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
     }
   ],
   "clips": [
@@ -276,6 +654,210 @@
         269.26337
       ],
       "layer": 1,
+      "one_way": false
+    },
+    {
+      "size": [
+        578.5123,
+        34.83368
+      ],
+      "pos": [
+        869.94836,
+        278.66855
+      ],
+      "layer": 0,
+      "one_way": false
+    },
+    {
+      "size": [
+        144.0,
+        34.83368
+      ],
+      "pos": [
+        1263.0,
+        278.66855
+      ],
+      "layer": 0,
+      "one_way": false
+    },
+    {
+      "size": [
+        180.0,
+        36.0
+      ],
+      "pos": [
+        957.0,
+        531.0
+      ],
+      "layer": 0,
+      "one_way": false
+    },
+    {
+      "size": [
+        36.0,
+        36.0
+      ],
+      "pos": [
+        849.0,
+        495.0
+      ],
+      "layer": 0,
+      "one_way": false
+    },
+    {
+      "size": [
+        36.0,
+        36.0
+      ],
+      "pos": [
+        1065.0,
+        495.0
+      ],
+      "layer": 0,
+      "one_way": false
+    },
+    {
+      "size": [
+        36.0,
+        36.0
+      ],
+      "pos": [
+        849.0,
+        459.0
+      ],
+      "layer": 0,
+      "one_way": false
+    },
+    {
+      "size": [
+        36.0,
+        36.0
+      ],
+      "pos": [
+        921.0,
+        459.0
+      ],
+      "layer": 0,
+      "one_way": false
+    },
+    {
+      "size": [
+        36.0,
+        36.0
+      ],
+      "pos": [
+        993.0,
+        459.0
+      ],
+      "layer": 0,
+      "one_way": false
+    },
+    {
+      "size": [
+        36.0,
+        36.0
+      ],
+      "pos": [
+        1065.0,
+        459.0
+      ],
+      "layer": 0,
+      "one_way": false
+    },
+    {
+      "size": [
+        36.0,
+        36.0
+      ],
+      "pos": [
+        849.0,
+        423.0
+      ],
+      "layer": 0,
+      "one_way": false
+    },
+    {
+      "size": [
+        36.0,
+        36.0
+      ],
+      "pos": [
+        1065.0,
+        423.0
+      ],
+      "layer": 0,
+      "one_way": false
+    },
+    {
+      "size": [
+        36.0,
+        36.0
+      ],
+      "pos": [
+        849.0,
+        387.0
+      ],
+      "layer": 0,
+      "one_way": false
+    },
+    {
+      "size": [
+        108.0,
+        36.0
+      ],
+      "pos": [
+        957.0,
+        387.0
+      ],
+      "layer": 0,
+      "one_way": false
+    },
+    {
+      "size": [
+        36.0,
+        36.0
+      ],
+      "pos": [
+        1065.0,
+        387.0
+      ],
+      "layer": 0,
+      "one_way": false
+    },
+    {
+      "size": [
+        36.0,
+        36.0
+      ],
+      "pos": [
+        885.0,
+        351.0
+      ],
+      "layer": 0,
+      "one_way": false
+    },
+    {
+      "size": [
+        36.0,
+        36.0
+      ],
+      "pos": [
+        1029.0,
+        351.0
+      ],
+      "layer": 0,
+      "one_way": false
+    },
+    {
+      "size": [
+        108.0,
+        36.0
+      ],
+      "pos": [
+        957.0,
+        315.0
+      ],
+      "layer": 0,
       "one_way": false
     }
   ],
