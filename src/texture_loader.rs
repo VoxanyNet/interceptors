@@ -38,7 +38,7 @@ impl TextureLoader {
 
         let normalized_path = normalize_path(texture_path);
 
-        log::debug!("Loading texture: {:?}", normalized_path);
+        //log::debug!("Loading texture: {:?}", normalized_path);
 
         self.cache.get(&normalized_path).unwrap()
 

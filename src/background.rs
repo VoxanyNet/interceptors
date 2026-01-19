@@ -99,9 +99,9 @@ impl Drawable for Background {
 }
 #[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq)]
 pub struct BackgroundSave {
-    repeat: bool,
-    pos: Vec2,
-    sprite_path: PathBuf,
-    size: Vec2,
-    parallax: f32
+    pub repeat: bool,
+    pub pos: Vec2,
+    pub sprite_path: PathBuf,
+    pub size: Vec2,
+    pub parallax: f32
 }

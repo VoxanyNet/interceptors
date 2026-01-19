@@ -34,15 +34,11 @@ async fn main() {
     let client_id: i64 = 1461559630462451868;
 
     #[cfg(feature = "discord")] {
-        
         let sdk = DiscordSDK::new(&client_id.to_string()).unwrap();
-
         sdk.ready().await.unwrap();
     }
     
     let assets = load_assets().await;
-
-    
     let mut main_menu = MainMenu::new(assets.clone()).await;
 
     show_mouse(false);

@@ -51,7 +51,7 @@ impl Client {
             },
         };
 
-         // wait for Opened event from server
+        // wait for Opened event from server
         loop {
             match server_receive.try_recv() {
                 Some(event) => {

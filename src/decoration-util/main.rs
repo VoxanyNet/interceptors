@@ -7,8 +7,8 @@ use std::{
 
 use clap::{Arg, Parser};
 use image::{GenericImageView, ImageReader};
-use interceptors_lib::{decoration::DecorationSave, prop::{PropMaterial, PropSave}};
-use macroquad::math::Vec2;
+use interceptors_lib::{background::BackgroundSave, decoration::DecorationSave, prop::{PropMaterial, PropSave}};
+use macroquad::math::{Vec2, vec2};
 use colored::Colorize;
 use strum::IntoEnumIterator;
 
@@ -96,9 +96,11 @@ fn asset_to_prefab(asset_path: String, prefab_type: Option<PrefabType>, scale: O
             println!("Select prefab type:");
             println!("({}){}", "D".blue().underline().bold(), "ecoration");
             println!("({}){}", "P".red().underline().bold(), "rop");
+            println!("({}){}", "B".green().underline().bold(), "ackground");
             match get_user_input().to_lowercase().as_str() {
                 "d" => PrefabType::Decoration,
                 "p" => PrefabType::Prop,
+                "b" => PrefabType::Background,
                 _ => {
                     error_print("Invalid prefab input".to_string());
                     exit(1)
@@ -112,11 +114,94 @@ fn asset_to_prefab(asset_path: String, prefab_type: Option<PrefabType>, scale: O
     match prefab_type {
         PrefabType::Decoration => asset_to_decoration_prefab(relative_path, scale),
         PrefabType::Prop => asset_to_prop(relative_path, scale),
+        PrefabType::Background => asset_to_background(relative_path, scale),
     }
-
 }
 
+fn asset_to_background(relative_path: PathBuf, scale: Option<f32>) {
+
+    log::debug!("{:?}", relative_path);
+    let (width, height) = get_image_dimensions(&relative_path);
+
+    let scale: f32 = match scale {
+        Some(scale) => scale,
+        None => {
+            loop {
+                println!("Enter scaling factor");
+
+                match get_user_input().parse::<f32>() {
+                    Ok(scale) => break scale,
+                    Err(error) => {
+                        println!("Failed to parse scale input");
+                        continue;
+                    },
+                }
+            }
+            
+        },
+    };
+
+    
+
+    let repeat: bool = loop {
+        println!("Repeat? (y/n)");
+        match get_user_input().as_str() {
+            "y" => {
+                break true
+            },
+            "n" => {
+                break false
+            }
+            _ => {
+                println!("Invalid input");
+                continue;
+            }
+        }
+    };
+
+    let parallax: f32 = loop {
+        println!("Enter parallax value: ");
+
+        match get_user_input().parse::<f32>() {
+            Ok(parallax) => break parallax,
+            Err(_) => {
+                println!("Invalid parallax value");
+                continue;
+            },
+        }
+    };
+
+    let background_save = BackgroundSave {
+        repeat,
+        pos: Vec2::ZERO,
+        sprite_path: relative_path.clone(),
+        size: vec2(width as f32 * scale, height as f32 * scale),
+        parallax,
+    };
+
+    let save = serde_json::to_string_pretty(&background_save).unwrap();
+
+    println!("Background preview:");
+    println!("{}\n", save);
+    println!("Press enter to continue...");
+    get_user_input();
+
+    let prefab_path = format!("prefabs/backgrounds/{}.json",&relative_path.file_stem().unwrap().to_string_lossy().to_string());
+
+    
+    match fs::write(&prefab_path, save) {
+        Ok(_) => todo!(),
+        Err(error) => {error_print(format!("Error writing destination file '{}': {}", &prefab_path, error));},
+    }
+
+    log::info!("Successfully wrote prefab to: {}", prefab_path)
+
+    
+}   
+
+
 fn asset_to_prop(relative_path: PathBuf, scale: Option<f32>) {
+    log::debug!("{:?}", relative_path);
 
     let (width, height) = get_image_dimensions(&relative_path);
     

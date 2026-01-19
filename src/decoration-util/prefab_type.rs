@@ -5,4 +5,5 @@ use clap::ValueEnum;
 pub enum PrefabType {
     Decoration,
     Prop,
+    Background
 }
