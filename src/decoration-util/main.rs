@@ -110,17 +110,17 @@ fn asset_to_prefab(asset_path: String, prefab_type: Option<PrefabType>, scale: O
         },
     };
     
-
-    match prefab_type {
+    let json_string = match prefab_type {
         PrefabType::Decoration => asset_to_decoration_prefab(relative_path, scale),
         PrefabType::Prop => asset_to_prop(relative_path, scale),
-        PrefabType::Background => asset_to_background(relative_path, scale),
-    }
+        PrefabType::Background => asset_to_background(relative_path, scale) ,
+    };
+
+    println!("{}", &json_string.unwrap());
 }
 
-fn asset_to_background(relative_path: PathBuf, scale: Option<f32>) {
+fn asset_to_background(relative_path: PathBuf, scale: Option<f32>) -> Result<String, serde_json::Error> {
 
-    log::debug!("{:?}", relative_path);
     let (width, height) = get_image_dimensions(&relative_path);
 
     let scale: f32 = match scale {
@@ -179,40 +179,34 @@ fn asset_to_background(relative_path: PathBuf, scale: Option<f32>) {
         parallax,
     };
 
-    let save = serde_json::to_string_pretty(&background_save).unwrap();
+    serde_json::to_string_pretty(&background_save)
 
-    println!("Background preview:");
-    println!("{}\n", save);
-    println!("Press enter to continue...");
-    get_user_input();
+    // println!("Background preview:");
+    // println!("{}\n", save);
+    // println!("Press enter to continue...");
+    // get_user_input();
 
-    let prefab_path = format!("prefabs/backgrounds/{}.json",&relative_path.file_stem().unwrap().to_string_lossy().to_string());
+    // let prefab_path = format!("prefabs/backgrounds/{}.json",&relative_path.file_stem().unwrap().to_string_lossy().to_string());
 
-    
-    match fs::write(&prefab_path, save) {
-        Ok(_) => todo!(),
-        Err(error) => {error_print(format!("Error writing destination file '{}': {}", &prefab_path, error));},
-    }
 
-    log::info!("Successfully wrote prefab to: {}", prefab_path)
+    // match fs::write(&prefab_path, save) {
+    //     Ok(_) => todo!(),
+    //     Err(error) => {error_print(format!("Error writing destination file '{}': {}", &prefab_path, error));},
+    // }
+
+    // log::info!("Successfully wrote prefab to: {}", prefab_path)
 
     
 }   
 
 
-fn asset_to_prop(relative_path: PathBuf, scale: Option<f32>) {
-    log::debug!("{:?}", relative_path);
-
+fn asset_to_prop(relative_path: PathBuf, scale: Option<f32>) -> Result<String, serde_json::Error> {
     let (width, height) = get_image_dimensions(&relative_path);
-    
-    let scale = match scale {
-        Some(scale) => scale,
-        None => {
-            parse_user_input("Enter scaling factor: ", "Failed to parse scaling input")
-        },
-    };
-    let mass: f32 = parse_user_input("Enter mass: ", "Failed to parse mass input");
+    let scale = scale.unwrap_or_else(|| {
+        parse_user_input("Enter scaling factor: ", "Failed to parse scaling input")
+    });
 
+    let mass: f32 = parse_user_input("Enter mass: ", "Failed to parse mass input");
     println!("Enter name: ");
     let name = get_user_input();
 
@@ -223,19 +217,29 @@ fn asset_to_prop(relative_path: PathBuf, scale: Option<f32>) {
         println!("({}) {}", index.to_string().bold(), material_string);
     }
     
-    let prop_material_selection_index: usize = parse_user_input(
-        "Enter material index: ",
-        "Failed to parse prop material selection index input",
-    );
+    let prop_material_selection_index: usize = loop {
+        match get_user_input().parse::<usize>() {
+            Ok(index) => break index,
+            Err(e) => {
+                println!("Failed to parse prop material selection index");
+                continue;
+            },
+        }
+    };  
 
-    // this is a little silly
-    let prop_materials: Vec<PropMaterial> = PropMaterial::iter().collect();
-    let prop_material = match prop_materials.get(prop_material_selection_index) {
-        Some(prop_material) => prop_material,
-        None => {
-            error_print("Invalid prop material index".to_string());
-            exit(1);
-        },
+    let prop_materials = PropMaterial::iter()
+        .collect::<Vec<PropMaterial>>();
+
+    let prop_material: &PropMaterial = loop {
+
+        match prop_materials
+            .get(prop_material_selection_index) {
+                Some(prop_material) => break prop_material,
+                None => {
+                    println!("Invalid prop material selection");
+                    continue;
+                },
+            }
     };
 
 
@@ -253,21 +257,21 @@ fn asset_to_prop(relative_path: PathBuf, scale: Option<f32>) {
         layer: 0
     };
 
-    let save = serde_json::to_string_pretty(&prop_save).unwrap();
+    return serde_json::to_string_pretty(&prop_save)
 
-    println!("{}{} {}{} {}{} {}{}{}{}{}", "P".red(), "rop", "p".green(), "refab", "p".blue(), "review", "(", "p".red(), "p".green(), "p".blue(), ")");
-    println!("{}\n", save);
-    println!("Press enter to continue...");
-    get_user_input();
+    // println!("{}{} {}{} {}{} {}{}{}{}{}", "P".red(), "rop", "p".green(), "refab", "p".blue(), "review", "(", "p".red(), "p".green(), "p".blue(), ")");
+    // println!("{}\n", save);
+    // println!("Press enter to continue...");
+    // get_user_input();
 
-    let prefab_path = format!("prefabs/generic_physics_props/{}.json", &relative_path.file_stem().unwrap().to_string_lossy().to_string());
+    // let prefab_path = format!("prefabs/generic_physics_props/{}.json", &relative_path.file_stem().unwrap().to_string_lossy().to_string());
 
-    match fs::write(&prefab_path, save) {
-        Ok(_) => {},
-        Err(error) => error_print(format!("Error writing destination file '{}': {}", &prefab_path, error)),
-    }
+    // match fs::write(&prefab_path, save) {
+    //     Ok(_) => {},
+    //     Err(error) => error_print(format!("Error writing destination file '{}': {}", &prefab_path, error)),
+    // }
 
-    log::info!("Successfully wrote prefab to: {}", prefab_path);
+    // log::info!("Successfully wrote prefab to: {}", prefab_path);
 
     
 }
@@ -299,49 +303,44 @@ fn get_image_dimensions(asset_path: &PathBuf) -> (u32, u32) {
 
 }
 
-fn asset_to_decoration_prefab(relative_path: PathBuf, scale: Option<f32>) {
+fn asset_to_decoration_prefab(asset_path: PathBuf, scale: Option<f32>) -> Result<String, serde_json::Error> {
 
-    let (width, height) = get_image_dimensions(&relative_path);
+    let (width, height) = get_image_dimensions(&asset_path);
 
-    log::info!("Loaded {} with dimensions: {:?}", &relative_path.to_string_lossy(), (width, height));
+    log::info!("Loaded {} with dimensions: {:?}", &asset_path.to_string_lossy(), (width, height));
 
+    let scale: f32 = scale.unwrap_or_else(|| {
+        parse_user_input("Enter scaling factor: ", "Failed to parse scaling factor")
+    });
     
-
-    let scale: f32 = match scale {
-        Some(scale) => scale,
-        None => {
-            parse_user_input("Enter scaling factor: ", "Failed to parse scaling factor")
-        },
-    };
-    
-    
-
     let decoration_save = DecorationSave {
         pos: Vec2::ZERO,
         size: Vec2::new(width as f32 * scale, height as f32 * scale),
-        sprite_path: relative_path.clone().into(),
+        sprite_path: asset_path.clone().into(),
         animated_sprite_paths: None,
         frame_duration: None,
         layer: 0,
     };
 
-    let save = serde_json::to_string_pretty(&decoration_save).unwrap();
+
+    return serde_json::to_string_pretty(&decoration_save)
+
 
     // we want to copy the directory structure from the assets folder but we gotta get rid of the assets/ part of the path
-    let mut prefab_save_path_structure: PathBuf = relative_path.components().skip(1).collect();
+    // let mut prefab_save_path_structure: PathBuf = asset_path.components().skip(1).collect();
 
-    prefab_save_path_structure.set_extension("");
+    // prefab_save_path_structure.set_extension("");
 
-    let prefab_path_string = format!("prefabs/decorations/{}.json", &prefab_save_path_structure.to_string_lossy().to_string());
+    // let prefab_path_string = format!("prefabs/decorations/{}.json", &prefab_save_path_structure.to_string_lossy().to_string());
 
-    // this is the stupidest thing i've written
-    create_dir_all(format!("prefabs/decorations/{}", prefab_save_path_structure.parent().unwrap().to_str().unwrap().to_string())).unwrap();
-    match fs::write(&prefab_path_string, save) {
-        Ok(_) => {},
-        Err(error) => error_print(format!("Error writing destination file '{}': {}", &prefab_path_string, error)),
-    }
+    // // this is the stupidest thing i've written
+    // create_dir_all(format!("prefabs/decorations/{}", prefab_save_path_structure.parent().unwrap().to_str().unwrap().to_string())).unwrap();
+    // match fs::write(&prefab_path_string, save) {
+    //     Ok(_) => {},
+    //     Err(error) => error_print(format!("Error writing destination file '{}': {}", &prefab_path_string, error)),
+    // }
 
-    log::info!("Successfully wrote prefab to: {}", prefab_path_string);
+    // log::info!("Successfully wrote prefab to: {}", prefab_path_string);
 
 }
 
