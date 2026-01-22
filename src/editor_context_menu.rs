@@ -1,7 +1,6 @@
 use std::{env::temp_dir, fs::{self}, path::PathBuf, process::Command, time::SystemTime};
 
 use macroquad::{color::{DARKGRAY, GRAY, WHITE}, input::{KeyCode, is_key_down, is_key_released, is_mouse_button_released, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle, text::draw_text};
-use nalgebra::{Isometry2, vector};
 use rapier2d::prelude::{ColliderHandle, RigidBodyHandle};
 
 use crate::{button::Button, mouse_world_pos, selectable_object_id::SelectableObjectId, space::Space, uuid_string};

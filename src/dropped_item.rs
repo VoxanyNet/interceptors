@@ -1,5 +1,5 @@
+use glamx::Pose2;
 use macroquad::{color::WHITE, math::Vec2};
-use nalgebra::{Isometry2, Vector2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
@@ -28,8 +28,8 @@ pub struct DroppedItem {
     pub body: RigidBodyHandle,
     collider: ColliderHandle,
     pub id: DroppedItemId,
-    pub size: Vector2<f32>,
-    previous_velocity: RigidBodyVelocity,
+    pub size: glamx::Vec2,
+    previous_velocity: RigidBodyVelocity<f32>,
     pub despawn: bool
 
 }
@@ -46,7 +46,7 @@ impl DroppedItem {
         self.despawn = true;
     }
 
-    pub fn set_velocity(&mut self, space: &mut Space, vel: RigidBodyVelocity) {
+    pub fn set_velocity(&mut self, space: &mut Space, vel: RigidBodyVelocity<f32>) {
         space.rigid_body_set.get_mut(self.body).unwrap().set_vels(vel, true);
     }
 
@@ -105,7 +105,7 @@ impl DroppedItem {
 
         }
     }
-    pub fn new(item: Item, pos: Isometry2<f32>, vel: RigidBodyVelocity, space: &mut Space, textures: &TextureLoader, prefabs: &Prefabs, size: f32) -> Self {
+    pub fn new(item: Item, pos: Pose2, vel: RigidBodyVelocity<f32>, space: &mut Space, textures: &TextureLoader, prefabs: &Prefabs, size: f32) -> Self {
 
         let preview_size = item.get_preview_resolution(textures, size, prefabs);
 
@@ -129,7 +129,7 @@ impl DroppedItem {
             collider,
             id: DroppedItemId::new(),
             previous_velocity: RigidBodyVelocity::zero(),
-            size: Vector2::new(preview_size.x, preview_size.y),
+            size: glamx::Vec2::new(preview_size.x, preview_size.y),
             despawn: false
         }
     }
@@ -149,7 +149,7 @@ impl Drawable for DroppedItem {
         let half_extents = draw_context.space.collider_set.get(self.collider).unwrap().shape().as_cuboid().unwrap().half_extents;
 
         // preview uses macroquad coords
-        let macroquad_pos = rapier_to_macroquad(pos.translation.vector);
+        let macroquad_pos = rapier_to_macroquad(pos.translation);
 
         let macroquad_rotation = pos.rotation.angle() * -1.;
 
@@ -179,11 +179,11 @@ impl Drawable for DroppedItem {
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct DroppedItemSave {
-    pos: Isometry2<f32>,
+    pos: Pose2,
     item: ItemSave,
-    velocity: RigidBodyVelocity,
+    velocity: RigidBodyVelocity<f32>,
     id: DroppedItemId,
-    size: Vector2<f32>
+    size: glamx::Vec2
        
 }
 
@@ -203,5 +203,5 @@ pub struct RemoveDroppedItemUpdate {
 pub struct DroppedItemVelocityUpdate {
     pub area_id: AreaId,
     pub id: DroppedItemId,
-    pub velocity: RigidBodyVelocity
+    pub velocity: RigidBodyVelocity<f32>
 }

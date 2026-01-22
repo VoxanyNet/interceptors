@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
+use glamx::Pose2;
 use macroquad::{audio::{PlaySoundParams, play_sound}, color::Color, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released}, math::Vec2, rand::RandomRange};
-use nalgebra::{point, vector, Vector2};
 use rapier2d::{math::Vector, parry::query::Ray, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 
 use crate::{ClientId, ClientTickContext, IntersectionData, TickContext, area::AreaId, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, enemy::EnemyId, get_intersections, get_preview_resolution, player::{Facing, PlayerId}, prop::StupidDissolvedPixelVelocityUpdate, space::Space, texture_loader::TextureLoader, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon_save::WeaponSave, weapon_fire_context::WeaponFireContext}};
@@ -71,9 +71,14 @@ impl WeaponBase {
         let rigid_body = space.rigid_body_set.insert(
             RigidBodyBuilder::dynamic()
                 .ccd_enabled(true)
-                .position(vector![0., 0.].into())
+                .pose(
+                    Pose2::new(
+                        glamx::vec2(0., 0.),
+                        0.
+                    )
+                )
                 .build()
-        );
+        ); 
 
 
         let collider = space.collider_set.insert_with_parent(
@@ -90,8 +95,8 @@ impl WeaponBase {
             player_rigid_body_handle,
             rigid_body,
             RevoluteJointBuilder::new()
-                .local_anchor1(vector![0., 0.].into())
-                .local_anchor2(vector![30., 0.].into())
+                .local_anchor1(glamx::vec2(0., 0.))
+                .local_anchor2(glamx::vec2(30., 0.))
                 .limits([-0.8, 0.8])
                 .contacts_enabled(false)
             .build(),
@@ -396,7 +401,7 @@ impl WeaponBase {
         bullet_count: u32, 
         innaccuracy: f32,
         weapon_fire_context: &WeaponFireContext
-    ) -> Vec<Vector2<f32>> {
+    ) -> Vec<glamx::Vec2> {
         let mut bullet_vectors = Vec::new();
 
         for _ in 0..bullet_count {
@@ -417,17 +422,17 @@ impl WeaponBase {
     fn get_bullet_impacts(
         &mut self, 
         ctx: &mut TickContext,
-        bullet_vectors: Vec<Vector2<f32>>,
+        bullet_vectors: Vec<glamx::Vec2>,
         weapon_fire_context: &mut WeaponFireContext
     ) -> Vec<BulletImpactData> {
         let mut impacts = Vec::new();
         
-        for bullet_vector in &bullet_vectors {
+        for bullet_vector in bullet_vectors {
 
-            impacts.append(&mut self.get_impacts(weapon_fire_context.space, *bullet_vector));
+            impacts.append(&mut self.get_impacts(weapon_fire_context.space, bullet_vector));
             self.create_bullet_trail(
                 ctx, 
-                *bullet_vector, 
+                bullet_vector.clone(), 
                 weapon_fire_context.space, 
                 weapon_fire_context.area_id, 
                 weapon_fire_context.bullet_trails
@@ -489,7 +494,7 @@ impl WeaponBase {
 
     pub fn send_stupid_updates(
         &mut self, 
-        bullet_vectors: &Vec<Vector2<f32>>, 
+        bullet_vectors: &Vec<glamx::Vec2>, 
         ctx: &mut TickContext,
         weapon_fire_context: &WeaponFireContext
     ) {
@@ -497,8 +502,11 @@ impl WeaponBase {
             ctx.send_network_packet(
                 StupidDissolvedPixelVelocityUpdate {
                     area_id: weapon_fire_context.area_id,
-                    bullet_vector: *bullet_vector,
-                    weapon_pos: weapon_fire_context.space.rigid_body_set.get(self.rigid_body.unwrap()).unwrap().position().translation.vector
+                    bullet_vector: bullet_vector.clone(),
+                    weapon_pos: weapon_fire_context
+                        .space.rigid_body_set.get(self.rigid_body.unwrap()).unwrap()
+                        .position()
+                        .translation
                 }.into()
             );
         }
@@ -548,16 +556,23 @@ impl WeaponBase {
 
     }
     
-    pub fn create_bullet_trail(&mut self, ctx: &mut TickContext, bullet_vector: Vector2<f32>, space: &Space, area_id: AreaId, bullet_trails: &mut Vec<BulletTrail>) {
+    pub fn create_bullet_trail(
+        &mut self, 
+        ctx: &mut TickContext, 
+        bullet_vector: glamx::Vec2, 
+        space: &Space, 
+        area_id: AreaId, 
+        bullet_trails: &mut Vec<BulletTrail>
+    ) {
 
         let weapon_pos = space.rigid_body_set.get(self.rigid_body.unwrap()).unwrap().position();
 
         let bullet_trail = BulletTrail::new(
-            Vector2::new(
+            glamx::Vec2::new(
                 weapon_pos.translation.x, 
                 weapon_pos.translation.y + 10.
             ), 
-            Vector2::new(
+            glamx::Vec2::new(
                 weapon_pos.translation.x + (bullet_vector.x * 10000.),
                 weapon_pos.translation.y - ((bullet_vector.y * 10000.) * -1.),
             ),
@@ -595,7 +610,7 @@ impl WeaponBase {
         space: &Space, 
         facing: Facing,
         inaccuracy: f32
-    ) -> Vector2<f32> {
+    ) -> glamx::Vec2 {
         let weapon_body = space.rigid_body_set.get(self.rigid_body.unwrap()).unwrap().clone();
 
         let mut weapon_angle = weapon_body.rotation().angle();
@@ -618,7 +633,7 @@ impl WeaponBase {
             }
         }
 
-        let rapier_angle_bullet_vector = Vector2::new(
+        let rapier_angle_bullet_vector = glamx::Vec2::new(
             macroquad_angle_bullet_vector.x,
             macroquad_angle_bullet_vector.y * -1.
         );
@@ -626,13 +641,17 @@ impl WeaponBase {
         rapier_angle_bullet_vector
     }
  
-    pub fn get_impacts(&mut self, space: &mut Space, bullet_vector: Vector2<f32>) -> Vec<BulletImpactData> {
+    pub fn get_impacts(
+        &mut self, 
+        space: &mut Space, 
+        bullet_vector: glamx::Vec2
+    ) -> Vec<BulletImpactData> {
 
 
-        let pos = space.rigid_body_set.get(self.rigid_body.unwrap()).unwrap().position();
+        let pos = space.rigid_body_set.get(self.rigid_body.unwrap()).unwrap().position().translation;
 
         let intersections = get_intersections(
-            *pos, 
+            pos, 
             space, 
             bullet_vector, 
             self.collider

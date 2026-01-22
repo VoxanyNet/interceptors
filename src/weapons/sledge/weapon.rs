@@ -1,6 +1,6 @@
 
+use glamx::vec2;
 use macroquad::color::WHITE;
-use nalgebra::{vector, Vector2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle};
 
 use crate::{draw_hitbox, player::Facing, space::Space, texture_loader::TextureLoader, weapons::{lmg::{ weapon_save::LMGSave}, sledge::weapon_save::SledgeSave}, ClientId};
@@ -14,7 +14,7 @@ pub struct Sledge {
 
 impl Sledge {
 
-    pub fn new(space: &mut Space, pos: Vector2<f32>, owner: ClientId, player_rigid_body_handle: Option<RigidBodyHandle>) -> Self {
+    pub fn new(space: &mut Space, pos: glamx::Vec2, owner: ClientId, player_rigid_body_handle: Option<RigidBodyHandle>) -> Self {
         
         let body = space.rigid_body_set.insert(
             RigidBodyBuilder::dynamic()
@@ -31,8 +31,8 @@ impl Sledge {
                 player_rigid_body_handle, 
                 body,
                 RevoluteJointBuilder::new()
-                    .local_anchor1(vector![0., 0.].into())
-                    .local_anchor2(vector![30., 0.].into())
+                    .local_anchor1(vec2(0., 0.))
+                    .local_anchor2(vec2(30., 0.))
                     .contacts_enabled(false), 
                 true
             );
@@ -65,7 +65,7 @@ impl Sledge {
     }
 
     pub fn from_save(save: LMGSave, space: &mut Space, player_rigid_body_handle: Option<RigidBodyHandle>, owner: ClientId) -> Self {
-        Self::new(space, Vector2::zeros(), owner, player_rigid_body_handle)
+        Self::new(space, glamx::Vec2::ZERO, owner, player_rigid_body_handle)
     }
     
 

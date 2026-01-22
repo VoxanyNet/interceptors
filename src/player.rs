@@ -1,8 +1,8 @@
 use std::{f32::consts::PI, mem::take, path::PathBuf, str::FromStr, usize};
 
 use cs_utils::drain_filter;
-use macroquad::{color::{BLACK, WHITE}, input::{KeyCode, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_position, mouse_wheel}, math::{Rect, Vec2}, shapes::draw_rectangle, text::{TextParams, draw_text, draw_text_ex}, window::{screen_height, screen_width}};
-use nalgebra::{vector, Isometry2, Vector2};
+use glamx::{Pose2, Vec2, vec2};
+use macroquad::{color::{BLACK, WHITE}, input::{KeyCode, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_position, mouse_wheel}, math::{Rect}, shapes::draw_rectangle, text::{TextParams, draw_text, draw_text_ex}, window::{screen_height, screen_width}};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
@@ -61,20 +61,20 @@ pub struct Player {
     pub health: i32,
     pub head: BodyPart,
     pub body: BodyPart,
-    max_speed: Vector2<f32>,
+    max_speed: Vec2,
     pub owner: Owner,
-    previous_velocity: RigidBodyVelocity,
+    previous_velocity: RigidBodyVelocity<f32>,
     head_joint_handle: Option<ImpulseJointHandle>,
     pub facing: Facing,
-    cursor_pos_rapier: Vector2<f32>,
-    previous_cursor_pos: Vector2<f32>,
+    cursor_pos_rapier: glamx::Vec2,
+    previous_cursor_pos: glamx::Vec2,
     pub selected_item: usize,
     pub inventory: Inventory,
     junk: Vec<ItemSlot>, // you can hold unlimited junk
     last_changed_inventory_slot: web_time::Instant,
     pub previous_selected_item: usize,
     last_dash: web_time::Instant,
-    previous_pos: Isometry2<f32>,
+    previous_pos: Pose2,
     last_position_update: web_time::Instant,
     last_autofire: web_time::Instant,
     flying: bool,
@@ -117,13 +117,13 @@ impl Player {
         let body = space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
 
         if is_key_down(KeyCode::A) {
-            body.apply_impulse(vector![-1000000. * 0.4, 0.].into(), true);
+            body.apply_impulse(vec2(-1000000. * 0.4, 0.), true);
 
             self.last_dash = web_time::Instant::now();
         }
 
         if is_key_down(KeyCode::D) {
-            body.apply_impulse(vector![1000000. * 0.4, 0.], true);
+            body.apply_impulse(vec2(1000000. * 0.4, 0.), true);
 
             self.last_dash = web_time::Instant::now();
         }
@@ -161,16 +161,16 @@ impl Player {
         area_id: AreaId
     ) {
 
-        let player_pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation.vector.clone();
+        let player_pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation.clone();
         
         let mut picked_up_items = drain_filter(
             dropped_items, 
             |dropped_item| {
-                let item_pos = space.rigid_body_set.get(dropped_item.body).unwrap().position().translation.vector;
+                let item_pos = space.rigid_body_set.get(dropped_item.body).unwrap().position().translation;
 
                 let distance = item_pos - player_pos;
 
-                if distance.magnitude() < 50. {
+                if distance.length() < 50. {
                     
                     return true
                 }
@@ -276,7 +276,7 @@ impl Player {
 
     pub fn draw_inventory(&self, textures: &TextureLoader, space: &Space, prefabs: &Prefabs, fonts: &FontLoader) {
 
-        let pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation.vector;
+        let pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation;
 
         let mpos = rapier_to_macroquad(pos);
 
@@ -315,7 +315,7 @@ impl Player {
             );
 
             // slightly offset the item to be more centered
-            let item_preview_pos = Vec2 {
+            let item_preview_pos = macroquad::math::Vec2 {
                 x: slot_pos.x + 5.,
                 y: slot_pos.y + 5.,
             };
@@ -361,7 +361,7 @@ impl Player {
     pub fn move_camera(&mut self, space: &Space, max_camera_y: f32, ctx: &mut ClientTickContext, minimum_camera_width: f32, minimum_camera_height: f32) {
 
         let player_position = space.rigid_body_set.get(self.body.body_handle).unwrap().translation();
-        let macroquad_player_position = rapier_to_macroquad(*player_position);
+        let macroquad_player_position = rapier_to_macroquad(player_position);
 
         let mouse_pos: Vec2 = mouse_position().into();
 
@@ -398,22 +398,30 @@ impl Player {
 
     }
 
-    pub fn set_velocity(&mut self, velocity: RigidBodyVelocity , space: &mut Space) {
+    pub fn set_velocity(&mut self, velocity: RigidBodyVelocity<f32>, space: &mut Space) {
         space.rigid_body_set.get_mut(self.body.body_handle).unwrap().set_vels(velocity, true);
     }
-    pub fn set_pos(&mut self, pos: Isometry2<f32>, space: &mut Space) {
+    pub fn set_pos(&mut self, pos: Pose2, space: &mut Space) {
         space.rigid_body_set.get_mut(self.body.body_handle).unwrap().set_position(pos, true);
     }
 
-    pub fn set_cursor_pos(&mut self, pos: Vector2<f32>) {
+    pub fn set_cursor_pos(&mut self, pos: Vec2) {
 
         self.cursor_pos_rapier = pos;
     }
 
-    pub fn new(pos: Isometry2<f32>, space: &mut Space, owner: Owner) -> Self {
-        let head = BodyPart::new(PathBuf::from_str("assets/cat/head.png").unwrap(), 2, 100., pos, space, owner, Vec2::new(30., 28.));
+    pub fn new(pos: Pose2, space: &mut Space, owner: Owner) -> Self {
+        let head = BodyPart::new(
+            PathBuf::from_str("assets/cat/head.png").unwrap(), 
+            2, 
+            100., 
+            pos, 
+            space, 
+            owner, 
+            macroquad::math::Vec2::new(30., 28.)
+        );
 
-        let body = BodyPart::new(PathBuf::from_str("assets/cat/body.png").unwrap(), 2, 1000., pos, space, owner, Vec2::new(22., 19.));
+        let body = BodyPart::new(PathBuf::from_str("assets/cat/body.png").unwrap(), 2, 1000., pos, space, owner, macroquad::math::Vec2::new(22., 19.));
 
         // lock the rotation of the body
         space.rigid_body_set.get_mut(body.body_handle).unwrap().lock_rotations(true, true);
@@ -423,8 +431,8 @@ impl Player {
             body.body_handle, 
             head.body_handle, 
             RevoluteJointBuilder::new()
-                .local_anchor1(vector![0., 0.].into())
-                .local_anchor2(vector![0., -30.].into())
+                .local_anchor1(vec2(0., 0.))
+                .local_anchor2(vec2(0., -30.))
                 .limits([-0.4, 0.4])
                 .contacts_enabled(false)
             .build(), 
@@ -446,15 +454,15 @@ impl Player {
             previous_velocity: RigidBodyVelocity::zero(),
             head_joint_handle: Some(joint),
             facing: Facing::Right,
-            cursor_pos_rapier: Vector2::zeros(),
-            previous_cursor_pos: Vector2::zeros(),
-            max_speed: Vector2::new(350., 80.),
+            cursor_pos_rapier: Vec2::ZERO,
+            previous_cursor_pos: Vec2::ZERO,
+            max_speed: Vec2::new(350., 80.),
             selected_item: 0,
             inventory: inventory,
             last_changed_inventory_slot: web_time::Instant::now(),
             junk: Vec::new(),
             last_dash: web_time::Instant::now(),
-            previous_pos: Isometry2::default(),
+            previous_pos: Pose2::default(),
             last_position_update: web_time::Instant::now(),
             last_autofire: web_time::Instant::now(),
             previous_selected_item: 1,
@@ -663,13 +671,13 @@ impl Player {
 
         if body.linvel().x.is_sign_positive() {
             body.set_linvel(
-                Vector2::new(body.linvel().x * 0.5, body.linvel().y), 
+                Vec2::new(body.linvel().x * 0.5, body.linvel().y), 
                 true
             );
         }
 
         body.set_linvel(
-            Vector2::new(body.linvel().x - 50., body.linvel().y), 
+            Vec2::new(body.linvel().x - 50., body.linvel().y), 
             true
         );
     }
@@ -681,13 +689,13 @@ impl Player {
 
         if body.linvel().x.is_sign_negative() {
             body.set_linvel(
-                Vector2::new(body.linvel().x * 0.5,body.linvel().y), 
+                Vec2::new(body.linvel().x * 0.5,body.linvel().y), 
                 true
             );
         }
 
         body.set_linvel(
-            Vector2::new(body.linvel().x + 50., body.linvel().y), 
+            Vec2::new(body.linvel().x + 50., body.linvel().y), 
             true
         );
     }
@@ -775,7 +783,7 @@ impl Player {
 
     pub fn face_towards_mouse(&mut self, space: &mut Space, ctx: &mut ClientTickContext, area_id: AreaId) {
         let head_body = space.rigid_body_set.get_mut(self.head.body_handle).unwrap();
-        let angle_to_mouse = get_angle_between_rapier_points(head_body.position().translation.vector, self.cursor_pos_rapier);
+        let angle_to_mouse = get_angle_between_rapier_points(head_body.position().translation, self.cursor_pos_rapier);
 
         match angle_to_mouse.is_sign_positive() {
             true => self.set_facing(Facing::Right, area_id, ctx),
@@ -792,7 +800,7 @@ impl Player {
         let head_body = space.rigid_body_set.get_mut(self.head.body_handle).unwrap();
         head_body.wake_up(true);
 
-        let angle_to_mouse = get_angle_between_rapier_points(head_body.position().translation.vector, self.cursor_pos_rapier);
+        let angle_to_mouse = get_angle_between_rapier_points(head_body.position().translation, self.cursor_pos_rapier);
         
         let head_joint = space.impulse_joint_set.get_mut(head_joint_handle, true).unwrap();
 
@@ -817,24 +825,24 @@ impl Player {
     
     pub fn materialize_tiles(&mut self, space: &mut Space, tiles: &mut Vec<Vec<Option<Tile>>>) {
 
-        let player_pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation.vector;
+        let player_pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation;
 
-        let player_pos_tile_space = Vector2::new((player_pos.x / 50.) as usize, (player_pos.y / 50.) as usize);
+        let player_pos_tile_space = ((player_pos.x / 50.) as usize, (player_pos.y / 50.) as usize);
 
 
         // search a 10 by 10 area for blocks to materialize
-        for possible_tile_x in (player_pos_tile_space.x.saturating_sub(5))..(player_pos_tile_space.x + 5) {
+        for possible_tile_x in (player_pos_tile_space.0.saturating_sub(5))..(player_pos_tile_space.0 + 5) {
 
             if let Some(column) = tiles.get_mut(possible_tile_x) {
 
-                for possible_tile_y in (player_pos_tile_space.y.saturating_sub(5))..(player_pos_tile_space.y + 5) {
+                for possible_tile_y in (player_pos_tile_space.1.saturating_sub(5))..(player_pos_tile_space.1 + 5) {
 
                     // check if this is a valid tile slot in the first place (might be out of bounds)
                     if let Some(tile_slot) = column.get_mut(possible_tile_y) {
 
                         // see if theres actually a tile
                         if let Some(tile) = tile_slot {
-                            tile.materialize(Vector2::new(possible_tile_x, possible_tile_y), space);
+                            tile.materialize((possible_tile_x, possible_tile_y), space);
                         }
                     }
                 }
@@ -904,7 +912,7 @@ impl Player {
 
         if is_key_down(KeyCode::Space) {
             body.set_linvel(
-                Vector2::new(body.linvel().x, 200.), 
+                Vec2::new(body.linvel().x, 200.), 
                 true
             );
         }
@@ -919,13 +927,13 @@ impl Player {
 
         if body.linvel().y.is_sign_negative() {
             body.set_linvel(
-                Vector2::new(body.linvel().x, 0.), 
+                Vec2::new(body.linvel().x, 0.), 
                 true
             );
         }
 
         body.set_linvel(
-            Vector2::new(body.linvel().x, body.linvel().y + 700.), 
+            Vec2::new(body.linvel().x, body.linvel().y + 700.), 
             true
         );
     }
@@ -1100,7 +1108,7 @@ impl Drawable for Player {
         self.draw_selected_item(draw_context.space, draw_context.textures).await;
         self.draw_inventory(draw_context.textures, draw_context.space, draw_context.prefabs, draw_context.fonts);
 
-        let pos = draw_context.space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation.vector;
+        let pos = draw_context.space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation;
 
         draw_text(&format!("{:?}", pos), draw_context.camera_rect.x + 40., draw_context.camera_rect.y + 40., 20., WHITE);
     }
@@ -1112,7 +1120,7 @@ impl Drawable for Player {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct PlayerSave {
-    pos: Isometry2<f32>,
+    pos: Pose2,
     owner: Owner,
     id: PlayerId, // we arent storing the player as a prefab so the player will always have an id
     items: Vec<Option<ItemSlotSave>>
@@ -1122,7 +1130,7 @@ pub struct PlayerSave {
 pub struct PlayerVelocityUpdate {
     pub id: PlayerId,
     pub area_id: AreaId,
-    pub velocity: RigidBodyVelocity
+    pub velocity: RigidBodyVelocity<f32>
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -1135,7 +1143,7 @@ pub struct NewPlayer {
 pub struct PlayerCursorUpdate {
     pub area_id: AreaId,
     pub id: PlayerId,
-    pub pos: Vector2<f32>
+    pub pos: Vec2
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -1148,7 +1156,7 @@ pub struct PlayerFacingUpdate {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PlayerPositionUpdate {
     pub area_id: AreaId,
-    pub pos: Isometry2<f32>,
+    pub pos: Pose2,
     pub player_id: PlayerId
 }
 

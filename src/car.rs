@@ -1,6 +1,6 @@
+use glamx::{Pose2, vec2};
 use macroquad::{color::WHITE, shapes::draw_circle};
-use nalgebra::{point, vector, Isometry2};
-use rapier2d::{math::UnitVector, prelude::{ColliderBuilder, ColliderHandle, ImpulseJointHandle, PrismaticJointBuilder, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
+use rapier2d::{prelude::{ColliderBuilder, ColliderHandle, ImpulseJointHandle, PrismaticJointBuilder, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 
 use crate::{draw_hitbox, rapier_to_macroquad, space::Space};
 
@@ -30,12 +30,12 @@ pub struct Car {
 }
 
 impl Car {
-    pub fn new(space: &mut Space, pos: Isometry2<f32>) -> Self {
+    pub fn new(space: &mut Space, pos: Pose2) -> Self {
         
         // platform
         let platform_body = space.rigid_body_set.insert(
             RigidBodyBuilder::dynamic()
-                .position(pos)
+                .pose(pos)
         );
         let platform_collider = space.collider_set.insert_with_parent(
             ColliderBuilder::cuboid(50., 10.)
@@ -48,7 +48,14 @@ impl Car {
         let left_wheel_body = space.rigid_body_set.insert(
             RigidBodyBuilder::dynamic()
                 .angular_damping(0.)
-                .position(vector![pos.translation.x - 50., pos.translation.y - 50.].into())
+                .pose(
+                    Pose2::new(
+                        vec2(
+                            pos.translation.x - 50., pos.translation.y - 50.,
+                        ),
+                        0.
+                    )
+                )
         );
         let left_wheel_collider = space.collider_set.insert_with_parent(
             ColliderBuilder::ball(20.).mass(100.),
@@ -60,7 +67,12 @@ impl Car {
         let right_wheel_body = space.rigid_body_set.insert(
             RigidBodyBuilder::dynamic()
                 .angular_damping(0.)
-                .position(vector![pos.translation.x + 50., pos.translation.y - 50.].into())
+                .pose(
+                    Pose2::new(
+                        vec2(pos.translation.x + 50., pos.translation.y - 50.),
+                        0.
+                    )
+                )
         );
         let right_wheel_collider = space.collider_set.insert_with_parent(
             ColliderBuilder::ball(20.).mass(100.),

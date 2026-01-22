@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
+use glamx::{Pose2, vec2};
 use macroquad::{color::{GRAY, WHITE}, math::Vec2, texture::{draw_texture_ex, DrawTextureParams}};
-use nalgebra::{vector, Vector2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 
@@ -28,7 +28,7 @@ pub struct Tile {
 
 impl Tile {
 
-    pub fn materialize(&mut self, tile_index: Vector2<usize>, space: &mut Space) {
+    pub fn materialize(&mut self, tile_index: (usize, usize), space: &mut Space) {
 
         if self.rigid_body_handle.is_some() {
             return;
@@ -37,10 +37,15 @@ impl Tile {
     
         self.rigid_body_handle = space.rigid_body_set.insert(
             RigidBodyBuilder::fixed()
-                .position(vector![
-                    (tile_index.x as f32 * 50.),
-                    (tile_index.y as f32 * 50.)
-                ].into())
+                .pose(
+                    Pose2::new(
+                        vec2(
+                            (tile_index.0 as f32 * 50.),
+                            (tile_index.1 as f32 * 50.)
+                        ),
+                    0.
+                    )
+                )
         ).into();
 
         self.collider_handle = space.collider_set.insert_with_parent(
@@ -66,7 +71,7 @@ impl Tile {
         }
     }
 
-    pub fn save(&self, position: Vector2<usize>) -> TileSave {
+    pub fn save(&self, position: (usize, usize)) -> TileSave {
         
         TileSave {
             sprite_path: self.sprite_path.clone(),
@@ -74,11 +79,11 @@ impl Tile {
         }
     }
 
-    pub fn draw(&self, textures: &TextureLoader, position: Vector2<usize>) {
+    pub fn draw(&self, textures: &TextureLoader, position: (usize, usize)) {
 
         let texture = textures.get(&self.sprite_path);
 
-        let macroquad_pos = rapier_to_macroquad(Vector2::new(position.x as f32, position.y as f32));
+        let macroquad_pos = rapier_to_macroquad(glamx::Vec2::new(position.0 as f32, position.1 as f32));
 
         let color = match self.rigid_body_handle {
             Some(_) => GRAY,
@@ -103,6 +108,6 @@ impl Tile {
 pub struct TileSave {
     pub sprite_path: PathBuf,
     #[serde(default)]
-    pub position: Vector2<usize>
+    pub position: (usize, usize)
 }
 

@@ -1,10 +1,10 @@
 use std::{fs::{self, read_to_string}, path::PathBuf, process::exit, time::{Duration, Instant}};
 
+use glamx::{Pose2, Vec2, vec2};
 use interceptors_lib::{Prefabs, area::{Area, AreaSave}, clip::Clip, decoration::Decoration, draw_hitbox, drawable::{DrawContext, Drawable}, editor_context_menu::EditorContextMenu, font_loader::FontLoader, load_assets, macroquad_to_rapier, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, texture_loader::TextureLoader};
 use log::info;
-use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, RED, WHITE}, input::{KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel}, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, time::draw_fps, window::{next_frame, screen_height, screen_width}};
-use nalgebra::{vector, Vector2};
-use rapier2d::{math::Point, prelude::{ColliderBuilder, PointQuery, RigidBodyBuilder, RigidBodyVelocity}};
+use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, RED, WHITE}, input::{KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel}, math::{Rect}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, time::draw_fps, window::{next_frame, screen_height, screen_width}};
+use rapier2d::{prelude::{ColliderBuilder, PointQuery, RigidBodyBuilder, RigidBodyVelocity}};
 use strum::Display;
 
 use crate::{editor_input_context::EditorInputContext, editor_mode_select_ui::EditorModeSelectUI, editor_ui_tick_context::EditorUITickContext, layer_toggle_ui::LayerToggleUI, spawner::Spawner};
@@ -28,8 +28,8 @@ pub struct AreaEditor {
     selected_mode: usize,
     mode_options: Vec<EditorMode>,
     camera_rect: Rect,
-    previous_cursor: Vec2,
-    cursor: Vec2,
+    previous_cursor: macroquad::math::Vec2,
+    cursor: macroquad::math::Vec2,
     clip_point_1: Option<Vec2>,
     clip_point_2: Option<Vec2>,
     last_cursor_move: web_time::Instant,
@@ -42,7 +42,7 @@ pub struct AreaEditor {
     input_context: EditorInputContext,
     selection_rect: Option<Rect>,
     selected_released_flag: bool,
-    last_mouse_pos: Vec2,
+    last_mouse_pos: macroquad::math::Vec2,
     dragging_object: bool,
     simulate_space: bool,
     undo_checkpoints: Vec<AreaSave>,
@@ -55,7 +55,7 @@ pub struct AreaEditor {
 
 impl AreaEditor {
 
-    pub fn draw_coords(&self, cursor: Vec2) {
+    pub fn draw_coords(&self, cursor: macroquad::math::Vec2) {
 
         
 
@@ -76,7 +76,7 @@ impl AreaEditor {
 
             
             //dbg!(clip_collider.shape().as_cuboid().unwrap().half_extents);
-            if clip_collider.shape().as_cuboid().unwrap().contains_point(clip_collider.position(), &Point::new(self.rapier_cursor().x, self.rapier_cursor().y)) {
+            if clip_collider.shape().as_cuboid().unwrap().contains_point(clip_collider.position(), Vec2::new(self.rapier_cursor().x, self.rapier_cursor().y)) {
                 
                 return Some(SelectableObjectId::Clip(clip_index))
             }
@@ -97,7 +97,7 @@ impl AreaEditor {
 
             let prop_collider = self.area.space.collider_set.get(prop.collider_handle).unwrap();
 
-            if prop_collider.shape().as_cuboid().unwrap().contains_point(prop_collider.position(), &Point::new(self.rapier_cursor().x, self.rapier_cursor().y)) {
+            if prop_collider.shape().as_cuboid().unwrap().contains_point(prop_collider.position(), glamx::Vec2::new(self.rapier_cursor().x, self.rapier_cursor().y)) {
 
                 return Some(SelectableObjectId::Prop(prop.id))
                 
@@ -106,8 +106,14 @@ impl AreaEditor {
 
         let rapier_mouse_pos = self.rapier_cursor();
 
-        if let Some(tile) = self.area.get_tile_at_position_mut(Vector2::new(rapier_mouse_pos.x - 25., rapier_mouse_pos.y - 25.)) {
-            return Some(SelectableObjectId::Tile(Vector2::new((rapier_mouse_pos.x / 50.) as usize, (rapier_mouse_pos.y / 50.) as usize)))
+        if let Some(tile) = self.area.get_tile_at_position_mut(Vec2::new(rapier_mouse_pos.x - 25., rapier_mouse_pos.y - 25.)) {
+            return Some(
+                SelectableObjectId::Tile(
+                    (
+                        (rapier_mouse_pos.x / 50.) as usize, 
+                        (rapier_mouse_pos.y / 50.) as usize)
+                    )
+            )
         } 
 
 
@@ -198,7 +204,7 @@ impl AreaEditor {
                         body.set_angvel(0., false);
 
                         body.set_position(
-                            vector![body.translation().x + delta.x, body.translation().y - delta.y].into(), 
+                            Pose2::new(vec2(body.translation().x + delta.x, body.translation().y - delta.y), 0.), 
                             true
                         );
                     },
@@ -208,7 +214,7 @@ impl AreaEditor {
                         
 
                         body.set_position(
-                            vector![body.translation().x + delta.x, body.translation().y - delta.y].into(), 
+                            Pose2::new(vec2(body.translation().x + delta.x, body.translation().y - delta.y), 0.), 
                             true
                         );
                     },
@@ -244,7 +250,7 @@ impl AreaEditor {
                     panic!("failed to get tile positon")
                 };
 
-                let macroquad_pos = rapier_to_macroquad(Vector2::new(tile_index.x as f32 * 50., tile_index.y as f32 * 50.));
+                let macroquad_pos = rapier_to_macroquad(Vec2::new(tile_index.0 as f32 * 50., tile_index.1 as f32 * 50.));
 
                 let tile_rect = Rect::new(
                     macroquad_pos.x - 25., 
@@ -263,7 +269,7 @@ impl AreaEditor {
 
                 let shape = self.area.space.collider_set.get(prop.collider_handle).unwrap().shape().as_cuboid().unwrap();
 
-                let macroquad_prop_pos = rapier_to_macroquad(prop_pos.translation.vector);
+                let macroquad_prop_pos = rapier_to_macroquad(prop_pos.translation);
 
                 let prop_rect = Rect::new(macroquad_prop_pos.x - shape.half_extents.x, macroquad_prop_pos.y - shape.half_extents.y,  shape.half_extents.x * 2., shape.half_extents.y * 2.);
 
@@ -275,7 +281,7 @@ impl AreaEditor {
 
                 let shape = self.area.space.collider_set.get(clip.collider_handle).unwrap().shape().as_cuboid().unwrap();
 
-                let macroquad_clip_pos = rapier_to_macroquad(clip_pos.translation.vector);
+                let macroquad_clip_pos = rapier_to_macroquad(clip_pos.translation);
 
                 let clip_rect = Rect::new(macroquad_clip_pos.x - shape.half_extents.x, macroquad_clip_pos.y - shape.half_extents.y,  shape.half_extents.x * 2., shape.half_extents.y * 2.);
 
@@ -336,10 +342,10 @@ impl AreaEditor {
             selected_mode: 0,
             mode_options: vec![EditorMode::Select, EditorMode::PrefabPlacement, EditorMode::SetSpawnPoint, EditorMode::TilePlacement],
             camera_rect,
-            cursor: Vec2::ZERO,
+            cursor: macroquad::math::Vec2::ZERO,
             clip_point_1: None,
             clip_point_2: None,
-            previous_cursor: Vec2::ZERO,
+            previous_cursor: macroquad::math::Vec2::ZERO,
             last_cursor_move: web_time::Instant::now(),
             prefab_data: assets.prefabs,
             fonts: assets.fonts,
@@ -349,7 +355,7 @@ impl AreaEditor {
             input_context: EditorInputContext::World,
             selection_rect: None,
             selected_released_flag: false,
-            last_mouse_pos: Vec2::ZERO,
+            last_mouse_pos: macroquad::math::Vec2::ZERO,
             dragging_object: false,
             simulate_space: false,
             layer_toggle_ui: LayerToggleUI::new(),
@@ -373,7 +379,7 @@ impl AreaEditor {
         }
     }
 
-    pub fn rapier_cursor(&self) -> Vec2 {
+    pub fn rapier_cursor(&self) -> glamx::Vec2 {
         macroquad_to_rapier(&self.cursor)
     }
 
@@ -521,8 +527,8 @@ impl AreaEditor {
 
         let selection_rect = self.selection_rect.unwrap();
 
-        let clip_point_1 =  Vec2::new(selection_rect.x, selection_rect.y);
-        let clip_point_2 = Vec2::new(selection_rect.x + selection_rect.w, selection_rect.y + selection_rect.h);
+        let clip_point_1 =  macroquad::math::Vec2::new(selection_rect.x, selection_rect.y);
+        let clip_point_2 = macroquad::math::Vec2::new(selection_rect.x + selection_rect.w, selection_rect.y + selection_rect.h);
 
         let rapier_clip_point_1 = macroquad_to_rapier(&clip_point_1);
         let rapier_clip_point_2 = macroquad_to_rapier(&clip_point_2);
@@ -531,7 +537,10 @@ impl AreaEditor {
         let y_hx = (rapier_clip_point_1.y - rapier_clip_point_2.y) / 2.;
 
         let rigid_body = self.area.space.rigid_body_set.insert(
-            RigidBodyBuilder::fixed().position(vector![rapier_clip_point_1.x + x_hx, rapier_clip_point_1.y - y_hx].into())
+            RigidBodyBuilder::fixed()
+                .pose(
+                    Pose2::new(vec2(rapier_clip_point_1.x + x_hx, rapier_clip_point_1.y - y_hx), 0.)
+                )
         );
         let collider = self.area.space.collider_set.insert_with_parent(
             ColliderBuilder::cuboid(x_hx, y_hx),
@@ -546,7 +555,9 @@ impl AreaEditor {
                 context_menu_data: None,
                 despawn: false,
                 layer: self.layer_toggle_ui.active_layer,
-                one_way: false
+                one_way: false,
+                health: None,
+                material: interceptors_lib::prop::Material::None
             }
         );
 
@@ -604,14 +615,14 @@ impl AreaEditor {
     pub fn draw_clip_points(&self) {
         if let Some(clip_point_1) = self.clip_point_1 {
 
-            let macroquad_pos = rapier_to_macroquad(Vector2::new(clip_point_1.x, clip_point_1.y));
+            let macroquad_pos = rapier_to_macroquad(Vec2::new(clip_point_1.x, clip_point_1.y));
 
             draw_rectangle(macroquad_pos.x, macroquad_pos.y, 10., 10., RED);
         }
 
         if let Some(clip_point_2) = self.clip_point_2 {
 
-            let macroquad_pos = rapier_to_macroquad(Vector2::new(clip_point_2.x, clip_point_2.y));
+            let macroquad_pos = rapier_to_macroquad(Vec2::new(clip_point_2.x, clip_point_2.y));
 
             draw_rectangle(macroquad_pos.x, macroquad_pos.y, 10., 10., GREEN);
         }
@@ -736,7 +747,13 @@ impl AreaEditor {
     fn mode_prefab_placement_tick(&mut self) {
         let rapier_cursor = self.rapier_cursor();
 
-        self.spawner.tick(&mut self.area, &self.camera_rect, self.cursor, rapier_cursor, self.input_context);
+        self.spawner.tick(
+            &mut self.area, 
+            &self.camera_rect, 
+            self.cursor, 
+            rapier_cursor, 
+            self.input_context
+        );
     }
 
 
@@ -811,7 +828,7 @@ impl AreaEditor {
         for prop in &self.area.props {
             let prop_collider = self.area.space.collider_set.get(prop.collider_handle).unwrap();
 
-            let prop_macroquad_pos = rapier_to_macroquad(prop_collider.position().translation.vector);
+            let prop_macroquad_pos = rapier_to_macroquad(prop_collider.position().translation);
 
             if selection_rect.contains(prop_macroquad_pos) {
                 selected_objects.push(SelectableObjectId::Prop(prop.id));

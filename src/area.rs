@@ -1,11 +1,11 @@
 use std::{path::PathBuf, str::FromStr, time::{Duration, Instant}};
 
+use glamx::{Pose2, Vec2, vec2};
 use macroquad::{audio::{play_sound, PlaySoundParams}, camera::Camera2D, input::{is_key_released, KeyCode}, math::Rect};
-use nalgebra::{vector, Isometry2, Vector2};
 use noise::{NoiseFn, Perlin};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, car::Car, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, selectable_object_id::{SelectableObject, SelectableObjectId}, sound_loader::SoundLoader, space::Space, texture_loader::TextureLoader, tile::{Tile, TileSave}, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::weapon::Shotgun, smg::weapon::SMG, weapon_type::WeaponType}};
+use crate::{ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, selectable_object_id::{SelectableObject, SelectableObjectId}, sound_loader::SoundLoader, space::Space, texture_loader::TextureLoader, tile::{Tile, TileSave}, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::weapon::Shotgun, smg::weapon::SMG, weapon_type::WeaponType}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -21,7 +21,7 @@ impl AreaId {
 }
 pub struct Area {
     pub backgrounds: Vec<Background>,
-    pub spawn_point: Vector2<f32>,
+    pub spawn_point: Vec2,
     pub space: Space,
     pub decorations: Vec<Decoration>,
     pub clips: Vec<Clip>,
@@ -40,7 +40,6 @@ pub struct Area {
     pub master: Option<ClientId>,
     pub ambiance: Vec<Ambiance>,
     pub wave_data: WaveData,
-    pub cars: Vec<Car>,
     pub compound_test: Vec<CompoundTest>,
     pub tiles: Vec<Vec<Option<Tile>>>
 }
@@ -297,16 +296,16 @@ impl Area {
                     }
     }
 
-    pub fn get_tile_at_position_mut(&mut self, tile_pos: Vector2<f32>) -> Option<&mut Tile> {
+    pub fn get_tile_at_position_mut(&mut self, tile_pos: Vec2) -> Option<&mut Tile> {
         let tile_index_x = (tile_pos.x / 50.) as usize;
         let tile_index_y = (tile_pos.y / 50.) as usize;
 
-        self.get_tile_index(Vector2::new(tile_index_x, tile_index_y))
+        self.get_tile_index((tile_index_x, tile_index_y))
     }
 
-    pub fn get_tile_index(&mut self, index: Vector2<usize>) -> Option<&mut Tile> {
-        if let Some(column) =  self.tiles.get_mut(index.x) {
-            if let Some(tile) = column.get_mut(index.y) {
+    pub fn get_tile_index(&mut self, index: (usize, usize)) -> Option<&mut Tile> {
+        if let Some(column) =  self.tiles.get_mut(index.0) {
+            if let Some(tile) = column.get_mut(index.1) {
                 return tile.as_mut()
             } else {
                 return  None;
@@ -361,7 +360,7 @@ impl Area {
         let world_width = 500;
     
         Self {
-            spawn_point: Vector2::zeros(),
+            spawn_point: Vec2::ZERO,
             space: Space::new(),
             decorations: Vec::new(),
             clips: Vec::new(),
@@ -381,7 +380,6 @@ impl Area {
             master: None,
             ambiance: Vec::new(),
             wave_data: WaveData::default(),
-            cars: Vec::new(),
             compound_test: Vec::new(),
             tiles: vec![vec![None; world_height]; world_width]
         }
@@ -515,7 +513,14 @@ impl Area {
 
         let mouse_pos = rapier_mouse_world_pos(&ctx.camera_rect);
 
-        let player = Player::new(vector![mouse_pos.x, mouse_pos.y].into(), &mut self.space, Owner::ClientId(*ctx.client_id));
+        let player = Player::new(
+            Pose2::new(
+                glamx::vec2(mouse_pos.x, mouse_pos.y),
+                0.
+            ), 
+            &mut self.space, 
+            Owner::ClientId(*ctx.client_id)
+        );
 
         ctx.network_io.send_network_packet(
             NetworkPacket::NewPlayer(
@@ -541,7 +546,13 @@ impl Area {
 
             let mouse_pos = rapier_mouse_world_pos(&ctx.camera_rect);
 
-            new_prop.set_pos(vector![mouse_pos.x, mouse_pos.y].into(), &mut self.space);
+            new_prop.set_pos(
+                Pose2::new(
+                    vec2(mouse_pos.x, mouse_pos.y),
+                    0.
+                ), 
+                &mut self.space
+            );
 
 
             ctx.network_io.send_network_packet(
@@ -565,7 +576,15 @@ impl Area {
         }
         let mouse_pos = rapier_mouse_world_pos(&ctx.camera_rect);
         
-        let enemy = Enemy::new( Isometry2::new(mouse_pos, 0.), crate::Owner::Server, &mut self.space, None);
+        let enemy = Enemy::new( 
+            Pose2::new(
+                mouse_pos,
+                0.
+            ), 
+            crate::Owner::Server, 
+            &mut self.space, 
+            None
+        );
 
         ctx.network_io.send_network_packet(crate::updates::NetworkPacket::NewEnemyUpdate(
             NewEnemyUpdate {
@@ -584,7 +603,14 @@ impl Area {
             Some(_) => return,
             None => {
 
-                let mut player = Player::new(self.spawn_point.into(), &mut self.space, Owner::ClientId(*ctx.client_id));
+                let mut player = Player::new(
+                    Pose2::new(
+                        self.spawn_point,
+                        0.
+                    ), 
+                    &mut self.space, 
+                    Owner::ClientId(*ctx.client_id)
+                );
             
                 ctx.network_io.send_network_packet(
                     NetworkPacket::NewPlayer(
@@ -665,7 +691,10 @@ impl Area {
             for i in 0..self.wave_data.batch_size {
 
                 let enemy = Enemy::new(
-                    vector![2400. + (i as f32 * 50.), 200.].into(), 
+                    Pose2::new(
+                        glamx::vec2(2400. + (i as f32 * 50.), 200.),
+                        0.
+                    ), 
                     crate::Owner::Server, 
                     &mut self.space, 
                     None
@@ -855,7 +884,7 @@ impl Area {
         for tile_save in save.tiles {
             let tile = Tile::from_save(tile_save.clone());
 
-            tiles[tile_save.position.x][tile_save.position.y] = Some(tile);
+            tiles[tile_save.position.0][tile_save.position.1] = Some(tile);
         }
 
 
@@ -893,7 +922,6 @@ impl Area {
             master: save.master,
             ambiance,
             wave_data: WaveData::default(),
-            cars: Vec::new(),
             compound_test: Vec::new(),
             tiles
 
@@ -993,7 +1021,7 @@ impl Area {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AreaSave {
-    spawn_point: Vector2<f32>,
+    spawn_point: Vec2,
     decorations: Vec<DecorationSave>,
     clips: Vec<ClipSave>,
     players: Vec<PlayerSave>,
@@ -1004,7 +1032,7 @@ pub struct AreaSave {
     #[serde(default)]
     enemies: Vec<EnemySave>,
     #[serde(default)]
-    computer_pos: Option<Isometry2<f32>>,
+    computer_pos: Option<Pose2>,
     #[serde(default)]
     dropped_items: Vec<DroppedItemSave>,
     max_camera_y: f32,

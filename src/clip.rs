@@ -1,9 +1,9 @@
+use glamx::{Pose2, vec2};
 use macroquad::{color::WHITE, math::{Rect, Vec2}};
-use nalgebra::vector;
 use rapier2d::prelude::{ActiveHooks, ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 
-use crate::{draw_hitbox, drawable::{DrawContext, Drawable}, editor_context_menu::{DataEditorContext, EditorContextMenu, EditorContextMenuData}, rapier_to_macroquad, space::Space};
+use crate::{draw_hitbox, drawable::{DrawContext, Drawable}, editor_context_menu::{DataEditorContext, EditorContextMenu, EditorContextMenuData}, prop::Material, rapier_to_macroquad, space::Space};
 
 
 pub struct Clip {
@@ -12,7 +12,9 @@ pub struct Clip {
     pub despawn: bool,
     pub context_menu_data: Option<EditorContextMenuData>,
     pub layer: u32,
-    pub one_way: bool
+    pub one_way: bool,
+    pub health: Option<u32>,
+    pub material: Material
 }
 
 impl Clip {
@@ -34,7 +36,12 @@ impl Clip {
 
         let rigid_body_handle = space.rigid_body_set.insert(
             RigidBodyBuilder::fixed()
-                .position(vector![save.pos.x, save.pos.y].into())
+                .pose(
+                    Pose2::new(
+                        vec2(save.pos.x, save.pos.y),
+                        0.
+                    )   
+                )
         );
 
         let user_data = match save.one_way {
@@ -60,7 +67,9 @@ impl Clip {
             despawn: false,
             context_menu_data: None,
             layer: save.layer,
-            one_way: save.one_way
+            one_way: save.one_way,
+            health: save.health,
+            material: save.material
         }
     }
 
@@ -75,7 +84,9 @@ impl Clip {
             size: Vec2::new(shape.half_extents.x * 2., shape.half_extents.y * 2.),
             pos: Vec2::new(position.translation.x, position.translation.y),
             layer: self.layer,
-            one_way: self.one_way
+            one_way: self.one_way,
+            health: self.health,
+            material: self.material
         }
     }
 }
@@ -96,7 +107,7 @@ impl EditorContextMenu for Clip {
         let pos = space.rigid_body_set.get(self.rigid_body_handle).unwrap().translation();
         let size = space.collider_set.get(self.collider_handle).unwrap().shape().as_cuboid().unwrap().half_extents;
 
-        let mpos = rapier_to_macroquad(*pos);
+        let mpos = rapier_to_macroquad(pos);
 
         Rect::new(mpos.x - size.x, mpos.y - size.y, size.x * 2., size.y * 2.)
     }
@@ -129,7 +140,11 @@ pub struct ClipSave {
     pub pos: Vec2,
     pub layer: u32,
     #[serde(default)]
-    pub one_way: bool
+    pub one_way: bool,
+    #[serde(default)]
+    pub health: Option<u32>,
+    #[serde(default)]
+    pub material: Material
 }
 #[async_trait::async_trait]
 impl Drawable for Clip {

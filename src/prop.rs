@@ -1,8 +1,8 @@
 use std::{fs::read_to_string, path::PathBuf};
 
 use async_trait::async_trait;
+use glamx::Pose2;
 use macroquad::{audio::play_sound_once, color::Color, math::{Rect, Vec2}, shapes::{DrawRectangleParams, draw_rectangle_ex}};
-use nalgebra::{Isometry2, Vector2};
 use rapier2d::{parry::utils::hashmap::HashMap, prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
@@ -10,7 +10,7 @@ use strum::{AsRefStr, Display, EnumIter, EnumString};
 use crate::{ClientId, ClientTickContext, Owner, Prefabs, ServerIO, TickContext, area::AreaId, draw_preview, draw_texture_onto_physics_body, drawable::{DrawContext, Drawable}, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, get_preview_resolution, player::PlayerId, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Default, Debug, PartialEq, EnumIter, Display)]
-pub enum PropMaterial {
+pub enum Material {
     Wood,
     #[default]
     None
@@ -70,12 +70,12 @@ impl DissolvedPixel {
     }
 
     pub fn new(
-        pos: Isometry2<f32>, 
+        pos: Pose2, 
         space: &mut Space,
         color: Color,
         scale: f32,
         mass: Option<f32>,
-        velocity: Option<RigidBodyVelocity>,
+        velocity: Option<RigidBodyVelocity<f32>>,
     ) -> Self {
 
         let velocity = match velocity {
@@ -123,7 +123,7 @@ impl Drawable for DissolvedPixel {
 
         let body = draw_context.space.rigid_body_set.get(self.body).unwrap();
 
-        let macroquad_pos = rapier_to_macroquad(*body.translation());
+        let macroquad_pos = rapier_to_macroquad(body.translation());
 
         let shape = draw_context.space.collider_set.get(self.collider).unwrap().shape().as_cuboid().unwrap();
 
@@ -191,9 +191,9 @@ pub trait PropTrait: EditorContextMenu + Drawable {
         dissolved_pixels: &mut Vec<DissolvedPixel>
     );
 
-    fn set_pos(&mut self, position: Isometry2<f32>, space: &mut Space);
+    fn set_pos(&mut self, position: Pose2, space: &mut Space);
 
-    fn set_velocity(&mut self, velocity: RigidBodyVelocity, space: &mut Space);
+    fn set_velocity(&mut self, velocity: RigidBodyVelocity<f32>, space: &mut Space);
 
     fn from_save(save: PropSave, space: &mut Space) -> Self;
 
@@ -205,8 +205,8 @@ pub struct Prop {
     pub rigid_body_handle: RigidBodyHandle,
     pub collider_handle: ColliderHandle,
     sprite_path: PathBuf,
-    previous_velocity: RigidBodyVelocity,
-    material: PropMaterial,
+    previous_velocity: RigidBodyVelocity<f32>,
+    material: Material,
     pub id: PropId,
     pub owner: Option<Owner>,
     last_sound_play: web_time::Instant,
@@ -253,7 +253,7 @@ impl Prop {
         let rigid_body = space.rigid_body_set.get_mut(self.rigid_body_handle).unwrap();
 
         rigid_body.apply_impulse(
-            Vector2::new(impact.bullet_vector.x * 5000., impact.bullet_vector.y * 5000.), 
+            glamx::Vec2::new(impact.bullet_vector.x * 5000., impact.bullet_vector.y * 5000.), 
             true
         );
 
@@ -407,12 +407,12 @@ impl Prop {
                 color.g /= pixel_count as f32;
                 color.b /= pixel_count as f32;
 
-                let translation = Vector2::new(
+                let translation = glamx::Vec2::new(
                 ((body_translation.x + (x as f32 * x_scale)) - half_extents.x) + 2., 
                 ((body_translation.y - (y as f32 * y_scale)) + half_extents.y) - 2.    
                 );
 
-                let position = Isometry2::new(
+                let position = Pose2::new(
                     translation, 
                     body.rotation().angle()
                 );
@@ -543,11 +543,19 @@ impl Prop {
 
         self.previous_velocity = current_velocity;
     }
-    pub fn set_pos(&mut self, position: Isometry2<f32>, space: &mut Space) {
-        space.rigid_body_set.get_mut(self.rigid_body_handle).unwrap().set_position(position, true);
+    pub fn set_pos(
+        &mut self, 
+        position: glamx::Pose2, 
+        space: &mut Space
+    ) {
+        space.rigid_body_set.get_mut(self.rigid_body_handle).unwrap()
+        .set_position(
+            position,
+            true
+        );
     }
 
-    pub fn set_velocity(&mut self, velocity: RigidBodyVelocity, space: &mut Space) {
+    pub fn set_velocity(&mut self, velocity: RigidBodyVelocity<f32>, space: &mut Space) {
 
         if self.despawn {
             return;
@@ -628,7 +636,7 @@ impl EditorContextMenu for Prop {
         let pos = space.rigid_body_set.get(self.rigid_body_handle).unwrap().translation();
         let size = space.collider_set.get(self.collider_handle).unwrap().shape().as_cuboid().unwrap().half_extents;
 
-        let mpos = rapier_to_macroquad(*pos);
+        let mpos = rapier_to_macroquad(pos);
 
         Rect::new(mpos.x - size.x, mpos.y - size.y, size.x * 2., size.y * 2.)
 
@@ -694,21 +702,21 @@ impl Drawable for Prop {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct StupidDissolvedPixelVelocityUpdate {
     pub area_id: AreaId,
-    pub bullet_vector: Vector2<f32>,
-    pub weapon_pos: Vector2<f32>
+    pub bullet_vector: glamx::Vec2,
+    pub weapon_pos: glamx::Vec2
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct PropSave {
     pub size: Vec2,
-    pub pos: Isometry2<f32>,
+    pub pos: Pose2,
     pub mass: f32,
     pub sprite_path: PathBuf,
     pub id: Option<PropId>,
     #[serde(default)]
     pub owner: Option<Owner>,
     #[serde(default)]
-    pub material: PropMaterial,
+    pub material: Material,
     #[serde(default = "default_prop_name")]
     pub name: String,
     #[serde(default)]
@@ -735,7 +743,7 @@ impl PropId {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PropVelocityUpdate {
-    pub velocity: RigidBodyVelocity,
+    pub velocity: RigidBodyVelocity<f32>,
     pub id: PropId,
     pub area_id: AreaId
 }
@@ -756,7 +764,7 @@ pub struct NewProp {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PropPositionUpdate {
     pub area_id: AreaId,
-    pub pos: Isometry2<f32>,
+    pub pos: Pose2,
     pub prop_id: PropId
 }
 

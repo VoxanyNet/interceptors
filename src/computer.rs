@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use derive_more::From;
+use glamx::Pose2;
 use macroquad::{camera::{set_camera, Camera2D}, color::{Color, BLACK, GRAY, WHITE}, math::{Rect, Vec2}, shapes::draw_line, text::{draw_text_ex, TextParams}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::clear_background};
-use nalgebra::Isometry2;
 use serde::{Deserialize, Serialize};
 
 use crate::{ClientTickContext, Owner, Prefabs, button::Button, drawable::{DrawContext, Drawable}, font_loader::FontLoader, mouse_world_pos, player::Player, prop::{Prop, PropSave}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, weapons::{weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
@@ -258,7 +258,7 @@ pub struct Computer {
 
 impl Computer {
 
-    pub fn new(prefabs: &Prefabs, space:&mut crate::space::Space, pos: Isometry2<f32>) -> Self {
+    pub fn new(prefabs: &Prefabs, space:&mut crate::space::Space, pos: glamx::Pose2) -> Self {
         
         let save: PropSave = serde_json::from_str(
             &prefabs.get_prefab_data("prefabs\\generic_physics_props\\computer.json")
@@ -393,9 +393,9 @@ impl Computer {
 
             let player_pos = space.rigid_body_set.get(controlled_player.body.body_handle).unwrap().position();
 
-            let controlled_player_distance = computer_pos.translation.vector - player_pos.translation.vector;
+            let controlled_player_distance: glamx::Vec2 = computer_pos.translation - player_pos.translation;
 
-            if controlled_player_distance.magnitude() > 200. {
+            if controlled_player_distance.length() > 200. {
 
                 if self.active {
                     self.activated_time = web_time::Instant::now()
@@ -419,7 +419,7 @@ impl Computer {
             
         }
 
-        let macroquad_pos = rapier_to_macroquad(computer_pos.translation.vector);
+        let macroquad_pos = rapier_to_macroquad(computer_pos.translation);
 
         if self.active {
             self.screen_pos = Vec2 {

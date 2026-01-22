@@ -499,7 +499,7 @@ impl Client {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
                     let intersections = get_intersections(
-                        update.weapon_pos.into(), 
+                        update.weapon_pos, 
                         &mut area.space, 
                         update.bullet_vector, 
                         None

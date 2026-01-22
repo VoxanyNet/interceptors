@@ -1,8 +1,8 @@
 use std::{fs::read_to_string, path::PathBuf, str::FromStr};
 
+use glamx::Pose2;
 use interceptors_lib::{area::Area, background::{Background, BackgroundSave}, button::Button, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, prop::{Prop, PropSave}, space::Space, texture_loader::TextureLoader, tile::{Tile, TileSave}};
 use macroquad::{color::{GREEN, LIGHTGRAY, WHITE}, input::{MouseButton, is_mouse_button_released, mouse_position}, math::{Rect, Vec2, vec2}, shapes::draw_rectangle_lines, text::draw_text, texture::{DrawTextureParams, draw_texture_ex}};
-use nalgebra::{vector, Vector2};
 use strum::IntoEnumIterator;
 
 use crate::{editor_input_context::EditorInputContext, list_dir_entries, spawner_category::SpawnerCategory, spawner_menu::SpawnerMenu};
@@ -144,8 +144,8 @@ impl Spawner {
         &mut self, 
         area: &mut Area, 
         camera_rect: &Rect, 
-        cursor: Vec2, 
-        rapier_cursor: Vec2,
+        cursor: macroquad::math::Vec2, 
+        rapier_cursor: glamx::Vec2,
         input_context: EditorInputContext
     ) {
 
@@ -251,7 +251,12 @@ impl Spawner {
         }
     }
 
-    pub async fn draw_preview_spawn(&mut self, draw_context: &DrawContext<'_>, cursor: Vec2, rapier_cursor: Vec2) {
+    pub async fn draw_preview_spawn(
+        &mut self, 
+        draw_context: &DrawContext<'_>, 
+        cursor: macroquad::math::Vec2, 
+        rapier_cursor: glamx::Vec2
+    ) {
 
         
 
@@ -273,7 +278,7 @@ impl Spawner {
             SpawnerCategory::Prop => {
                 let generic_physics_prop_save: PropSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
                 let mut generic_physics_prop = Prop::from_save(generic_physics_prop_save.clone(), &mut self.preview_space);
-                generic_physics_prop.set_pos(vector![rapier_cursor.x + generic_physics_prop_save.size.x / 2., rapier_cursor.y - generic_physics_prop_save.size.y / 2.].into(), &mut self.preview_space);
+                generic_physics_prop.set_pos(Pose2::new(glamx::vec2(rapier_cursor.x + generic_physics_prop_save.size.x / 2., rapier_cursor.y - generic_physics_prop_save.size.y / 2.), 0.), &mut self.preview_space);
                 
                 // need to swap the draw context's space for the spawner 'preview space'
                 let draw_context = DrawContext {
@@ -301,12 +306,18 @@ impl Spawner {
 
                 let tile: Tile = Tile::from_save(tile_save);
 
-                tile.draw(draw_context.textures, Vector2::new(x_index * 50, y_index * 50));
+                tile.draw(draw_context.textures, (x_index * 50, y_index * 50));
             }
         }
     }
     
-    pub fn spawn(&mut self, area: &mut Area, camera_rect: &Rect, cursor: Vec2, rapier_cursor: Vec2) {
+    pub fn spawn(
+        &mut self, 
+        area: &mut Area, 
+        camera_rect: &Rect, 
+        cursor: macroquad::math::Vec2, 
+        rapier_cursor: glamx::Vec2
+    ) {
         
 
         match self.selected_category {
@@ -338,7 +349,14 @@ impl Spawner {
 
                 let mut generic_physics_prop = Prop::from_save(generic_physics_prop_save.clone(), &mut area.space);
 
-                generic_physics_prop.set_pos(vector![rapier_cursor.x + generic_physics_prop_save.size.x / 2., rapier_cursor.y - generic_physics_prop_save.size.y / 2.].into(), &mut area.space);
+                generic_physics_prop.set_pos(Pose2::new(
+                    glamx::vec2(
+                        rapier_cursor.x + generic_physics_prop_save.size.x / 2., 
+                        rapier_cursor.y - generic_physics_prop_save.size.y / 2.),
+                        0.
+                    ), 
+                    &mut area.space
+                );
 
                 area.props.push(generic_physics_prop);
             },

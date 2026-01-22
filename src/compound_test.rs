@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
+use glamx::Pose2;
 use macroquad::{color::WHITE, math::Vec2, texture::{draw_texture_ex, DrawTextureParams}};
-use nalgebra::{Isometry2, Vector2};
-use rapier2d::prelude::{ColliderBuilder, RigidBodyBuilder, RigidBodyHandle};
+use rapier2d::{math::Pose, prelude::{ColliderBuilder, RigidBodyBuilder, RigidBodyHandle}};
 
 use crate::{rapier_to_macroquad, space::Space, texture_loader::TextureLoader, ClientTickContext};
 
@@ -24,12 +24,17 @@ impl CompoundTest {
         sprite_path: PathBuf,
         x_scale: f32,
         y_scale: f32,
-        pos: Vector2<f32>
+        pos: glamx::Vec2
     ) -> Self {
 
         let body = space.rigid_body_set.insert(
             RigidBodyBuilder::dynamic()
-                .position(pos.into())
+                .pose(
+                    Pose::new(
+                        pos, 
+                        0.
+                    )
+                )
         );  
         
         let texture = ctx.textures.get(&sprite_path);
@@ -50,12 +55,12 @@ impl CompoundTest {
                     continue;
                 }
 
-                let translation = Vector2::new(
+                let translation = glamx::Vec2::new(
                 (((x as f32 * x_scale)) - half_extents.x) + 0.5, 
                 (((y as f32 * y_scale)) + half_extents.y) - 0.5    
                 );
 
-                let position = Isometry2::new(
+                let position = Pose2::new(
                     translation, 
                     0.
                 );
@@ -89,7 +94,7 @@ impl CompoundTest {
         let texture = textures.get(&self.texture_path);
         let rigid_body = space.rigid_body_set.get(self.body).unwrap();
 
-        let macroquad_pos = rapier_to_macroquad(rigid_body.position().translation.vector);
+        let macroquad_pos = rapier_to_macroquad(rigid_body.position().translation);
         
         draw_texture_ex(
             texture, 

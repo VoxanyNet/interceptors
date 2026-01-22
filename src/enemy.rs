@@ -1,7 +1,7 @@
 use std::{f32::consts::PI, path::PathBuf, time::Instant};
 
+use glamx::{Pose2, vec2};
 use macroquad::{color::{BLACK, GREEN}, math::Vec2, shapes::{draw_rectangle, draw_rectangle_lines}};
-use nalgebra::{vector, Isometry2, Vector2};
 use rapier2d::{parry::query::Ray, prelude::{ColliderHandle, Group, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 
@@ -42,8 +42,8 @@ pub struct Enemy {
     pub task: Task,
     pub last_fired_weapon: web_time::Instant,
     pub last_task_change: web_time::Instant,
-    pub previous_velocity: RigidBodyVelocity,
-    pub previous_position: Isometry2<f32>,
+    pub previous_velocity: RigidBodyVelocity<f32>,
+    pub previous_position: Pose2,
     pub last_position_update: web_time::Instant,
     pub last_velocity_update: web_time::Instant,
     pub last_health_update: web_time::Instant,
@@ -61,7 +61,7 @@ impl Enemy {
             None => return,
         };
 
-        let target_player_pos = space.rigid_body_set.get(target_player.body.body_handle).unwrap().position().translation.vector;
+        let target_player_pos = space.rigid_body_set.get(target_player.body.body_handle).unwrap().position().translation;
 
 
         let head_joint_handle = match self.head_body_joint {
@@ -73,7 +73,7 @@ impl Enemy {
 
         head_body.wake_up(true);
 
-        let angle_to_mouse = get_angle_between_rapier_points(head_body.position().translation.vector, target_player_pos);
+        let angle_to_mouse = get_angle_between_rapier_points(head_body.position().translation, target_player_pos);
 
         let head_joint = space.impulse_joint_set.get_mut(head_joint_handle, true).unwrap();
 
@@ -97,6 +97,12 @@ impl Enemy {
 
     pub fn get_colliders_between_enemy_and_target(&mut self, space: &Space, players: &Vec<Player>) -> Vec<ColliderHandle> {
 
+        let query_pipeline = space.broad_phase.as_query_pipeline(
+            space.narrow_phase.query_dispatcher(),
+            &space.rigid_body_set,
+            &space.collider_set,
+            QueryFilter::default()
+        );
 
         let player_target = match self.player_target {
             Some(player_target) => player_target,
@@ -110,45 +116,40 @@ impl Enemy {
             player.body.body_handle
         ).unwrap();
 
-        let line = player_body.position().translation.vector - enemy_body.position().translation.vector;
+        let line = player_body.position().translation - enemy_body.position().translation;
         
         let mut collisions = Vec::new();
-        space.query_pipeline.intersections_with_ray(
-            &space.rigid_body_set, 
-            &space.collider_set, 
-            &Ray::new(enemy_body.position().translation.vector.into(), line.into()), 
-            line.magnitude(), 
-            true, 
-            QueryFilter::default(),
-            |collider_handle, _| {
 
-                if collider_handle == self.body.collider_handle || collider_handle == self.head.collider_handle {
-                    return true
-                }
-
-                if collider_handle == player.body.collider_handle || collider_handle == player.head.collider_handle {
-                    return true
-                }
-
-                if let Some(weapon) = &self.weapon {
-                    if Some(collider_handle) == weapon.collider_handle() {
-                        return true;
-                    }
-                }
-
-                // if let Some(weapon) = &player.weapon {
-                //     if Some(collider_handle) == weapon.collider_handle() {
-                //         return true
-                //     }
-                // }
-
-                let collider_pos = space.collider_set.get(collider_handle).unwrap().position();
-
-                collisions.push(collider_handle);
-
-                true
+        for (collider_handle, _, _) in query_pipeline.intersect_ray(
+            Ray::new(enemy_body.position().translation, line), 
+            line.length(), 
+            true
+        ) {
+            if collider_handle == self.body.collider_handle || collider_handle == self.head.collider_handle {
+                continue
             }
-        );
+
+            if collider_handle == player.body.collider_handle || collider_handle == player.head.collider_handle {
+                continue
+            }
+
+            if let Some(weapon) = &self.weapon {
+                if Some(collider_handle) == weapon.collider_handle() {
+                    continue;
+                }
+            }
+
+            // if let Some(weapon) = &player.weapon {
+            //     if Some(collider_handle) == weapon.collider_handle() {
+            //         return true
+            //     }
+            // }
+
+            let collider_pos = space.collider_set.get(collider_handle).unwrap().position();
+
+            collisions.push(collider_handle);
+
+        }
 
 
         collisions
@@ -238,13 +239,22 @@ impl Enemy {
        
     }
 
-    pub fn distance_to_target(&self, space: &Space, players: &Vec<Player>) -> Option<Vector2<f32>> {
+    pub fn distance_to_target(&self, space: &Space, players: &Vec<Player>) -> Option<glamx::Vec2> {
         let target = match self.player_target {
             Some(player_id) => players.iter().find(|player|{player.id == player_id}).unwrap(),
             None => return None,
         };
 
-        Some(space.rigid_body_set.get(target.body.body_handle).unwrap().position().translation.vector - space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation.vector)
+        Some(
+            space.rigid_body_set.get(target.body.body_handle)
+            .unwrap()
+            .position()
+            .translation 
+            - space.rigid_body_set.get(self.body.body_handle)
+            .unwrap()
+            .position()
+            .translation
+        )
     }
 
 
@@ -269,7 +279,7 @@ impl Enemy {
         if let Some(distance) = self.distance_to_target(space, players) {
 
             //dbg!(distance.magnitude());
-            if distance.magnitude() < 1000. {
+            if distance.length() < 1000. {
                 self.task = Task::AttackPlayer;
 
                 return;
@@ -283,7 +293,12 @@ impl Enemy {
     }
 
 
-    pub fn new(position: Isometry2<f32>, owner: Owner, space: &mut Space, weapon: Option<WeaponType>) -> Self {
+    pub fn new(
+        position: glamx::Pose2, 
+        owner: Owner, 
+        space: &mut Space, 
+        weapon: Option<WeaponType>
+    ) -> Self {
 
         let head = BodyPart::new(
             PathBuf::from("assets/cat/head.png"), 
@@ -292,7 +307,7 @@ impl Enemy {
             position, 
             space, 
             owner.clone(),
-            Vec2::new(30., 28.)
+            macroquad::math::Vec2::new(30., 28.)
         );
 
         let body = BodyPart::new(
@@ -310,8 +325,8 @@ impl Enemy {
             body.body_handle, 
             head.body_handle, 
             RevoluteJointBuilder::new()
-                .local_anchor1(vector![0., 0.].into())
-                .local_anchor2(vector![0., -30.].into())
+                .local_anchor1(vec2(0., 0.))
+                .local_anchor2(vec2(0., -30.))
                 .limits([-0.4, 0.4])
                 .contacts_enabled(false)
             .build(), 
@@ -333,7 +348,7 @@ impl Enemy {
             task: Task::ChasePlayer,
             last_fired_weapon: web_time::Instant::now(),
             last_task_change: web_time::Instant::now(),
-            previous_position: Isometry2::default(),
+            previous_position: Pose2::default(),
             previous_velocity: RigidBodyVelocity::zero(),
             last_position_update: web_time::Instant::now(),
             last_velocity_update: web_time::Instant::now(),
@@ -760,10 +775,10 @@ impl Enemy {
         let target_vector = (target_player_body_translation - enemy_body.translation()).normalize();
 
         enemy_body.set_linvel(
-            vector![
+            vec2(
                 (enemy_body.linvel().x) + (10. * target_vector.x), 
                 enemy_body.linvel().y
-            ], 
+            ), 
             true
         );
 
@@ -779,7 +794,7 @@ impl Enemy {
         for player in players {
             let player_body = space.rigid_body_set.get(player.body.body_handle).unwrap();
 
-            let distance = (player_body.translation() - enemy_body.translation()).magnitude();
+            let distance = (player_body.translation() - enemy_body.translation()).length();
 
             if let Some(mut lowest_distance) = lowest_distance {
                 if distance < lowest_distance {
@@ -811,9 +826,17 @@ impl Enemy {
         if let Some(player_target) = self.player_target {
             let player = players.iter().find(|player|{player.id == player_target}).unwrap();
 
-            let player_pos = space.rigid_body_set.get(player.body.body_handle).unwrap().position().translation.vector;
+            let player_pos = space.rigid_body_set.get(player.body.body_handle).unwrap()
+                .position()
+                .translation;
 
-            angle_weapon_to_mouse(space, self.weapon.as_mut(), self.body.body_handle, player_pos, self.facing);
+            angle_weapon_to_mouse(
+                space, 
+                self.weapon.as_mut(),
+                self.body.body_handle, 
+                player_pos, 
+                self.facing
+            );
         }
         
     }
@@ -836,7 +859,7 @@ impl Enemy {
                 return
             }
             
-            body.set_linvel(vector![current_velocity.x, current_velocity.y + 500.], true);
+            body.set_linvel(vec2(current_velocity.x, current_velocity.y + 500.), true);
 
             self.last_jump = web_time::Instant::now();
         }
@@ -863,7 +886,7 @@ impl Enemy {
     pub fn draw_health_bar(&self, space: &Space) { 
         let pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation;
 
-        let mpos = rapier_to_macroquad(pos.vector);
+        let mpos = rapier_to_macroquad(pos);
 
         draw_rectangle_lines(mpos.x - 29., mpos.y - 64., 58., 18., 6.,BLACK);
 
@@ -903,7 +926,7 @@ impl Drawable for Enemy {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct EnemySave {
-    pos: Isometry2<f32>,
+    pos: Pose2,
     owner: Owner,
     id: EnemyId,
     weapon: Option<WeaponTypeSave>
@@ -919,14 +942,14 @@ pub struct NewEnemyUpdate {
 pub struct EnemyVelocityUpdate {
     pub area_id: AreaId,
     pub enemy_id: EnemyId,
-    pub velocity: RigidBodyVelocity
+    pub velocity: RigidBodyVelocity<f32>
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct EnemyPositionUpdate {
     pub area_id: AreaId,
     pub enemy_id: EnemyId,
-    pub position: Isometry2<f32>
+    pub position: Pose2
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

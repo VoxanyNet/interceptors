@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
-use macroquad::math::Vec2;
-use nalgebra::Isometry2;
+use glamx::{Pose2, Vec2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle};
 
 use crate::{ClientId, ClientTickContext, Owner, TickContext, draw_texture_onto_physics_body, space::Space, texture_loader::TextureLoader};
@@ -25,15 +24,17 @@ impl BodyPart {
         sprite_path: PathBuf,
         scale: u16,
         mass: f32,
-        pos: Isometry2<f32>,
+        pos: glamx::Pose2,
         space: &mut Space,
         owner: Owner,
-        texture_size: Vec2
+        texture_size: macroquad::math::Vec2
     ) -> Self {
 
         let rigid_body_handle = space.rigid_body_set.insert(
             RigidBodyBuilder::dynamic()
-                .position(pos)
+                .pose(
+                    pos 
+                )
                 .ccd_enabled(true)
                 .build()
         );

@@ -1,7 +1,6 @@
 use std::{path::PathBuf, time::Duration};
 
 use macroquad::math::Vec2;
-use nalgebra::Vector2;
 use rapier2d::prelude::RigidBodyHandle;
 
 use crate::{ClientId, TickContext, player::Facing, space::Space, texture_loader::TextureLoader, weapons::{lmg::weapon_save::LMGSave, weapon::weapon::WeaponBase, weapon_fire_context::WeaponFireContext}};
@@ -51,7 +50,7 @@ impl LMG {
     }
     
 
-    pub fn new(space: &mut Space, pos: Vector2<f32>, owner: ClientId, player_rigid_body_handle: Option<RigidBodyHandle>, facing: Facing) -> Self {
+    pub fn new(space: &mut Space, pos: Vec2, owner: ClientId, player_rigid_body_handle: Option<RigidBodyHandle>, facing: Facing) -> Self {
         Self {
             weapon: WeaponBase::new(
                 owner,

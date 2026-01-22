@@ -2,12 +2,11 @@ use std::{collections::HashMap, f32::consts::PI, fs::read_to_string, net::{TcpLi
 
 use derive_more::From;
 use ewebsock::{WsReceiver, WsSender};
+use glamx::Pose2;
 use macroquad::{camera::Camera2D, color::{Color, WHITE}, file::load_string, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}};
-use nalgebra::{Isometry2, SVector, Vector2, vector};
-use rapier2d::{parry::query::Ray, prelude::{ColliderBuilder, ColliderHandle, QueryFilter, RigidBodyHandle}};
+use rapier2d::{parry::query::Ray, prelude::{Collider, ColliderBuilder, ColliderHandle, QueryFilter, QueryPipeline, RigidBodyHandle}};
 use serde::{Deserialize, Serialize};
 use tungstenite::WebSocket;
-use nalgebra::point;
 use include_dir::include_dir;
 
 use crate::{all_keys::ALL_KEYS, font_loader::FontLoader, player::Facing, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, weapons::weapon_type::WeaponType};
@@ -39,7 +38,7 @@ pub mod inventory;
 pub mod ambiance;
 pub mod junk;
 pub mod machine_gun;
-pub mod car;
+//pub mod car;
 pub mod fragment;
 pub mod compound_test;
 pub mod weapons;
@@ -51,63 +50,62 @@ pub mod connection;
 
 #[derive(Clone, Debug)]
 pub struct IntersectionData {
-    pub origin: Isometry2<f32>,
+    pub origin: glamx::Vec2,
     pub origin_collider: Option<ColliderHandle>,
     pub intersected_collider: ColliderHandle,
-    pub intersection_vector: Vector2<f32>,
-    pub distance: Vector2<f32>
+    pub intersection_vector: glamx::Vec2,
+    pub distance: glamx::Vec2
 } 
 
 pub fn get_intersections(
-    origin: Isometry2<f32>, 
+    origin: glamx::Vec2, 
     space: &mut Space, 
-    intersection_vector: Vector2<f32>,
+    intersection_vector: glamx::Vec2,
     origin_collider: Option<ColliderHandle>
 ) -> Vec<IntersectionData> {
 
-    space.query_pipeline.update(&space.collider_set);
+    let query_pipeline = space.broad_phase.as_query_pipeline(
+        space.narrow_phase.query_dispatcher(),
+        &space.rigid_body_set,
+        &space.collider_set,
+        QueryFilter::default()
+    );
 
 
-    let ray = Ray::new(point![origin.translation.x, origin.translation.y], vector![intersection_vector.x, intersection_vector.y]);
+    let ray = Ray::new(glamx::vec2(origin.x, origin.y), glamx::vec2(intersection_vector.x, intersection_vector.y));
     let max_toi = 5000.0;
     let solid = true;
     let filter = QueryFilter::default();
 
     let mut impacts = Vec::new();
     
-    space.query_pipeline.intersections_with_ray(
-        &space.rigid_body_set, 
-        &space.collider_set, 
-        &ray, 
+    for (collider_handle, _, _) in query_pipeline.intersect_ray( 
+        ray, 
         max_toi, 
-        solid, 
-        filter, 
-        |handle, _intersection| {
+        solid
+    ) {
+        if let Some(origin_collider) = origin_collider {
+            if origin_collider == collider_handle {
+                continue
+            }
+        };
 
-            if let Some(origin_collider) = origin_collider {
-                if origin_collider == handle {
-                    return true
-                }
-            };
+        let pos = space.collider_set.get(collider_handle).unwrap().position().translation;
 
-            let pos = space.collider_set.get(handle).unwrap().position().translation;
+        let distance: glamx::Vec2 = pos - origin;
 
-            let distance: Vector2<f32> = pos.vector - origin.translation.vector;
+        impacts.push(
+            IntersectionData {
+                origin,
+                intersected_collider: collider_handle,
+                intersection_vector,
+                origin_collider,
+                distance
+                
+            }
+        );
 
-            impacts.push(
-                IntersectionData {
-                    origin,
-                    intersected_collider: handle,
-                    intersection_vector,
-                    origin_collider,
-                    distance
-                    
-                }
-            );
-
-            true
-
-    });
+    }
 
     impacts
 }
@@ -116,7 +114,7 @@ pub fn angle_weapon_to_mouse(
     space: &mut Space, 
     weapon: Option<&mut WeaponType>, 
     body_rigid_body_handle: RigidBodyHandle, 
-    cursor_pos_rapier: Vector2<f32>,
+    cursor_pos_rapier: glamx::Vec2,
     facing: Facing
 ) {
     if weapon.is_none() {
@@ -137,7 +135,7 @@ pub fn angle_weapon_to_mouse(
 
     let weapon_pos = space.rigid_body_set.get(weapon.as_ref().unwrap().rigid_body_handle().unwrap()).unwrap().translation();
 
-    let angle_to_mouse = get_angle_between_rapier_points(Vector2::new(weapon_pos.x, weapon_pos.y), cursor_pos_rapier);
+    let angle_to_mouse = get_angle_between_rapier_points(glamx::Vec2::new(weapon_pos.x, weapon_pos.y), cursor_pos_rapier);
 
     let shotgun_joint = space.impulse_joint_set.get_mut(shotgun_joint_handle, true).unwrap();
 
@@ -145,8 +143,8 @@ pub fn angle_weapon_to_mouse(
 
     // anchor the shotgun in a different position if its supposed to be on our right side
     let shotgun_anchor_pos = match facing {
-        Facing::Right => vector![-30., 0.].into(),
-        Facing::Left => vector![30., 0.].into(),
+        Facing::Right => glamx::vec2(-30., 0.),
+        Facing::Left => glamx::vec2(30., 0.),
     };
 
     shotgun_joint_data.set_local_anchor2(shotgun_anchor_pos);
@@ -245,7 +243,7 @@ pub fn is_key_released_exclusive(required: &[KeyCode]) -> bool {
     true
 }
 
-pub fn rapier_to_macroquad(rapier_coords: Vector2<f32>) -> Vec2 {
+pub fn rapier_to_macroquad(rapier_coords: glamx::Vec2) -> Vec2 {
     Vec2 {
         x: rapier_coords.x,
         y: (rapier_coords.y * -1.) + 720.
@@ -323,7 +321,7 @@ pub async fn draw_texture_onto_physics_body(
     let position = rigid_body.position().translation;
     let body_rotation = rigid_body.rotation().angle();
 
-    let draw_pos = rapier_to_macroquad(position.vector);
+    let draw_pos = rapier_to_macroquad(position);
 
     draw_texture_ex(
         textures.get(texture_path), 
@@ -343,23 +341,24 @@ pub async fn draw_texture_onto_physics_body(
     
 }
 
-pub fn contains_point(collider_handle: ColliderHandle, space: &mut Space, point: Vector2<f32>) -> bool {
-    let mut contains_point: bool = false;
+pub fn contains_point(collider_handle: ColliderHandle, space: &mut Space, point: Vec2) -> bool {
+    let query_pipeline = space.broad_phase.as_query_pipeline(
+        space.narrow_phase.query_dispatcher(),
+        &space.rigid_body_set,
+        &space.collider_set,
+        QueryFilter::default()
+    );
+    
 
-    space.query_pipeline.update(&space.collider_set);
-
-    space.query_pipeline.intersections_with_point(
-        &space.rigid_body_set, &space.collider_set, &point![point.x, point.y], QueryFilter::default(), |handle| {
-            if collider_handle == handle {
-                contains_point = true;
-                return false
-            }
-
+    for (handle, _) in query_pipeline.intersect_point(
+        glamx::vec2(point.x, point.y)
+    ) {
+        if handle == collider_handle {
             return true
         }
-    );
+    } 
 
-    contains_point
+    return false
 } 
 
 pub fn draw_hitbox(space: &Space, rigid_body_handle: RigidBodyHandle, collider_handle: ColliderHandle, color: Color) {
@@ -371,7 +370,7 @@ pub fn draw_hitbox(space: &Space, rigid_body_handle: RigidBodyHandle, collider_h
     let position = collider.position().translation;
     let rotation = rigid_body.rotation().angle();
 
-    let draw_pos = rapier_to_macroquad(position.vector);
+    let draw_pos = rapier_to_macroquad(position);
 
     macroquad::shapes::draw_rectangle_ex(
         draw_pos.x,
@@ -394,17 +393,17 @@ pub fn mouse_world_pos(camera_rect: &Rect) -> Vec2 {
 
 }
 
-pub fn rapier_mouse_world_pos(camera_rect: &Rect) -> Vector2<f32> {
+pub fn rapier_mouse_world_pos(camera_rect: &Rect) -> glamx::Vec2 {
 
     
     let pos = macroquad_to_rapier(
         &mouse_world_pos(camera_rect)
     );
 
-    Vector2::new(pos.x, pos.y)
+    glamx::Vec2::new(pos.x, pos.y)
 }
 
-pub fn get_angle_to_mouse(point: Vector2<f32>, camera_rect: &Rect) -> f32 {
+pub fn get_angle_to_mouse(point: Vec2, camera_rect: &Rect) -> f32 {
 
     let mouse_pos = rapier_mouse_world_pos(camera_rect);
 
@@ -416,7 +415,7 @@ pub fn get_angle_to_mouse(point: Vector2<f32>, camera_rect: &Rect) -> f32 {
     distance_to_mouse.x.atan2(distance_to_mouse.y)
 }
 
-pub fn get_angle_between_rapier_points(point_1: Vector2<f32>, point_2: Vector2<f32>) -> f32 {
+pub fn get_angle_between_rapier_points(point_1: glamx::Vec2, point_2: glamx::Vec2) -> f32 {
 
     let distance_to_mouse = Vec2::new(
         point_2.x - point_1.x,
@@ -956,10 +955,10 @@ pub fn log(message: &str) {
     web_sys::console::log_1(&message.into());
 }
 
-pub fn macroquad_to_rapier(macroquad_coords: &Vec2) -> Vec2 {
+pub fn macroquad_to_rapier(macroquad_coords: &macroquad::math::Vec2) -> glamx::Vec2 {
 
     // translate macroquad coords to rapier coords
-    Vec2 { 
+    glamx::Vec2 { 
         x: macroquad_coords.x, 
         y: (macroquad_coords.y * -1.) + 720.
     }

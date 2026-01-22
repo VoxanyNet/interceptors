@@ -4,7 +4,7 @@ use std::{
 use colored_json::prelude::*;
 use clap::{Arg, Parser};
 use image::{GenericImageView, ImageReader};
-use interceptors_lib::{background::BackgroundSave, decoration::DecorationSave, prop::{PropMaterial, PropSave}};
+use interceptors_lib::{background::BackgroundSave, decoration::DecorationSave, prop::{Material, PropSave}};
 use macroquad::math::{Vec2, vec2};
 use colored::Colorize;
 use strum::IntoEnumIterator;
@@ -252,7 +252,7 @@ fn asset_to_prop(relative_path: &PathBuf, scale: Option<f32>) -> Result<String, 
 
     println!("Select material: ");
 
-    for (index, material) in PropMaterial::iter().enumerate() {
+    for (index, material) in Material::iter().enumerate() {
         let material_string = material.to_string();
         println!("({}) {}", index.to_string().bold(), material_string);
     }
@@ -267,10 +267,10 @@ fn asset_to_prop(relative_path: &PathBuf, scale: Option<f32>) -> Result<String, 
         }
     };  
 
-    let prop_materials = PropMaterial::iter()
-        .collect::<Vec<PropMaterial>>();
+    let prop_materials = Material::iter()
+        .collect::<Vec<Material>>();
 
-    let prop_material: &PropMaterial = loop {
+    let prop_material: &Material = loop {
 
         match prop_materials
             .get(prop_material_selection_index) {

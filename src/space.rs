@@ -1,4 +1,5 @@
 
+use glamx::vec2;
 use rapier2d::{na::vector, prelude::{CCDSolver, ColliderSet, ContactModificationContext, DefaultBroadPhase, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, NarrowPhase, PhysicsHooks, PhysicsPipeline, QueryPipeline, RigidBodySet, SolverFlags}};
 
 pub struct MyPhysicsHooks;
@@ -19,7 +20,6 @@ impl PhysicsHooks for MyPhysicsHooks {
         Some(SolverFlags::COMPUTE_IMPULSES)
     }
 }
-#[derive(Default)]
 pub struct Space {
     pub rigid_body_set: RigidBodySet,
     pub collider_set: ColliderSet,
@@ -30,8 +30,7 @@ pub struct Space {
     pub narrow_phase: NarrowPhase,
     pub impulse_joint_set: ImpulseJointSet,
     pub multibody_joint_set: MultibodyJointSet,
-    pub ccd_solver: CCDSolver,
-    pub query_pipeline: QueryPipeline,
+    pub ccd_solver: CCDSolver
 }
 
 impl Space {
@@ -41,7 +40,7 @@ impl Space {
         
 
         self.physics_pipeline.step(
-            &vector![0., -998.].into(), 
+            glamx::vec2(0., -998.), 
             &self.integration_parameters, 
             &mut self.island_manager, 
             &mut self.broad_phase, 
@@ -51,9 +50,9 @@ impl Space {
             &mut self.impulse_joint_set, 
             &mut self.multibody_joint_set, 
             &mut self.ccd_solver, 
-            Some(&mut self.query_pipeline), 
-            &MyPhysicsHooks, 
+            &(),
             &()
+
         );
     }
 
@@ -68,8 +67,7 @@ impl Space {
             narrow_phase: NarrowPhase::new(),
             impulse_joint_set: ImpulseJointSet::new(),
             multibody_joint_set: MultibodyJointSet::new(),
-            ccd_solver: CCDSolver::new(),
-            query_pipeline: QueryPipeline::new(),
+            ccd_solver: CCDSolver::new()
         }
     }
 }

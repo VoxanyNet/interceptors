@@ -1,5 +1,5 @@
+use glamx::Vec2;
 use macroquad::{color::{Color, WHITE}, shapes::draw_line};
-use nalgebra::Vector2;
 use serde::{Deserialize, Serialize};
 
 use crate::{ClientId, ClientTickContext, TickContext, area::AreaId, drawable::Drawable, rapier_to_macroquad, uuid_u64};
@@ -18,8 +18,8 @@ impl BulletTrailId {
 }
 
 pub struct BulletTrail {
-    start: Vector2<f32>,
-    end: Vector2<f32>,
+    start: glamx::Vec2,
+    end: glamx::Vec2,
     color: Color,
     pub owner: ClientId,
     id: BulletTrailId
@@ -45,8 +45,8 @@ impl BulletTrail {
     }
 
     pub fn new(
-        start: Vector2<f32>,
-        end: Vector2<f32>,
+        start: glamx::Vec2,
+        end: glamx::Vec2,
         color: Option<Color>,
         owner: ClientId
     ) -> Self {
@@ -87,8 +87,8 @@ impl Drawable for BulletTrail {
 }
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct BulletTrailSave {
-    start: Vector2<f32>,
-    end: Vector2<f32>,
+    start: Vec2,
+    end: Vec2,
     pub owner: ClientId,
     id: BulletTrailId
 }
