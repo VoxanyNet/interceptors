@@ -1,10 +1,7 @@
 use std::{
-    fs::{self, create_dir_all},
-    io,
-    path::{Path, PathBuf},
-    process::exit,
+    fmt::format, fs::{self, create_dir_all}, io, path::{Path, PathBuf}, process::exit
 };
-
+use colored_json::prelude::*;
 use clap::{Arg, Parser};
 use image::{GenericImageView, ImageReader};
 use interceptors_lib::{background::BackgroundSave, decoration::DecorationSave, prop::{PropMaterial, PropSave}};
@@ -111,20 +108,63 @@ fn asset_to_prefab(asset_path: String, prefab_type: Option<PrefabType>, scale: O
     };
     
     let json_string = match prefab_type {
-        PrefabType::Decoration => asset_to_decoration_prefab(relative_path, scale),
-        PrefabType::Prop => asset_to_prop(relative_path, scale),
-        PrefabType::Background => asset_to_background(relative_path, scale) ,
-    };
+        PrefabType::Decoration => asset_to_decoration_prefab(&relative_path, scale),
+        PrefabType::Prop => asset_to_prop(&relative_path, scale),
+        PrefabType::Background => asset_to_background(&relative_path, scale) ,
+    }.unwrap();
+    
+    // removes the parts in brackets
+    // [assets]/example_directory/[asset.png]
+    let prefab_directory_structure = relative_path
+        .parent() 
+        .unwrap()
+        .components()
+        .skip(1)
+        .collect::<PathBuf>();
 
-    println!("{}", &json_string.unwrap());
+    // add the parts in parenthesis
+    // (prefabs)/(prefab_type)/example_directory
+    let prefab_save_directory = match prefab_type {
+        PrefabType::Decoration => {
+            PathBuf::from("prefabs/decorations")
+        },
+        PrefabType::Prop => {
+            PathBuf::from("prefabs/generic_physics_props")
+        },
+        PrefabType::Background => {
+            PathBuf::from("prefabs/backgrounds")
+        },
+    }.join(prefab_directory_structure);
+
+    // add the parts in parenthesis 
+    // prefabs/prefab_type/example_directory/(asset_name).json
+    let prefab_save_path = prefab_save_directory
+        .join(
+            PathBuf::from(
+                format!(
+                    "{}.json", 
+                    relative_path.file_stem().unwrap().to_str().unwrap()
+                )
+            )
+        );
+    
+    println!("{}", &json_string.to_colored_json_auto().unwrap());
+    println!("Press enter to save prefab to {}...", &prefab_save_path.to_string_lossy());
+
+    get_user_input();
+
+    fs::write(prefab_save_path, json_string).unwrap();
+
+
+    
 }
 
-fn asset_to_background(relative_path: PathBuf, scale: Option<f32>) -> Result<String, serde_json::Error> {
+fn asset_to_background(relative_path: &PathBuf, scale: Option<f32>) -> Result<String, serde_json::Error> {
 
     let (width, height) = get_image_dimensions(&relative_path);
 
     let scale: f32 = match scale {
-        Some(scale) => scale,
+        Some(scale) => scale, 
         None => {
             loop {
                 println!("Enter scaling factor");
@@ -200,7 +240,7 @@ fn asset_to_background(relative_path: PathBuf, scale: Option<f32>) -> Result<Str
 }   
 
 
-fn asset_to_prop(relative_path: PathBuf, scale: Option<f32>) -> Result<String, serde_json::Error> {
+fn asset_to_prop(relative_path: &PathBuf, scale: Option<f32>) -> Result<String, serde_json::Error> {
     let (width, height) = get_image_dimensions(&relative_path);
     let scale = scale.unwrap_or_else(|| {
         parse_user_input("Enter scaling factor: ", "Failed to parse scaling input")
@@ -303,7 +343,7 @@ fn get_image_dimensions(asset_path: &PathBuf) -> (u32, u32) {
 
 }
 
-fn asset_to_decoration_prefab(asset_path: PathBuf, scale: Option<f32>) -> Result<String, serde_json::Error> {
+fn asset_to_decoration_prefab(asset_path: &PathBuf, scale: Option<f32>) -> Result<String, serde_json::Error> {
 
     let (width, height) = get_image_dimensions(&asset_path);
 
