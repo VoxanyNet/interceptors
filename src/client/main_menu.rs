@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use interceptors_lib::{Assets, ambiance::Ambiance, button::Button, font_loader::FontLoader, load_assets, macroquad_to_rapier, sound_loader::SoundLoader, texture_loader::TextureLoader};
+use interceptors_lib::{Assets, ambiance::Ambiance, button::Button, font_loader::FontLoader, load_assets, macroquad_to_rapier, sound_loader::SoundLoader, texture_loader::ClientTextureLoader};
 use macroquad::{audio::{PlaySoundParams, Sound, play_sound, play_sound_once, stop_sound}, camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, RED, WHITE}, input::{KeyCode, is_key_released, mouse_position, show_mouse}, math::{Rect, Vec2, vec2}, miniquad::window::{high_dpi, set_mouse_cursor}, prelude::{Material, ShaderSource, gl_use_default_material, gl_use_material, load_material}, rand::RandomRange, shapes::draw_rectangle_lines, text::{TextParams, draw_text, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, draw_texture, draw_texture_ex, render_target}, window::{clear_background, next_frame, screen_height, screen_width}};
 use web_sys::{HtmlCanvasElement, HtmlElement, wasm_bindgen::JsCast, window};
 
@@ -11,7 +11,7 @@ pub struct MainMenu {
     render_target: RenderTarget,
     sound_loader: SoundLoader,
     fonts: FontLoader,
-    textures: TextureLoader,
+    textures: ClientTextureLoader,
     camera_rect: Rect,
     ui: MainMenuUI,
     ambiance: Vec<Ambiance>,
@@ -25,6 +25,7 @@ impl MainMenu {
 
 
     pub fn draw_coords(&self, cursor: Vec2) {
+
         let rapier_coords = macroquad_to_rapier(&cursor);
         
         draw_text(&format!("{:?}", cursor), 0., screen_height() - 20., 24., WHITE);
@@ -32,10 +33,11 @@ impl MainMenu {
     }
 
     async fn reload_textures(&mut self) {
+
         self.textures = load_assets().await.textures
     }
 
-    fn draw_cursor(textures: &TextureLoader) {
+    fn draw_cursor(textures: &ClientTextureLoader) {
         let cursor_pos: Vec2 = mouse_position().into();
 
         let texture = textures.get(&"assets/cursor.png".into());
@@ -135,14 +137,13 @@ impl MainMenu {
 
         let render_target = render_target(1280, 720);
 
-        
-
         let camera_rect = Rect {
             x: 0.,
             y: 0.,
             w: 1280.,
             h: 720.,
         };
+        
         let mut camera = Camera2D::from_display_rect(camera_rect);
         camera.render_target = Some(render_target.clone());
         camera.zoom.y = -camera.zoom.y;

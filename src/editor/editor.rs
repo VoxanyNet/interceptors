@@ -1,7 +1,7 @@
 use std::{fs::{self, read_to_string}, path::PathBuf, process::exit, time::{Duration, Instant}};
 
 use glamx::{Pose2, Vec2, vec2};
-use interceptors_lib::{Prefabs, area::{Area, AreaSave}, clip::Clip, decoration::Decoration, draw_hitbox, drawable::{DrawContext, Drawable}, editor_context_menu::EditorContextMenu, font_loader::FontLoader, load_assets, macroquad_to_rapier, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, texture_loader::TextureLoader};
+use interceptors_lib::{Prefabs, area::{Area, AreaSave}, clip::Clip, decoration::Decoration, draw_hitbox, drawable::{DrawContext, Drawable}, editor_context_menu::EditorContextMenu, font_loader::FontLoader, load_assets, macroquad_to_rapier, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, texture_loader::ClientTextureLoader};
 use log::info;
 use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, RED, WHITE}, input::{KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel}, math::{Rect}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, time::draw_fps, window::{next_frame, screen_height, screen_width}};
 use rapier2d::{prelude::{ColliderBuilder, PointQuery, RigidBodyBuilder, RigidBodyVelocity}};
@@ -23,7 +23,7 @@ pub enum EditorMode {
 
 pub struct AreaEditor {
     area: Area,
-    textures: TextureLoader,
+    textures: ClientTextureLoader,
     spawner: Spawner,
     selected_mode: usize,
     mode_options: Vec<EditorMode>,
@@ -336,7 +336,7 @@ impl AreaEditor {
         let area_save: AreaSave = serde_json::from_str(&area_json).unwrap();
 
         Self {
-            area: Area::from_save(area_save.clone(), None, &assets.prefabs),
+            area: Area::from_save(area_save.clone(), None, &assets.prefabs, (&assets.textures).into()),
             textures: assets.textures,
             spawner,
             selected_mode: 0,
@@ -666,7 +666,7 @@ impl AreaEditor {
 
             let rapier_cursor = self.rapier_cursor();
             
-            self.spawner.draw_preview_spawn(&draw_context, self.cursor, rapier_cursor).await;
+            self.spawner.draw_preview_spawn(&draw_context, self.cursor, rapier_cursor, &self.textures).await;
         }
         
         self.draw_cursor();
@@ -752,7 +752,8 @@ impl AreaEditor {
             &self.camera_rect, 
             self.cursor, 
             rapier_cursor, 
-            self.input_context
+            self.input_context,
+            &self.textures
         );
     }
 
@@ -899,19 +900,19 @@ impl AreaEditor {
         for (index, decoration) in self.area.decorations.iter_mut().enumerate() {
             
             let selected = self.selected_objects.contains(&SelectableObjectId::Decoration(index));
-            decoration.update_menu(&mut self.area.space, &self.camera_rect, selected);
+            decoration.update_menu(&mut self.area.space, &self.camera_rect, selected, &self.textures);
         }
 
         for (index, clip) in self.area.clips.iter_mut().enumerate() {
             let selected = self.selected_objects.contains(&SelectableObjectId::Clip(index));            
-            clip.update_menu(&mut self.area.space, &self.camera_rect, selected);
+            clip.update_menu(&mut self.area.space, &self.camera_rect, selected, &self.textures);
         }
 
         for (index, prop) in self.area.props.iter_mut().enumerate() {
             
             let selected = self.selected_objects.contains(&SelectableObjectId::Prop(prop.id));
             
-            prop.update_menu(&mut self.area.space, &self.camera_rect, selected);
+            prop.update_menu(&mut self.area.space, &self.camera_rect, selected, &self.textures);
 
             
         }
@@ -975,7 +976,7 @@ impl AreaEditor {
                 self.area = Area::from_save(
                     checkpoint, 
                     Some(area_id), 
-                    &self.prefab_data
+                    &self.prefab_data, (&self.textures).into()
                 );
             }
             

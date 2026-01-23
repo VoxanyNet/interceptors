@@ -1,7 +1,7 @@
 use std::{fs::read_to_string, path::PathBuf, str::FromStr};
 
 use glamx::Pose2;
-use interceptors_lib::{area::Area, background::{Background, BackgroundSave}, button::Button, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, prop::{Prop, PropSave}, space::Space, texture_loader::TextureLoader, tile::{Tile, TileSave}};
+use interceptors_lib::{area::Area, background::{Background, BackgroundSave}, button::Button, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, prop::{Prop, PropSave}, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}};
 use macroquad::{color::{GREEN, LIGHTGRAY, WHITE}, input::{MouseButton, is_mouse_button_released, mouse_position}, math::{Rect, Vec2, vec2}, shapes::draw_rectangle_lines, text::draw_text, texture::{DrawTextureParams, draw_texture_ex}};
 use strum::IntoEnumIterator;
 
@@ -146,7 +146,8 @@ impl Spawner {
         camera_rect: &Rect, 
         cursor: macroquad::math::Vec2, 
         rapier_cursor: glamx::Vec2,
-        input_context: EditorInputContext
+        input_context: EditorInputContext,
+        textures: &ClientTextureLoader
     ) {
 
 
@@ -175,7 +176,7 @@ impl Spawner {
 
 
         if is_mouse_button_released(MouseButton::Left) && input_context == EditorInputContext::World {
-            self.spawn(area, camera_rect, cursor, rapier_cursor);
+            self.spawn(area, camera_rect, cursor, rapier_cursor, textures);
         }
 
         
@@ -255,7 +256,8 @@ impl Spawner {
         &mut self, 
         draw_context: &DrawContext<'_>, 
         cursor: macroquad::math::Vec2, 
-        rapier_cursor: glamx::Vec2
+        rapier_cursor: glamx::Vec2,
+        textures: &ClientTextureLoader
     ) {
 
         
@@ -277,8 +279,8 @@ impl Spawner {
 
             SpawnerCategory::Prop => {
                 let generic_physics_prop_save: PropSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
-                let mut generic_physics_prop = Prop::from_save(generic_physics_prop_save.clone(), &mut self.preview_space);
-                generic_physics_prop.set_pos(Pose2::new(glamx::vec2(rapier_cursor.x + generic_physics_prop_save.size.x / 2., rapier_cursor.y - generic_physics_prop_save.size.y / 2.), 0.), &mut self.preview_space);
+                let mut generic_physics_prop = Prop::from_save(generic_physics_prop_save.clone(), &mut self.preview_space, textures.into());
+                generic_physics_prop.set_pos(Pose2::new(glamx::vec2(rapier_cursor.x, rapier_cursor.y), 0.), &mut self.preview_space);
                 
                 // need to swap the draw context's space for the spawner 'preview space'
                 let draw_context = DrawContext {
@@ -316,7 +318,8 @@ impl Spawner {
         area: &mut Area, 
         camera_rect: &Rect, 
         cursor: macroquad::math::Vec2, 
-        rapier_cursor: glamx::Vec2
+        rapier_cursor: glamx::Vec2,
+        textures: &ClientTextureLoader
     ) {
         
 
@@ -347,12 +350,12 @@ impl Spawner {
             SpawnerCategory::Prop => {
                 let generic_physics_prop_save: PropSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
 
-                let mut generic_physics_prop = Prop::from_save(generic_physics_prop_save.clone(), &mut area.space);
+                let mut generic_physics_prop = Prop::from_save(generic_physics_prop_save.clone(), &mut area.space, textures.into());
 
                 generic_physics_prop.set_pos(Pose2::new(
                     glamx::vec2(
-                        rapier_cursor.x + generic_physics_prop_save.size.x / 2., 
-                        rapier_cursor.y - generic_physics_prop_save.size.y / 2.),
+                        rapier_cursor.x, 
+                        rapier_cursor.y),
                         0.
                     ), 
                     &mut area.space
@@ -380,7 +383,7 @@ impl Spawner {
     pub async fn draw_menu(
         &self, 
         camera_rect: &Rect, 
-        textures: &mut TextureLoader, 
+        textures: &mut ClientTextureLoader, 
         cursor: Vec2
     ) {
 

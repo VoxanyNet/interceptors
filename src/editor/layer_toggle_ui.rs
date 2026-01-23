@@ -1,6 +1,6 @@
 use std::{ops::Not, path::PathBuf, str::FromStr};
 
-use interceptors_lib::{button::Button, drawable::Drawable, font_loader::FontLoader, texture_loader::TextureLoader};
+use interceptors_lib::{button::Button, drawable::Drawable, font_loader::FontLoader, texture_loader::ClientTextureLoader};
 use macroquad::{color::{GRAY, LIGHTGRAY, WHITE}, input::mouse_position, math::{Rect, Vec2}, shapes::draw_rectangle, text::{TextParams, draw_text_ex}, texture::{DrawTextureParams, draw_texture_ex}, window::{screen_height, screen_width}};
 
 struct LayerToggle {
@@ -16,7 +16,7 @@ impl LayerToggle {
     pub fn draw(
         &self, 
         fonts: &FontLoader, 
-        textures: &TextureLoader,
+        textures: &ClientTextureLoader,
         active: bool // the layer toggle's 'active' state is managed from the outside
     ) { 
 
@@ -150,7 +150,7 @@ impl LayerToggleUI {
 
     }
 
-    pub fn draw(&self, fonts: &FontLoader, textures: &TextureLoader) {
+    pub fn draw(&self, fonts: &FontLoader, textures: &ClientTextureLoader) {
         for (index, toggle) in self.toggles.iter().enumerate() {
             
             toggle.draw(fonts, textures, self.active_layer == index as u32);

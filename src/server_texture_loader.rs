@@ -1,41 +1,41 @@
 use std::path::PathBuf;
 
 use fxhash::FxHashMap;
+use image::{DynamicImage, ImageReader, load_from_memory};
 use macroquad::texture::{self, load_texture, Texture2D};
 use web_sys::console;
 
-use crate::{TextureLoader, normalize_path};
+use crate::normalize_path;
 
 
 #[derive(Clone)]
-pub struct ClientTextureLoader {
-    pub cache: FxHashMap<PathBuf, Texture2D>
+pub struct ServerTextureLoader {
+    pub cache: FxHashMap<PathBuf, DynamicImage>
 }
 
-impl Default for ClientTextureLoader {
+impl Default for ServerTextureLoader {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl ClientTextureLoader {
+impl ServerTextureLoader {
 
     pub fn new() -> Self {
-        ClientTextureLoader { cache: FxHashMap::default() }
+        ServerTextureLoader { cache: FxHashMap::default() }
     }
 
     pub fn load(&mut self, texture_path: PathBuf, bytes: &[u8]) {
 
         if !self.cache.contains_key(&texture_path) {
 
-            let texture = Texture2D::from_file_with_format(bytes, None);
-            texture.set_filter(texture::FilterMode::Nearest);
+            let texture = load_from_memory(bytes).unwrap();
 
             self.cache.insert(texture_path.clone(), texture);
 
         }
     }
-    pub fn get(&self, texture_path: &PathBuf) -> &Texture2D {   
+    pub fn get(&self, texture_path: &PathBuf) -> &DynamicImage  {   
 
         let normalized_path = normalize_path(texture_path);
 

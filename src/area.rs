@@ -5,7 +5,7 @@ use macroquad::{audio::{play_sound, PlaySoundParams}, camera::Camera2D, input::{
 use noise::{NoiseFn, Perlin};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, selectable_object_id::{SelectableObject, SelectableObjectId}, sound_loader::SoundLoader, space::Space, texture_loader::TextureLoader, tile::{Tile, TileSave}, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::weapon::Shotgun, smg::weapon::SMG, weapon_type::WeaponType}};
+use crate::{ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TextureLoader, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, selectable_object_id::{SelectableObject, SelectableObjectId}, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::weapon::Shotgun, smg::weapon::SMG, weapon_type::WeaponType}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -117,7 +117,7 @@ impl Area {
     
     pub async fn draw(
         &mut self, 
-        textures: &mut TextureLoader, 
+        textures: &mut ClientTextureLoader, 
         camera_rect: &Rect, 
         prefabs: &Prefabs, 
         camera: &Camera2D, 
@@ -171,7 +171,7 @@ impl Area {
 
     }
 
-    pub fn draw_hud(&self, textures: &TextureLoader) {
+    pub fn draw_hud(&self, textures: &ClientTextureLoader) {
         for player in &self.players {
             player.draw_hud(textures);
         }
@@ -540,7 +540,7 @@ impl Area {
             
             let prefab_save: PropSave = serde_json::from_str(&ctx.prefabs.get_prefab_data("prefabs\\generic_physics_props\\box2.json")).unwrap();
 
-            let mut new_prop = Prop::from_save(prefab_save, &mut self.space);
+            let mut new_prop = Prop::from_save(prefab_save, &mut self.space, ctx.textures.into());
 
             new_prop.owner = Some(Owner::ClientId(*ctx.client_id));
 
@@ -819,7 +819,12 @@ impl Area {
         None
     }
 
-    pub fn from_save(save: AreaSave, id: Option<AreaId>, prefabs: &Prefabs) -> Self {
+    pub fn from_save(
+        save: AreaSave, 
+        id: Option<AreaId>, 
+        prefabs: &Prefabs,
+        textures: TextureLoader
+    ) -> Self {
 
         let mut space = Space::new();
 
@@ -847,7 +852,7 @@ impl Area {
 
         for player_save in save.players {
             players.push(
-                Player::from_save(player_save, &mut space)
+                Player::from_save(player_save, &mut space, textures.clone())
             );
         }
 
@@ -859,7 +864,7 @@ impl Area {
         
         for generic_physics_prop in save.generic_physics_props {
             generic_physics_props.push(
-                Prop::from_save(generic_physics_prop, &mut space)
+                Prop::from_save(generic_physics_prop, &mut space, textures.clone())
             );
         }
 
@@ -871,7 +876,7 @@ impl Area {
 
         for dropped_item_save in save.dropped_items {
             dropped_items.push(
-                DroppedItem::from_save(dropped_item_save, &mut space, prefabs)
+                DroppedItem::from_save(dropped_item_save, &mut space, prefabs, textures.clone())
             );
         }
 
@@ -896,7 +901,7 @@ impl Area {
 
         let computer = match save.computer_pos {
             Some(computer_pos) => {
-                Some(Computer::new(prefabs, &mut space, computer_pos, ))
+                Some(Computer::new(prefabs, &mut space, computer_pos, textures.clone()))
             },
             None => None,
         };

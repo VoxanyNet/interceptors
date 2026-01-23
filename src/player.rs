@@ -6,7 +6,7 @@ use macroquad::{color::{BLACK, WHITE}, input::{KeyCode, is_key_down, is_key_rele
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, ClientTickContext, IntersectionData, Owner, Prefabs, TickContext, angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, mouse_world_pos, prop::{DissolvedPixel, Prop}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
+use crate::{ClientId, ClientTickContext, IntersectionData, Owner, Prefabs, TextureLoader, TickContext, angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, mouse_world_pos, prop::{DissolvedPixel, Prop}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -41,11 +41,11 @@ impl ItemSlot {
         }
     }
 
-    pub fn from_save(save: ItemSlotSave, space: &mut Space) -> ItemSlot {
+    pub fn from_save(save: ItemSlotSave, space: &mut Space, textures: TextureLoader) -> ItemSlot {
 
         ItemSlot {
             quantity: save.quantity,
-            item: Item::from_save(save.item, space),
+            item: Item::from_save(save.item, space, textures),
         }
     } 
 }
@@ -270,11 +270,11 @@ impl Player {
 
 
     }
-    pub fn draw_hud(&self, textures: &TextureLoader) {
+    pub fn draw_hud(&self, textures: &ClientTextureLoader) {
         
     }
 
-    pub fn draw_inventory(&self, textures: &TextureLoader, space: &Space, prefabs: &Prefabs, fonts: &FontLoader) {
+    pub fn draw_inventory(&self, textures: &ClientTextureLoader, space: &Space, prefabs: &Prefabs, fonts: &FontLoader) {
 
         let pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation;
 
@@ -853,7 +853,7 @@ impl Player {
     }
 
 
-    pub async fn draw_selected_item(&self, space: &Space, textures: &TextureLoader) {
+    pub async fn draw_selected_item(&self, space: &Space, textures: &ClientTextureLoader) {
         match &self.inventory.items[self.selected_item] {
             Some(item_slot) => {
                 match &item_slot.item {
@@ -1051,12 +1051,12 @@ impl Player {
     }
 
 
-    pub fn from_save(save: PlayerSave, space: &mut Space) -> Self {
+    pub fn from_save(save: PlayerSave, space: &mut Space, textures: TextureLoader) -> Self {
         let mut player = Self::new(save.pos, space, save.owner);
 
         for (index, item_slot) in save.items.iter().enumerate() {
             player.inventory.items[index] = match item_slot {
-                Some(item_slot) => Some(ItemSlot::from_save(item_slot.clone(), space)),
+                Some(item_slot) => Some(ItemSlot::from_save(item_slot.clone(), space, textures.clone())),
                 None => None,
             }
         }

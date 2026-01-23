@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use macroquad::{color::WHITE, input::{is_mouse_button_down, is_mouse_button_released}, math::{Rect, Vec2}, texture::{DrawTextureParams, draw_texture_ex}};
 
-use crate::texture_loader::TextureLoader;
+use crate::texture_loader::ClientTextureLoader;
 
 
 #[derive(Debug, Clone, PartialEq)]
@@ -26,7 +26,7 @@ impl Button {
         }
     }
 
-    pub fn draw(&self, textures: &TextureLoader) {
+    pub fn draw(&self, textures: &ClientTextureLoader) {
 
         if let Some(image) = &self.image {
 

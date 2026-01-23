@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use macroquad::{color::WHITE, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams}, window::{screen_height, screen_width}};
 
-use crate::texture_loader::TextureLoader;
+use crate::texture_loader::ClientTextureLoader;
 
 enum PhoneAnimationState {
     Opening,
@@ -84,7 +84,7 @@ impl Phone {
     pub fn tick(&mut self) {
         self.update_animation();
     }
-    pub fn draw(&self, textures: &TextureLoader, camera_rect: &Rect) {
+    pub fn draw(&self, textures: &ClientTextureLoader, camera_rect: &Rect) {
         let texture = textures.get(&PathBuf::from(format!("assets/phone/{:?}.png", self.frame)));
 
         let mut params = DrawTextureParams::default();

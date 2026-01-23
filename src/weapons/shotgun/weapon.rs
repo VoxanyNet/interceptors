@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use macroquad::{color::Color, math::Vec2};
 use rapier2d::prelude::{ImpulseJointHandle, RigidBodyHandle};
 
-use crate::{ClientId, ClientTickContext, TickContext, player::Facing, space::Space, texture_loader::TextureLoader, weapons::{shotgun::weapon_save::ShotgunSave, weapon::weapon::WeaponBase, weapon_fire_context::WeaponFireContext}};
+use crate::{ClientId, ClientTickContext, TickContext, player::Facing, space::Space, texture_loader::ClientTextureLoader, weapons::{shotgun::weapon_save::ShotgunSave, weapon::weapon::WeaponBase, weapon_fire_context::WeaponFireContext}};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct Shotgun {
@@ -23,11 +23,11 @@ impl Shotgun {
         "Shotgun".to_string()
     }
     
-    pub fn get_preview_resolution(&self, size: f32, textures: &TextureLoader) -> Vec2 {
+    pub fn get_preview_resolution(&self, size: f32, textures: &ClientTextureLoader) -> Vec2 {
         self.weapon.get_preview_resolution(size, textures)
     }
 
-    pub fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32) {
+    pub fn draw_preview(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32) {
         self.weapon.draw_preview(textures, size, draw_pos, color, rotation);
     }
     pub fn save(&self, space: &Space) -> ShotgunSave {
@@ -90,7 +90,7 @@ impl Shotgun {
         
     }
 
-    pub async fn draw(&self, space: &Space, textures: &TextureLoader, facing: Facing) {
+    pub async fn draw(&self, space: &Space, textures: &ClientTextureLoader, facing: Facing) {
         self.weapon.draw(
             space, 
             textures,

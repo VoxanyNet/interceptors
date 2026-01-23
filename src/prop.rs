@@ -1,13 +1,14 @@
 use std::{fs::read_to_string, path::PathBuf};
 
 use async_trait::async_trait;
-use glamx::Pose2;
+use glamx::{IVec2, Pose2, glam};
+use image::{DynamicImage, GenericImageView, Pixel};
 use macroquad::{audio::play_sound_once, color::Color, math::{Rect, Vec2}, shapes::{DrawRectangleParams, draw_rectangle_ex}};
-use rapier2d::{parry::utils::hashmap::HashMap, prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity}};
+use rapier2d::{parry::utils::hashmap::HashMap, prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity, Voxels}};
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
-use crate::{ClientId, ClientTickContext, Owner, Prefabs, ServerIO, TickContext, area::AreaId, draw_preview, draw_texture_onto_physics_body, drawable::{DrawContext, Drawable}, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, get_preview_resolution, player::PlayerId, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
+use crate::{ClientId, ClientTickContext, Owner, Prefabs, ServerIO, TextureLoader, TickContext, area::AreaId, draw_preview, draw_texture_onto_physics_body, drawable::{DrawContext, Drawable}, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, get_preview_resolution, player::PlayerId, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Default, Debug, PartialEq, EnumIter, Display)]
 pub enum Material {
@@ -149,8 +150,8 @@ impl Drawable for DissolvedPixel {
 pub trait PropTrait: EditorContextMenu + Drawable {
     fn name(&self) -> String;
     fn mark_despawn(&self);
-    fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32);
-    fn get_preview_resolution(&self, size: f32, prefabs: &Prefabs, textures: &TextureLoader) -> Vec2;
+    fn draw_preview(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32);
+    fn get_preview_resolution(&self, size: f32, prefabs: &Prefabs, textures: &ClientTextureLoader) -> Vec2;
     fn handle_bullet_impact(
         &mut self, 
         ctx: &mut TickContext, 
@@ -166,7 +167,7 @@ pub trait PropTrait: EditorContextMenu + Drawable {
 
     fn dissolve(
         &mut self, 
-        textures: &TextureLoader, 
+        textures: &ClientTextureLoader, 
         space: &mut Space, 
         dissolved_pixels: &mut Vec<DissolvedPixel>, 
         ctx: Option<&mut ClientTickContext>, 
@@ -214,7 +215,9 @@ pub struct Prop {
     last_pos_update: web_time::Instant,
     name: String,
     context_menu_data: Option<EditorContextMenuData>,
-    layer: u32
+    layer: u32,
+    voxels_modified: bool,
+    pub scale: f32
 }
 
 
@@ -228,11 +231,11 @@ impl Prop {
         self.despawn = true;
     }
 
-    pub fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
+    pub fn draw_preview(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
         draw_preview(textures, size, draw_pos, color, rotation, &self.sprite_path);
     }
 
-    pub fn get_preview_resolution(&self, size: f32, prefabs: &Prefabs, textures: &TextureLoader) -> Vec2 {
+    pub fn get_preview_resolution(&self, size: f32, prefabs: &Prefabs, textures: &ClientTextureLoader) -> Vec2 {
 
         get_preview_resolution(size, textures, &self.sprite_path)
     }
@@ -332,21 +335,21 @@ impl Prop {
     pub fn despawn_callback(&mut self, space: &mut Space, area_id: AreaId) {
         space.rigid_body_set.remove(self.rigid_body_handle, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
     }
-    pub fn from_prefab(prefab_path: String, space: &mut Space) -> Self {
+    pub fn from_prefab(prefab_path: String, space: &mut Space, textures: TextureLoader) -> Self {
 
         #[cfg(target_os = "linux")]
         let prefab_path = prefab_path.replace("\\", "/");
 
         let prop_save: PropSave = serde_json::from_str(&read_to_string(prefab_path.to_string()).unwrap()).unwrap();
 
-        let prop = Prop::from_save(prop_save, space);
+        let prop = Prop::from_save(prop_save, space, textures);
 
         prop
     }
 
     pub fn dissolve(
         &mut self, 
-        textures: &TextureLoader, 
+        textures: &ClientTextureLoader, 
         space: &mut Space, 
         dissolved_pixels: &mut Vec<DissolvedPixel>, 
         ctx: Option<&mut ClientTickContext>, 
@@ -564,20 +567,84 @@ impl Prop {
         space.rigid_body_set.get_mut(self.rigid_body_handle).unwrap().set_vels(velocity, true);
     }
 
-    pub fn from_save(save: PropSave, space: &mut Space) -> Self {
+    pub fn from_save(save: PropSave, space: &mut Space, textures: TextureLoader) -> Self {
 
         let body = space.rigid_body_set.insert(
             RigidBodyBuilder::dynamic()
-                .position(save.pos)
+                .pose(save.pos)
                 // .ccd_enabled(true)
                 // .soft_ccd_prediction(20.)
         );
 
 
+        // let collider = space.collider_set.insert_with_parent(
+        //     ColliderBuilder::cuboid(save.size.x / 2., save.size.y / 2.)
+        //         .mass(save.mass),
+        //     body,
+        //     &mut space.rigid_body_set
+        // );
+        
+
+        // this is so amazingly horrible for such a stupid reason i must make it better
+        let voxels = match textures {
+            TextureLoader::Client(client_texture_loader) => {
+
+                let image = client_texture_loader.get(&save.sprite_path).get_texture_data();
+
+                match &save.voxels {
+                    Some(voxels) => voxels.clone(),
+                    None => {
+
+                        let mut voxels: Vec<IVec2> = Vec::new();
+
+                        for x in (0..image.width() as u32) {
+                            for y in (0..image.height() as u32) {
+                                let color = image.get_pixel(x, y);
+
+                                if color.a > 0. {
+                                    voxels.push(IVec2::new(x as i32, y as i32));
+                                }
+                            }
+                        }
+
+                        voxels
+                    },
+                }
+            },
+            TextureLoader::Server(server_texture_loader) =>  {
+                let image = server_texture_loader.get(&save.sprite_path);
+
+                match &save.voxels {
+                    Some(voxels) => voxels.clone(),
+                    None => {
+
+                        let mut voxels: Vec<IVec2> = Vec::new();
+
+                        for x in (0..image.width() as u32) {
+                            for y in (0..image.height() as u32) {
+                                let color = image.get_pixel(x, y);
+
+                                if color.alpha() != 0 {
+                                    voxels.push(IVec2::new(x as i32, y as i32));
+                                }
+                            }
+                        }
+
+                        voxels
+                    },
+                }
+            },
+        };
+
+
+        
+
         let collider = space.collider_set.insert_with_parent(
-            ColliderBuilder::cuboid(save.size.x / 2., save.size.y / 2.)
-                .mass(save.mass),
-            body,
+            ColliderBuilder::voxels(
+                glamx::Vec2::new(save.scale, save.scale), // each voxel is 4 pixels
+                &voxels
+            ), 
+            body, 
             &mut space.rigid_body_set
         );
 
@@ -600,7 +667,9 @@ impl Prop {
             last_pos_update: web_time::Instant::now(),
             name: save.name,
             context_menu_data: None,
-            layer: save.layer
+            layer: save.layer,
+            voxels_modified: save.voxels.is_some(),
+            scale: save.scale,
 
         }
     }
@@ -612,10 +681,21 @@ impl Prop {
         
         let collider = space.collider_set.get(self.collider_handle).unwrap();
         let mass = collider.mass();
-        let size = collider.shape().as_cuboid().unwrap().half_extents;
+
+        let voxels = if self.voxels_modified {
+            let coords: Vec<IVec2> = collider
+                .shape()
+                .as_voxels().unwrap()
+                .voxels()
+                .map(|v| v.grid_coords)
+                .collect();
+            
+            coords.into()
+        } else {
+            None
+        };
 
         PropSave {
-            size: Vec2::new(size.x * 2., size.y * 2.),
             pos,
             mass,
             sprite_path: self.sprite_path.clone(),
@@ -623,7 +703,9 @@ impl Prop {
             owner: self.owner,
             material: self.material,
             name: self.name.clone(),
-            layer: self.layer
+            layer: self.layer,
+            voxels,
+            scale: self.scale
         }
     }
 
@@ -663,7 +745,7 @@ impl EditorContextMenu for Prop {
     fn data_editor_import(&mut self, json: String, ctx: &mut crate::editor_context_menu::DataEditorContext) {
         let prop_save: PropSave = serde_json::from_str(&json).unwrap();
 
-        *self = Self::from_save(prop_save, ctx.space);
+        *self = Self::from_save(prop_save, ctx.space, ctx.textures.into());
     }
 
     fn layer(&mut self) -> Option<&mut u32> {
@@ -708,7 +790,8 @@ pub struct StupidDissolvedPixelVelocityUpdate {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct PropSave {
-    pub size: Vec2,
+    #[serde(default)]
+    pub scale: f32,
     pub pos: Pose2,
     pub mass: f32,
     pub sprite_path: PathBuf,
@@ -720,7 +803,10 @@ pub struct PropSave {
     #[serde(default = "default_prop_name")]
     pub name: String,
     #[serde(default)]
-    pub layer: u32
+    pub layer: u32,
+    // only provide voxels if they have been modified from what the image would generate
+    #[serde(default)]
+    pub voxels: Option<Vec<glamx::IVec2>>
 }
 
 

@@ -2,7 +2,7 @@ use derive_more::From;
 use macroquad::{color::Color, math::Vec2};
 use rapier2d::prelude::{ColliderHandle, ImpulseJointHandle, RigidBodyHandle};
 
-use crate::{ClientTickContext, TickContext, player::Facing, space::Space, texture_loader::TextureLoader, weapons::{lmg::weapon::LMG, shotgun::weapon::Shotgun, smg::weapon::SMG, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
+use crate::{ClientTickContext, TickContext, player::Facing, space::Space, texture_loader::ClientTextureLoader, weapons::{lmg::weapon::LMG, shotgun::weapon::Shotgun, smg::weapon::SMG, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
 
 // in order to be an equipable weapon your weapon must be part of this enum 
 #[derive(PartialEq, Clone, Debug, From)]
@@ -80,7 +80,7 @@ impl WeaponType {
         }
     }
 
-    pub fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32) {
+    pub fn draw_preview(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32) {
         match self {
             WeaponType::Shotgun(shotgun) => shotgun.draw_preview(textures, size, draw_pos, color, rotation),
             WeaponType::LMG(lmg) => {},
@@ -88,7 +88,7 @@ impl WeaponType {
         }
     }
 
-    pub fn get_preview_resolution(&self, size: f32, textures: &TextureLoader) -> Vec2 {
+    pub fn get_preview_resolution(&self, size: f32, textures: &ClientTextureLoader) -> Vec2 {
         match self {
             WeaponType::Shotgun(shotgun) => shotgun.get_preview_resolution(size, textures),
             WeaponType::LMG(lmg) => Vec2::ZERO,
@@ -142,7 +142,7 @@ impl WeaponType {
         }
     }
 
-    pub async fn draw(&self, space: &Space, textures: &TextureLoader, facing: Facing) {
+    pub async fn draw(&self, space: &Space, textures: &ClientTextureLoader, facing: Facing) {
         match self {
             WeaponType::Shotgun(shotgun) => shotgun.draw(space, textures, facing).await,
             WeaponType::LMG(lmg) => lmg.draw(space, textures, facing).await,

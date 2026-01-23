@@ -4,7 +4,7 @@ use glamx::Pose2;
 use macroquad::{color::WHITE, math::Vec2, texture::{draw_texture_ex, DrawTextureParams}};
 use rapier2d::{math::Pose, prelude::{ColliderBuilder, RigidBodyBuilder, RigidBodyHandle}};
 
-use crate::{rapier_to_macroquad, space::Space, texture_loader::TextureLoader, ClientTickContext};
+use crate::{rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, ClientTickContext};
 
 pub struct CompoundTest {
     body: RigidBodyHandle,
@@ -89,7 +89,7 @@ impl CompoundTest {
         }
     }
 
-    pub fn draw(&self, space: &Space, textures: &TextureLoader) {
+    pub fn draw(&self, space: &Space, textures: &ClientTextureLoader) {
         
         let texture = textures.get(&self.texture_path);
         let rigid_body = space.rigid_body_set.get(self.body).unwrap();

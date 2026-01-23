@@ -5,7 +5,7 @@ use glamx::Pose2;
 use macroquad::{camera::{set_camera, Camera2D}, color::{Color, BLACK, GRAY, WHITE}, math::{Rect, Vec2}, shapes::draw_line, text::{draw_text_ex, TextParams}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::clear_background};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientTickContext, Owner, Prefabs, button::Button, drawable::{DrawContext, Drawable}, font_loader::FontLoader, mouse_world_pos, player::Player, prop::{Prop, PropSave}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, weapons::{weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
+use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, button::Button, drawable::{DrawContext, Drawable}, font_loader::FontLoader, mouse_world_pos, player::Player, prop::{Prop, PropSave}, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, weapons::{weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
 
 #[derive(PartialEq, Clone, Debug, From)]
 pub enum Item {
@@ -38,20 +38,20 @@ impl Item {
         }
     }
 
-    pub fn from_save(item_save: ItemSave, space: &mut Space) -> Item {
+    pub fn from_save(item_save: ItemSave, space: &mut Space, textures: TextureLoader) -> Item {
         match item_save {
-            ItemSave::Prop(prop_save) => Item::Prop(Prop::from_save(prop_save, space)),
+            ItemSave::Prop(prop_save) => Item::Prop(Prop::from_save(prop_save, space, textures)),
             ItemSave::Weapon(weapon_type_save) => Item::Weapon(WeaponType::from_save(space, weapon_type_save, None)) 
         }
     }
-    pub fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
+    pub fn draw_preview(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
         match self {
             Item::Prop(prop) => prop.draw_preview(textures, size, draw_pos, prefabs, color, rotation),
             Item::Weapon(weapon) => weapon.draw_preview(textures, size, draw_pos, color, rotation),
         }
     }
 
-    pub fn get_preview_resolution(&self, textures: &TextureLoader, size: f32, prefabs: &Prefabs) -> Vec2 {
+    pub fn get_preview_resolution(&self, textures: &ClientTextureLoader, size: f32, prefabs: &Prefabs) -> Vec2 {
         match self {
             Item::Prop(prop_item) => prop_item.get_preview_resolution(size, prefabs, textures),
             Item::Weapon(weapon) => weapon.get_preview_resolution(size, textures)
@@ -75,7 +75,7 @@ pub struct StoreItem {
 }
 
 impl StoreItem {
-    pub fn draw(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
+    pub fn draw(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
         self.item.draw_preview(textures, size, draw_pos, prefabs, color, rotation);
     }
 
@@ -200,7 +200,7 @@ impl StoreCategory {
         }
     }
 
-    pub fn draw(&self, textures: &TextureLoader, prefabs: &Prefabs, fonts: &FontLoader) {
+    pub fn draw(&self, textures: &ClientTextureLoader, prefabs: &Prefabs, fonts: &FontLoader) {
 
         let hovered_button_color = Color::new(0.78, 0.78, 0.78, 0.5);
 
@@ -258,7 +258,7 @@ pub struct Computer {
 
 impl Computer {
 
-    pub fn new(prefabs: &Prefabs, space:&mut crate::space::Space, pos: glamx::Pose2) -> Self {
+    pub fn new(prefabs: &Prefabs, space:&mut crate::space::Space, pos: glamx::Pose2, texures: TextureLoader) -> Self {
         
         let save: PropSave = serde_json::from_str(
             &prefabs.get_prefab_data("prefabs\\generic_physics_props\\computer.json")
@@ -266,7 +266,8 @@ impl Computer {
 
         let mut prop = Prop::from_save(
             save, 
-            space
+            space,
+            texures.clone()
         );
 
         prop.set_pos(pos, space);
@@ -277,7 +278,11 @@ impl Computer {
             StoreItem {
                 cost: 20,
                 item: Item::Prop(
-                    Prop::from_prefab("prefabs\\generic_physics_props\\box2.json".to_string(), space)
+                    Prop::from_prefab(
+                        "prefabs\\generic_physics_props\\box2.json".to_string(),
+                        space,
+                        texures.clone()
+                    )
                 ),
                 quantity: None
             }
@@ -286,7 +291,11 @@ impl Computer {
         available_items.push(
             StoreItem {
                 cost: 20,
-                item: Item::Prop(Prop::from_prefab("prefabs\\generic_physics_props\\anvil.json".to_string(), space)),
+                item: Item::Prop(
+                    Prop::from_prefab(
+                        "prefabs\\generic_physics_props\\anvil.json".to_string(), space, texures.clone()
+                    )
+                ),
                 quantity: None
             }
         );
@@ -320,7 +329,7 @@ impl Computer {
                 StoreItem {
                     cost: 20,
                     item: Item::Prop(
-                        Prop::from_prefab("prefabs\\generic_physics_props\\box2.json".to_string(), space)
+                        Prop::from_prefab("prefabs\\generic_physics_props\\box2.json".to_string(), space, texures.clone())
                     ),
                     quantity: None
                 }
@@ -332,7 +341,7 @@ impl Computer {
                 StoreItem {
                     cost: 20,
                     item: Item::Prop(
-                        Prop::from_prefab("prefabs\\generic_physics_props\\stone2.json".to_string(), space)
+                        Prop::from_prefab("prefabs\\generic_physics_props\\stone2.json".to_string(), space, texures.clone())
                     ),
                     quantity: Some(1)
                 }

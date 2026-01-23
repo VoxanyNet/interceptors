@@ -4,7 +4,7 @@ use glamx::Pose2;
 use macroquad::{audio::{PlaySoundParams, play_sound}, color::Color, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released}, math::Vec2, rand::RandomRange};
 use rapier2d::{math::Vector, parry::query::Ray, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 
-use crate::{ClientId, ClientTickContext, IntersectionData, TickContext, area::AreaId, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, enemy::EnemyId, get_intersections, get_preview_resolution, player::{Facing, PlayerId}, prop::StupidDissolvedPixelVelocityUpdate, space::Space, texture_loader::TextureLoader, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon_save::WeaponSave, weapon_fire_context::WeaponFireContext}};
+use crate::{ClientId, ClientTickContext, IntersectionData, TickContext, area::AreaId, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, enemy::EnemyId, get_intersections, get_preview_resolution, player::{Facing, PlayerId}, prop::StupidDissolvedPixelVelocityUpdate, space::Space, texture_loader::ClientTextureLoader, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon_save::WeaponSave, weapon_fire_context::WeaponFireContext}};
 
 
 #[derive(Clone)]
@@ -133,11 +133,11 @@ impl WeaponBase {
     }
 
     
-    pub fn draw_preview(&self, textures: &TextureLoader, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32) {
+    pub fn draw_preview(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32) {
         draw_preview(textures, size, draw_pos, color, rotation, &self.sprite);
     }
 
-    pub fn get_preview_resolution(&self, size: f32, textures: &TextureLoader) -> Vec2 {
+    pub fn get_preview_resolution(&self, size: f32, textures: &ClientTextureLoader) -> Vec2 {
         get_preview_resolution(size, textures, &self.sprite)
     }
 
@@ -276,7 +276,7 @@ impl WeaponBase {
         }
     }
 
-    pub async fn draw(&self, space: &Space, textures: &TextureLoader, facing: Facing) {
+    pub async fn draw(&self, space: &Space, textures: &ClientTextureLoader, facing: Facing) {
 
         // dont draw if unequipped
         let rigid_body = match self.rigid_body {

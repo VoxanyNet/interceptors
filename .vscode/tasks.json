@@ -1,0 +1,41 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Client",
+            "type": "shell",
+            "command": "cargo watch -s \"./build_wasm.sh c-client\"",
+            "runOptions": {
+                "runOn": "folderOpen"
+            },
+            "isBackground": true,
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true,
+                "close": true,
+            },
+            // "notification": {
+            //     "on": "always"
+            // }
+        },
+        {
+            "label": "Server",
+            "type": "shell",
+            "isBackground": true,
+            "command": "cargo watch -x 'run --bin server'",
+            "runOptions": {
+                "runOn": "folderOpen"
+            },
+            "presentation": {
+                "close": true,
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            // "notification": {
+            //     "on": "always"
+            // }
+        }
+    ]
+}

@@ -1,6 +1,6 @@
 use std::{fs::read_to_string, process::exit};
 
-use interceptors_lib::{ClientId, Owner, Prefabs, ServerIO, ServerTickContext, TickContext, area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, get_intersections, load_prefabs, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket, PlayerDespawnUpdate}, weapons::weapon_type::WeaponType, world::World};
+use interceptors_lib::{Assets, ClientId, Owner, Prefabs, ServerAssets, ServerIO, ServerTickContext, TickContext, area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, get_intersections, load_assets_server, load_prefabs, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket, PlayerDespawnUpdate}, weapons::weapon_type::WeaponType, world::World};
 use rapier2d::math::Vector;
 use tungstenite::Message;
 
@@ -12,12 +12,15 @@ pub struct Server {
     network_io: ServerIO,
     total_bits_sent: usize,
     previous_tick_connected_clients: Vec<ClientId>,
+    assets: ServerAssets
 }
 
 impl Server {
     pub fn new() -> Self {
 
         let mut world = World::empty();
+
+        let assets = load_assets_server();
 
 
         //let lobby_save: AreaSave = serde_json::from_str(&read_to_string("areas/ship.json").unwrap()).unwrap();
@@ -27,7 +30,7 @@ impl Server {
         
         let prefabs = load_prefabs();
 
-        let forest = Area::from_save(forest_save, None, &prefabs);
+        let forest = Area::from_save(forest_save, None, &prefabs, (&assets.textures).into());
 
         //forest.generate_terrain(0);
 
@@ -43,7 +46,8 @@ impl Server {
             world,
             total_bits_sent: 0,
             previous_tick_connected_clients: Vec::new(),
-            prefabs
+            prefabs,
+            assets
         }
 
     }
@@ -108,7 +112,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
         if self.network_io.clients.keys().len() == 0 {
 
             let lobby: AreaSave = serde_json::from_str(&read_to_string("areas/ship.json").unwrap()).unwrap();
-            self.world.areas[0] = Area::from_save(lobby, Some(AreaId::new()), &self.prefabs);
+            self.world.areas[0] = Area::from_save(lobby, Some(AreaId::new()), &self.prefabs, (&self.assets.textures).into());
             self.world.areas[0].generate_terrain(0);
         }
     }
@@ -202,7 +206,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                         }
                     ).unwrap();
 
-                    area.props.push(Prop::from_save(update.prop.clone(), &mut area.space));
+                    area.props.push(Prop::from_save(update.prop.clone(), &mut area.space, (&self.assets.textures).into()));
 
                     self.network_io.send_all_except(network_packet, client_id);
 
@@ -216,7 +220,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                     ).unwrap();
 
                     area.dropped_items.push(
-                        DroppedItem::from_save(update.dropped_item.clone(), &mut area.space, &self.prefabs)
+                        DroppedItem::from_save(update.dropped_item.clone(), &mut area.space, &self.prefabs, (&self.assets.textures).into())
                     );
 
                     self.network_io.send_all_except(network_packet, client_id);
@@ -241,7 +245,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                         }
                     ).unwrap();
 
-                    area.players.push(Player::from_save(update.player.clone(), &mut area.space));
+                    area.players.push(Player::from_save(update.player.clone(), &mut area.space, (&self.assets.textures).into()));
 
                     self.network_io.send_all_except(network_packet, client_id);
                 },
@@ -418,7 +422,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                     player.inventory.items[update.inventory_index] = match &update.item_slot {
                         Some(item_slot_save) => {
                             Some(
-                                ItemSlot::from_save(item_slot_save.clone(), &mut area.space)
+                                ItemSlot::from_save(item_slot_save.clone(), &mut area.space, (&self.assets.textures).into())
                             )
                         },
                         None => None,

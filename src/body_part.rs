@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use glamx::{Pose2, Vec2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle};
 
-use crate::{ClientId, ClientTickContext, Owner, TickContext, draw_texture_onto_physics_body, space::Space, texture_loader::TextureLoader};
+use crate::{ClientId, ClientTickContext, Owner, TickContext, draw_texture_onto_physics_body, space::Space, texture_loader::ClientTextureLoader};
 
 #[derive(Debug, Clone)]
 pub struct BodyPart {
@@ -59,7 +59,7 @@ impl BodyPart {
 
     }
 
-    pub async fn draw(&self, textures: &TextureLoader, space: &Space, flip_x: bool) {
+    pub async fn draw(&self, textures: &ClientTextureLoader, space: &Space, flip_x: bool) {
         draw_texture_onto_physics_body(
             self.body_handle, 
             self.collider_handle, 

@@ -1,7 +1,7 @@
 
 use macroquad::{camera::Camera2D, math::Rect};
 
-use crate::{ClientTickContext, Prefabs, ServerIO, TickContext, area::Area, font_loader::FontLoader, texture_loader::TextureLoader};
+use crate::{ClientTickContext, Prefabs, ServerIO, TickContext, area::Area, font_loader::FontLoader, texture_loader::ClientTextureLoader};
 
 pub struct World {
     pub areas: Vec<Area>
@@ -27,7 +27,7 @@ impl World {
         }
     }
 
-    pub fn draw_hud(&self, textures: &TextureLoader) {
+    pub fn draw_hud(&self, textures: &ClientTextureLoader) {
         for area in &self.areas {
             area.draw_hud(textures);
         }
@@ -35,7 +35,7 @@ impl World {
 
     pub async fn draw(
         &mut self, 
-        textures: &mut TextureLoader, 
+        textures: &mut ClientTextureLoader, 
         camera_rect: &Rect, 
         prefabs: &Prefabs, 
         camera: &Camera2D, 

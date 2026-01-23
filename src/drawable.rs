@@ -1,11 +1,11 @@
 use macroquad::{camera::Camera2D, math::Rect};
 use async_trait::async_trait;
 
-use crate::{Prefabs, font_loader::FontLoader, space::Space, texture_loader::TextureLoader, tile::Tile};
+use crate::{Prefabs, font_loader::FontLoader, space::Space, texture_loader::ClientTextureLoader, tile::Tile};
 
 pub struct DrawContext<'a> {
     pub space: &'a Space,
-    pub textures: &'a TextureLoader,
+    pub textures: &'a ClientTextureLoader,
     pub prefabs: &'a Prefabs,
     pub fonts: &'a FontLoader,
     pub camera_rect: &'a Rect,

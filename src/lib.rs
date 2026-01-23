@@ -7,9 +7,9 @@ use macroquad::{camera::Camera2D, color::{Color, WHITE}, file::load_string, inpu
 use rapier2d::{parry::query::Ray, prelude::{Collider, ColliderBuilder, ColliderHandle, QueryFilter, QueryPipeline, RigidBodyHandle}};
 use serde::{Deserialize, Serialize};
 use tungstenite::WebSocket;
-use include_dir::include_dir;
+use include_dir::{Dir, include_dir};
 
-use crate::{all_keys::ALL_KEYS, font_loader::FontLoader, player::Facing, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, space::Space, texture_loader::TextureLoader, updates::NetworkPacket, weapons::weapon_type::WeaponType};
+use crate::{all_keys::ALL_KEYS, font_loader::FontLoader, player::Facing, screen_shake::ScreenShakeParameters, server_texture_loader::ServerTextureLoader, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, weapons::weapon_type::WeaponType};
 
 pub mod space;
 pub mod updates;
@@ -47,6 +47,7 @@ pub mod drawable;
 pub mod editor_context_menu;
 pub mod selectable_object_id;
 pub mod connection;
+pub mod server_texture_loader;
 
 #[derive(Clone, Debug)]
 pub struct IntersectionData {
@@ -306,7 +307,7 @@ pub async fn draw_texture_onto_physics_body(
     collider_handle: ColliderHandle,
     space: &Space, 
     texture_path: &PathBuf, 
-    textures: &TextureLoader, 
+    textures: &ClientTextureLoader, 
     flip_x: bool, 
     flip_y: bool, 
     additional_rotation: f32
@@ -314,9 +315,7 @@ pub async fn draw_texture_onto_physics_body(
     let rigid_body = space.rigid_body_set.get(rigid_body_handle).unwrap();
     let collider = space.collider_set.get(collider_handle).unwrap();
 
-    // use the shape to define how large we should draw the texture
-    // maybe we should change this
-    let shape = collider.shape().as_cuboid().unwrap();
+    let half_extents = collider.shape().compute_aabb(rigid_body.position()).half_extents();
 
     let position = rigid_body.position().translation;
     let body_rotation = rigid_body.rotation().angle();
@@ -325,11 +324,11 @@ pub async fn draw_texture_onto_physics_body(
 
     draw_texture_ex(
         textures.get(texture_path), 
-        draw_pos.x - shape.half_extents.x, 
-        draw_pos.y - shape.half_extents.y, 
+        draw_pos.x - half_extents.x, 
+        draw_pos.y - half_extents.y, 
         WHITE, 
         DrawTextureParams {
-            dest_size: Some(vec2(shape.half_extents.x * 2., shape.half_extents.y * 2.)),
+            dest_size: Some(vec2(half_extents.x * 2., half_extents.y * 2.)),
             source: None,
             rotation: (body_rotation * -1.) + additional_rotation,
             flip_x,
@@ -494,7 +493,7 @@ impl ClientIO {
 
 }
 
-pub fn draw_preview(textures: &TextureLoader, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32, texture_path: &PathBuf) { 
+pub fn draw_preview(textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32, texture_path: &PathBuf) { 
     let color = color.unwrap_or(WHITE);
 
     let dest_size = get_preview_resolution(size, textures, texture_path);
@@ -518,7 +517,7 @@ pub fn draw_preview(textures: &TextureLoader, size: f32, draw_pos: Vec2, color: 
         params
     );
 }
-pub fn get_preview_resolution(size: f32, textures: &TextureLoader, texture_path: &PathBuf) -> Vec2 {
+pub fn get_preview_resolution(size: f32, textures: &ClientTextureLoader, texture_path: &PathBuf) -> Vec2 {
     let texture = textures.get(texture_path);
 
     // size represents the max size in pixels a pixel can be in either width or height BUT we dont want to change the aspect ratio so hence this magic
@@ -753,7 +752,7 @@ pub struct ClientTickContext<'a> {
     pub prefabs: &'a Prefabs,
     pub screen_shake: &'a mut ScreenShakeParameters,
     pub sounds: &'a mut SoundLoader,
-    pub textures: &'a TextureLoader,
+    pub textures: &'a ClientTextureLoader,
     pub camera: &'a Camera2D
 }
 
@@ -855,7 +854,12 @@ impl Prefabs {
 pub struct Assets {
     pub sounds: SoundLoader,
     pub fonts: FontLoader,
-    pub textures: TextureLoader,
+    pub textures: ClientTextureLoader,
+    pub prefabs: Prefabs
+}
+
+pub struct ServerAssets {
+    pub textures: ServerTextureLoader,
     pub prefabs: Prefabs
 }
 
@@ -885,13 +889,13 @@ pub fn load_prefabs() -> Prefabs {
     prefab_loader
     
 }
-pub async fn load_assets() -> Assets {
 
-    let assets = include_dir!("assets");
+const ASSETS: Dir<'static> = include_dir!("assets");
 
-    let mut sounds = SoundLoader::new();
-    let mut fonts = FontLoader::new();
-    let mut textures = TextureLoader::new();
+/// This is incomplete and currently only load textures and prefabs
+pub fn load_assets_server() -> ServerAssets {
+
+    let mut textures = ServerTextureLoader::new();
     let prefabs = load_prefabs();
     
 
@@ -901,7 +905,54 @@ pub async fn load_assets() -> Assets {
 
     let mut asset_count = 0;
 
-    for asset in assets.find(glob).unwrap() {
+    for asset in ASSETS.find(glob).unwrap() {
+
+
+        let path = PathBuf::from("assets/").join(asset.path().to_path_buf());
+
+        let asset = match asset.as_file() {
+            Some(asset) => asset,
+            None => continue,
+        };
+
+        asset_count += 1;
+
+        let data = asset.contents();
+
+
+
+        if path.extension().unwrap() == "png" {
+            textures.load(path.clone(), data);
+        }
+
+        
+
+        
+    }
+
+    log::info!("Finished loading {} assets", asset_count);
+    
+
+    ServerAssets {
+        textures,
+        prefabs,
+    }
+}
+pub async fn load_assets() -> Assets {
+
+    let mut sounds = SoundLoader::new();
+    let mut fonts = FontLoader::new();
+    let mut textures = ClientTextureLoader::new();
+    let prefabs = load_prefabs();
+    
+
+    let glob = "**/*";
+
+    log::info!("Loading assets...");
+
+    let mut asset_count = 0;
+
+    for asset in ASSETS.find(glob).unwrap() {
 
 
         let path = PathBuf::from("assets/").join(asset.path().to_path_buf());
@@ -944,6 +995,14 @@ pub async fn load_assets() -> Assets {
     }
 
 }
+
+#[derive(From, Clone)]
+pub enum TextureLoader<'a> {
+    Client(&'a ClientTextureLoader),
+    Server(&'a ServerTextureLoader)
+}
+
+
 
 #[cfg(target_arch = "x86_64")]
 pub fn log(message: &str) {

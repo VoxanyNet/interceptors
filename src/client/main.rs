@@ -3,7 +3,7 @@ use std::{path::PathBuf, time::Instant};
 
 use activity::DiscordSDK;
 use include_dir::include_dir;
-use interceptors_lib::{Prefabs, font_loader::FontLoader, load_assets, sound_loader::SoundLoader, texture_loader::TextureLoader};
+use interceptors_lib::{Prefabs, font_loader::FontLoader, load_assets, sound_loader::SoundLoader, texture_loader::ClientTextureLoader};
 use macroquad::{input::show_mouse, miniquad::{conf::Platform, window::request_quit}, window::Conf};
 
 use crate::{client::{Client}, main_menu::{MainMenu, MainMenuResult}};

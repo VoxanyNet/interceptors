@@ -3,10 +3,11 @@ use std::{env::temp_dir, fs::{self}, path::PathBuf, process::Command, time::Syst
 use macroquad::{color::{DARKGRAY, GRAY, WHITE}, input::{KeyCode, is_key_down, is_key_released, is_mouse_button_released, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle, text::draw_text};
 use rapier2d::prelude::{ColliderHandle, RigidBodyHandle};
 
-use crate::{button::Button, mouse_world_pos, selectable_object_id::SelectableObjectId, space::Space, uuid_string};
+use crate::{button::Button, mouse_world_pos, selectable_object_id::SelectableObjectId, space::Space, texture_loader::ClientTextureLoader, uuid_string};
 
 pub struct DataEditorContext<'a> {
-    pub space: &'a mut Space
+    pub space: &'a mut Space,
+    pub textures: &'a ClientTextureLoader
 }
 // implementors of this trait can expose their variables to be edited by the context menu 
 pub trait EditorContextMenu {
@@ -159,7 +160,13 @@ pub trait EditorContextMenu {
         }
     }
 
-    fn update_menu(&mut self, space: &mut Space, camera_rect: &Rect, selected: bool) {
+    fn update_menu(
+        &mut self, 
+        space: &mut Space, 
+        camera_rect: &Rect, 
+        selected: bool,
+        textures: &ClientTextureLoader 
+    ) {
         
         // not sure if this is where this should be. maybe i should rename the trait. the hotkeys access the same data as the menu so this is a good spot to put it
         self.handle_hotkeys(selected, space);
@@ -168,14 +175,16 @@ pub trait EditorContextMenu {
             self.close_menu();
         }
         if selected && is_mouse_button_released(macroquad::input::MouseButton::Right) && self.object_bounding_box(Some(space)).contains(mouse_world_pos(camera_rect)) {
-            self.open_menu(mouse_position().into(), &DataEditorContext { space });
+            self.open_menu(mouse_position().into(), &DataEditorContext { space, textures });
         }
 
-        self.apply_data_editor_updates(&mut DataEditorContext { space });
+        self.apply_data_editor_updates(&mut DataEditorContext { space, textures });
         self.update_buttons();
         self.handle_buttons(
             DataEditorContext {
                 space,
+                textures,
+                
             }
         );
     }

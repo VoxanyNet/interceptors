@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::PathBuf, process::exit};
 
-use interceptors_lib::{Assets, ClientIO, ClientId, ClientTickContext, Prefabs, area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, player::{ItemSlot, Player}, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::TextureLoader, updates::{NetworkPacket, Ping}, weapons::weapon_type::WeaponType, world::World};
-use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, WHITE}, input::{KeyCode, is_key_released, show_mouse}, math::{Rect, vec2}, prelude::{Material, ShaderSource, gl_use_default_material, gl_use_material, load_material}, texture::{DrawTextureParams, RenderTarget, draw_texture_ex, render_target}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
+use interceptors_lib::{Assets, ClientIO, ClientId, ClientTickContext, Prefabs, area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, player::{ItemSlot, Player}, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::ClientTextureLoader, updates::{NetworkPacket, Ping}, weapons::weapon_type::WeaponType, world::World};
+use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, WHITE}, input::{KeyCode, is_key_released, show_mouse}, math::{Rect, vec2}, prelude::{Material, ShaderSource, gl_use_default_material, gl_use_material, load_material}, text::draw_text, texture::{DrawTextureParams, RenderTarget, draw_texture_ex, render_target}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
 use rapier2d::math::Vector;
 
 use crate::{shaders::{CRT_FRAGMENT_SHADER, CRT_VERTEX_SHADER}};
@@ -13,7 +13,7 @@ pub struct Client {
     world: World, 
     client_id: ClientId,
     camera_rect: Rect,
-    textures: TextureLoader,
+    textures: ClientTextureLoader,
     last_tick_duration: web_time::Duration,
     last_tick: web_time::Instant,
     latency: web_time::Duration,
@@ -173,13 +173,16 @@ impl Client {
         
         loop {
 
+            let then = web_time::Instant::now();
             self.tick();
 
             let packets = self.network_io.receive_packets();
 
             self.handle_packets(packets);
 
-            self.draw().await;
+            self.draw(then).await;
+
+            
             
         }
     }
@@ -214,7 +217,7 @@ impl Client {
                 },
                 NetworkPacket::LoadArea(load_area) => {
 
-                    self.world.areas.push(Area::from_save(load_area.area, Some(load_area.id), &self.prefab_data));
+                    self.world.areas.push(Area::from_save(load_area.area, Some(load_area.id), &self.prefab_data, (&self.textures).into()));
                 }
 
                 NetworkPacket::PropVelocityUpdate(update) => {
@@ -235,14 +238,14 @@ impl Client {
                 NetworkPacket::NewProp(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    area.props.push(Prop::from_save(update.prop, &mut area.space));
+                    area.props.push(Prop::from_save(update.prop, &mut area.space, (&self.textures).into()));
 
 
                 },
                 NetworkPacket::NewPlayer(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    area.players.push(Player::from_save(update.player, &mut area.space));
+                    area.players.push(Player::from_save(update.player, &mut area.space, (&self.textures).into()));
                 },
                 NetworkPacket::PlayerVelocityUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
@@ -326,7 +329,7 @@ impl Client {
                     ).unwrap();
 
                     area.dropped_items.push(
-                        DroppedItem::from_save(update.dropped_item, &mut area.space, &self.prefab_data)
+                        DroppedItem::from_save(update.dropped_item, &mut area.space, &self.prefab_data, (&self.textures).into())
                     );
                 },
                 NetworkPacket::RemoveDroppedItemUpdate(update) => {
@@ -395,7 +398,7 @@ impl Client {
                     player.inventory.items[update.inventory_index] = match update.item_slot {
                         Some(item_slot_save) => {
                             Some(
-                                ItemSlot::from_save(item_slot_save, &mut area.space)
+                                ItemSlot::from_save(item_slot_save, &mut area.space, (&self.textures).into())
                             )
                         },
                         None => None,
@@ -624,7 +627,7 @@ impl Client {
     }
 
     
-    pub async fn draw(&mut self) { 
+    pub async fn draw(&mut self, then: web_time::Instant) { 
 
         let shaken_camera_rect = self.calculate_shaken_camera_rect();
 
@@ -646,17 +649,13 @@ impl Client {
 
         clear_background(BLACK);
 
-
         self.world.draw(&mut self.textures, &self.camera_rect, &self.prefab_data, &self.camera, &self.fonts, self.start.elapsed()).await;
 
         //self.phone.draw(&self.textures, &self.camera_rect);
-        
-
+                
         set_default_camera();
 
         //gl_use_material(&self.material);
-
-
 
         draw_texture_ex(&self.render_target.texture, 0.0, 0., WHITE, DrawTextureParams {
             dest_size: Some(vec2(screen_width(), screen_height())),
@@ -667,7 +666,12 @@ impl Client {
 
         draw_fps();
         
+
+        draw_text(&format!("{:?}", then.elapsed()), 0., 40., 20., WHITE);
+
         next_frame().await;
+
+       
 
 
         

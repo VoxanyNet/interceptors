@@ -3,7 +3,7 @@ use glamx::vec2;
 use macroquad::color::WHITE;
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle};
 
-use crate::{draw_hitbox, player::Facing, space::Space, texture_loader::TextureLoader, weapons::{lmg::{ weapon_save::LMGSave}, sledge::weapon_save::SledgeSave}, ClientId};
+use crate::{draw_hitbox, player::Facing, space::Space, texture_loader::ClientTextureLoader, weapons::{lmg::{ weapon_save::LMGSave}, sledge::weapon_save::SledgeSave}, ClientId};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct Sledge {
@@ -51,7 +51,7 @@ impl Sledge {
         }
     }
 
-    pub async fn draw(&self, space: &Space, textures: &mut TextureLoader, facing: Facing) {
+    pub async fn draw(&self, space: &Space, textures: &mut ClientTextureLoader, facing: Facing) {
         // let body = space.rigid_body_set.get(self.rigid_body).unwrap();
 
         // let collider = space.collider_set.get(self.collider).unwrap();

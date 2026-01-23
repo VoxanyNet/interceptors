@@ -1,6 +1,6 @@
 use std::{path::PathBuf, str::FromStr};
 
-use interceptors_lib::{button::Button, texture_loader::TextureLoader};
+use interceptors_lib::{button::Button, texture_loader::ClientTextureLoader};
 use macroquad::{color::WHITE, input::mouse_position, math::{Rect, Vec2}, shapes::draw_rectangle, texture::{DrawTextureParams, draw_texture_ex}, window::screen_width};
 
 use crate::{editor_input_context::EditorInputContext, editor_ui_tick_context::EditorUITickContext};
@@ -88,7 +88,7 @@ impl EditorModeSelectUI {
         self.simulate_space_toggle.rect.x = screen_width() - self.prefab_mode_toggle.rect.w;
     }
 
-    pub fn draw(&self, textures: &TextureLoader) {
+    pub fn draw(&self, textures: &ClientTextureLoader) {
 
         self.draw_button(textures, &self.select_mode_toggle, "assets/ui/cursor.png");
         self.draw_button(textures, &self.prefab_mode_toggle, "assets/ui/spawner.png");
@@ -96,7 +96,7 @@ impl EditorModeSelectUI {
 
     }
 
-    pub fn draw_button(&self, textures: &TextureLoader, button: &Button, image_path: &str) {
+    pub fn draw_button(&self, textures: &ClientTextureLoader, button: &Button, image_path: &str) {
         let mut button_background_color = WHITE;
         button_background_color.a = 0.5;
 

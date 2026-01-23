@@ -471,17 +471,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "colored_json"
-version = "5.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e35980a1b846f8e3e359fd18099172a0857140ba9230affc4f71348081e039b6"
-dependencies = [
- "serde",
- "serde_json",
- "yansi",
-]
-
-[[package]]
 name = "core2"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1162,7 +1151,6 @@ dependencies = [
  "bitcode",
  "clap",
  "colored",
- "colored_json",
  "cs-utils",
  "derive_more",
  "dhat",
@@ -2782,12 +2770,6 @@ name = "y4m"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a5a4b21e1a62b67a2970e6831bc091d7b87e119e7f9791aef9702e3bef04448"
-
-[[package]]
-name = "yansi"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfe53a6657fd280eaa890a3bc59152892ffa3e30101319d168b781ed6529b049"
 
 [[package]]
 name = "zerocopy"

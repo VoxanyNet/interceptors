@@ -3,7 +3,7 @@ use macroquad::{color::WHITE, math::Vec2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{Prefabs, area::AreaId, computer::{Item, ItemSave}, drawable::{DrawContext, Drawable}, rapier_to_macroquad, space::Space, texture_loader::TextureLoader, uuid_u64};
+use crate::{Prefabs, TextureLoader, area::AreaId, computer::{Item, ItemSave}, drawable::{DrawContext, Drawable}, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, uuid_u64};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct DroppedItemId {
@@ -50,9 +50,14 @@ impl DroppedItem {
         space.rigid_body_set.get_mut(self.body).unwrap().set_vels(vel, true);
     }
 
-    pub fn from_save(save: DroppedItemSave, space: &mut Space, prefabs: &Prefabs) -> Self {
+    pub fn from_save(
+        save: DroppedItemSave, 
+        space: &mut Space, 
+        prefabs: &Prefabs,
+        textures: TextureLoader
+    ) -> Self {
 
-        let item = Item::from_save(save.item, space);
+        let item = Item::from_save(save.item, space, textures);
 
         let rigid_body = space.rigid_body_set.insert(
             RigidBodyBuilder::dynamic()
@@ -105,7 +110,7 @@ impl DroppedItem {
 
         }
     }
-    pub fn new(item: Item, pos: Pose2, vel: RigidBodyVelocity<f32>, space: &mut Space, textures: &TextureLoader, prefabs: &Prefabs, size: f32) -> Self {
+    pub fn new(item: Item, pos: Pose2, vel: RigidBodyVelocity<f32>, space: &mut Space, textures: &ClientTextureLoader, prefabs: &Prefabs, size: f32) -> Self {
 
         let preview_size = item.get_preview_resolution(textures, size, prefabs);
 

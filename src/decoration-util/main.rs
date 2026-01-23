@@ -1,7 +1,6 @@
 use std::{
     fmt::format, fs::{self, create_dir_all}, io, path::{Path, PathBuf}, process::exit
 };
-use colored_json::prelude::*;
 use clap::{Arg, Parser};
 use image::{GenericImageView, ImageReader};
 use interceptors_lib::{background::BackgroundSave, decoration::DecorationSave, prop::{Material, PropSave}};
@@ -148,7 +147,7 @@ fn asset_to_prefab(asset_path: String, prefab_type: Option<PrefabType>, scale: O
             )
         );
     
-    println!("{}", &json_string.to_colored_json_auto().unwrap());
+    println!("{}", &json_string);
     println!("Press enter to save prefab to {}...", &prefab_save_path.to_string_lossy());
 
     get_user_input();
@@ -282,11 +281,11 @@ fn asset_to_prop(relative_path: &PathBuf, scale: Option<f32>) -> Result<String, 
             }
     };
 
-
+    
     log::info!("Loaded {} with dimensions: {:?}", &relative_path.to_string_lossy(), (width, height));
 
     let prop_save = PropSave {
-        size: Vec2::new(width as f32 * scale, height as f32 * scale),
+        scale,
         pos: Default::default(),
         mass,
         sprite_path: relative_path.clone(),
@@ -294,7 +293,8 @@ fn asset_to_prop(relative_path: &PathBuf, scale: Option<f32>) -> Result<String, 
         owner: None,
         material: *prop_material,
         name,
-        layer: 0
+        layer: 0,
+        voxels: None
     };
 
     return serde_json::to_string_pretty(&prop_save)
