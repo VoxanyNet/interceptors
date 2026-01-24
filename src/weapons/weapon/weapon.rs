@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
 use glamx::Pose2;
-use macroquad::{audio::{PlaySoundParams, play_sound}, color::Color, input::{is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released}, math::Vec2, rand::RandomRange};
-use rapier2d::{math::Vector, parry::query::Ray, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
+use macroquad::{audio::{PlaySoundParams, play_sound}, color::Color, input::{is_mouse_button_down, is_mouse_button_released}, math::Vec2, rand::RandomRange};
+use rapier2d::{math::Vector, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 
-use crate::{ClientId, ClientTickContext, IntersectionData, TickContext, area::AreaId, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, enemy::EnemyId, get_intersections, get_preview_resolution, player::{Facing, PlayerId}, prop::StupidDissolvedPixelVelocityUpdate, space::Space, texture_loader::ClientTextureLoader, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon_save::WeaponSave, weapon_fire_context::WeaponFireContext}};
+use crate::{ClientId, ClientTickContext, TickContext, area::AreaId, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, enemy::EnemyId, get_intersections, get_preview_resolution, player::{Facing, PlayerId}, prop::StupidDissolvedPixelVelocityUpdate, space::Space, texture_loader::ClientTextureLoader, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon_save::WeaponSave, weapon_fire_context::WeaponFireContext}};
 
 
 #[derive(Clone)]
@@ -143,7 +143,7 @@ impl WeaponBase {
 
     pub fn from_save(
         save: WeaponSave, 
-        space: &mut Space, 
+        _space: &mut Space, 
         player_rigid_body_handle: Option<RigidBodyHandle>
     ) -> Self {
 
@@ -176,7 +176,7 @@ impl WeaponBase {
 
     pub fn save(&self, space: &Space) -> WeaponSave {
 
-        let position = match self.rigid_body {
+        let _position = match self.rigid_body {
             Some(rigid_body) => {
                 Some(space.rigid_body_set.get(rigid_body).unwrap().position().clone())
             },
@@ -220,7 +220,7 @@ impl WeaponBase {
         y_screen_shake_intensity: f64,
         shell_sprite_path: Option<String>,
         texture_size: Vec2,
-        facing: Facing,
+        _facing: Facing,
         reload_duration: web_time::Duration,
         rounds: u32,
         capacity: u32,
@@ -601,7 +601,7 @@ impl WeaponBase {
 
     }
 
-    pub fn get_bullet_vector_macroquad(&mut self, space: &Space, facing: Facing, innacuracy_factor: f32) {
+    pub fn get_bullet_vector_macroquad(&mut self, _space: &Space, _facing: Facing, _innacuracy_factor: f32) {
 
     }
 

@@ -2,7 +2,7 @@ use derive_more::From;
 use macroquad::{color::Color, math::Vec2};
 use rapier2d::prelude::{ColliderHandle, ImpulseJointHandle, RigidBodyHandle};
 
-use crate::{ClientTickContext, TickContext, player::Facing, space::Space, texture_loader::ClientTextureLoader, weapons::{lmg::weapon::LMG, shotgun::weapon::Shotgun, smg::weapon::SMG, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
+use crate::{TickContext, player::Facing, space::Space, texture_loader::ClientTextureLoader, weapons::{lmg::weapon::LMG, shotgun::weapon::Shotgun, smg::weapon::SMG, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
 
 // in order to be an equipable weapon your weapon must be part of this enum 
 #[derive(PartialEq, Clone, Debug, From)]
@@ -50,7 +50,7 @@ impl WeaponType {
     pub fn name(&self) -> String {
         match self {
             WeaponType::Shotgun(shotgun) => shotgun.preview_name(),
-            WeaponType::LMG(lmg) => "LMG".to_string(),
+            WeaponType::LMG(_lmg) => "LMG".to_string(),
             WeaponType::SMG(smg) => smg.preview_name()
         }
     }
@@ -64,7 +64,7 @@ impl WeaponType {
         }
     }
 
-    pub fn mark_despawn(&mut self, space: &mut Space) {
+    pub fn mark_despawn(&mut self, _space: &mut Space) {
         match self {
             WeaponType::Shotgun(shotgun) => shotgun.mark_despawn(),
             WeaponType::LMG(lmg) => lmg.weapon.mark_despawn(),
@@ -83,7 +83,7 @@ impl WeaponType {
     pub fn draw_preview(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32) {
         match self {
             WeaponType::Shotgun(shotgun) => shotgun.draw_preview(textures, size, draw_pos, color, rotation),
-            WeaponType::LMG(lmg) => {},
+            WeaponType::LMG(_lmg) => {},
             WeaponType::SMG(smg) => smg.draw_preview(textures, size, draw_pos, color, rotation),
         }
     }
@@ -91,7 +91,7 @@ impl WeaponType {
     pub fn get_preview_resolution(&self, size: f32, textures: &ClientTextureLoader) -> Vec2 {
         match self {
             WeaponType::Shotgun(shotgun) => shotgun.get_preview_resolution(size, textures),
-            WeaponType::LMG(lmg) => Vec2::ZERO,
+            WeaponType::LMG(_lmg) => Vec2::ZERO,
             WeaponType::SMG(smg) => smg.get_preview_resolution(size, textures)
         }
     }

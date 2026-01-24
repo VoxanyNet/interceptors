@@ -2,7 +2,7 @@ use std::{fs::read_to_string, path::PathBuf, str::FromStr};
 
 use glamx::Pose2;
 use interceptors_lib::{area::Area, background::{Background, BackgroundSave}, button::Button, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, prop::{Prop, PropSave}, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}};
-use macroquad::{color::{GREEN, LIGHTGRAY, WHITE}, input::{MouseButton, is_mouse_button_released, mouse_position}, math::{Rect, Vec2, vec2}, shapes::draw_rectangle_lines, text::draw_text, texture::{DrawTextureParams, draw_texture_ex}};
+use macroquad::{color::{GREEN, LIGHTGRAY, WHITE}, input::{MouseButton, is_mouse_button_released, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle_lines, text::draw_text};
 use strum::IntoEnumIterator;
 
 use crate::{editor_input_context::EditorInputContext, list_dir_entries, spawner_category::SpawnerCategory, spawner_menu::SpawnerMenu};
@@ -316,7 +316,7 @@ impl Spawner {
     pub fn spawn(
         &mut self, 
         area: &mut Area, 
-        camera_rect: &Rect, 
+        _camera_rect: &Rect, 
         cursor: macroquad::math::Vec2, 
         rapier_cursor: glamx::Vec2,
         textures: &ClientTextureLoader
@@ -382,9 +382,9 @@ impl Spawner {
 
     pub async fn draw_menu(
         &self, 
-        camera_rect: &Rect, 
-        textures: &mut ClientTextureLoader, 
-        cursor: Vec2
+        _camera_rect: &Rect, 
+        _textures: &mut ClientTextureLoader, 
+        _cursor: Vec2
     ) {
 
         let selected_category = &self.selected_category;

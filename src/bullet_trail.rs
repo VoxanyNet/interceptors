@@ -2,7 +2,7 @@ use glamx::Vec2;
 use macroquad::{color::{Color, WHITE}, shapes::draw_line};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, ClientTickContext, TickContext, area::AreaId, drawable::Drawable, rapier_to_macroquad, uuid_u64};
+use crate::{ClientId, TickContext, area::AreaId, drawable::Drawable, rapier_to_macroquad, uuid_u64};
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct BulletTrailId {
@@ -74,7 +74,7 @@ impl BulletTrail {
 
 #[async_trait::async_trait]
 impl Drawable for BulletTrail {
-    async fn draw(&mut self, draw_context: &crate::drawable::DrawContext) {
+    async fn draw(&mut self, _draw_context: &crate::drawable::DrawContext) {
         let start_pos = rapier_to_macroquad(self.start);
         let end_pos = rapier_to_macroquad(self.end);
 

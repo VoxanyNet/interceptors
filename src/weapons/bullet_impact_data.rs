@@ -1,4 +1,3 @@
-use glamx::Pose2;
 use rapier2d::prelude::ColliderHandle;
 
 #[derive(Clone)]

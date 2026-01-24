@@ -2,11 +2,11 @@ use std::{f32::consts::PI, mem::take, path::PathBuf, str::FromStr, usize};
 
 use cs_utils::drain_filter;
 use glamx::{Pose2, Vec2, vec2};
-use macroquad::{color::{BLACK, WHITE}, input::{KeyCode, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_position, mouse_wheel}, math::{Rect}, shapes::draw_rectangle, text::{TextParams, draw_text, draw_text_ex}, window::{screen_height, screen_width}};
+use macroquad::{color::{BLACK, WHITE}, input::{KeyCode, is_key_down, is_mouse_button_down, is_mouse_button_released, mouse_position, mouse_wheel}, shapes::draw_rectangle, text::{TextParams, draw_text, draw_text_ex}, window::{screen_height, screen_width}};
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, ClientTickContext, IntersectionData, Owner, Prefabs, TextureLoader, TickContext, angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, mouse_world_pos, prop::{DissolvedPixel, Prop}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
+use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, prop::{DissolvedPixel, Prop}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -98,7 +98,7 @@ impl Player {
     pub fn unequip_held_item(&mut self, space: &mut Space) {
         if let Some(item_slot) = &mut self.inventory.items[self.selected_item] {
             match &mut item_slot.item {
-                Item::Prop(prop) => {},
+                Item::Prop(_prop) => {},
                 Item::Weapon(weapon_type) => {
                     weapon_type.unequip(space);
                 },
@@ -270,7 +270,7 @@ impl Player {
 
 
     }
-    pub fn draw_hud(&self, textures: &ClientTextureLoader) {
+    pub fn draw_hud(&self, _textures: &ClientTextureLoader) {
         
     }
 
@@ -358,7 +358,7 @@ impl Player {
     } 
 
 
-    pub fn move_camera(&mut self, space: &Space, max_camera_y: f32, ctx: &mut ClientTickContext, minimum_camera_width: f32, minimum_camera_height: f32) {
+    pub fn move_camera(&mut self, space: &Space, _max_camera_y: f32, ctx: &mut ClientTickContext, _minimum_camera_width: f32, _minimum_camera_height: f32) {
 
         let player_position = space.rigid_body_set.get(self.body.body_handle).unwrap().translation();
         let macroquad_player_position = rapier_to_macroquad(player_position);
@@ -393,7 +393,7 @@ impl Player {
         
     }
 
-    pub fn handle_bullet_impact(&mut self, space: &Space, bullet_impact: BulletImpactData) {
+    pub fn handle_bullet_impact(&mut self, _space: &Space, _bullet_impact: BulletImpactData) {
         
 
     }
@@ -440,7 +440,7 @@ impl Player {
         );
 
 
-        let body_handle = body.body_handle.clone();
+        let _body_handle = body.body_handle.clone();
 
         let inventory = Inventory::new();
 // OTIS DEC 2025
@@ -473,7 +473,7 @@ impl Player {
         }
     }
 
-    pub fn change_active_inventory_slot(&mut self, ctx: &mut ClientTickContext, area_id: AreaId, space: &mut Space) {
+    pub fn change_active_inventory_slot(&mut self, ctx: &mut ClientTickContext, area_id: AreaId, _space: &mut Space) {
 
         if mouse_wheel().1 == 0. {
             return;
@@ -537,7 +537,7 @@ impl Player {
         area_id: AreaId,
         enemies: &mut Vec<Enemy>,
         dissolved_pixels: &mut Vec<DissolvedPixel>,
-        dropped_items: &mut Vec<DroppedItem>,
+        _dropped_items: &mut Vec<DroppedItem>,
     ) {
 
         if !(is_mouse_button_released(macroquad::input::MouseButton::Left) || is_mouse_button_down(macroquad::input::MouseButton::Left))  {
@@ -558,7 +558,7 @@ impl Player {
         let mut item_slot = item_slot.unwrap();
 
         match &mut item_slot.item {
-            Item::Prop(prop) => {
+            Item::Prop(_prop) => {
 
                 //prop.use_item(&mut item_slot.quantity, ctx, space, props);
                 
@@ -605,7 +605,7 @@ impl Player {
         self.previous_cursor_pos = self.cursor_pos_rapier;
     }
 
-    pub fn control_controller(&mut self, space: &mut Space, ctx: &mut ClientTickContext) {
+    pub fn control_controller(&mut self, _space: &mut Space, _ctx: &mut ClientTickContext) {
 
         // let body = space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
 
@@ -722,7 +722,7 @@ impl Player {
             match &mut self.inventory.items[self.previous_selected_item] {
                 Some(item_slot) => {
                     match &mut item_slot.item {
-                        Item::Prop(prop) => {},
+                        Item::Prop(_prop) => {},
                         Item::Weapon(weapon_type) => weapon_type.unequip(space),
                     }
                 },
@@ -857,7 +857,7 @@ impl Player {
         match &self.inventory.items[self.selected_item] {
             Some(item_slot) => {
                 match &item_slot.item {
-                    Item::Prop(prop) => todo!(),
+                    Item::Prop(_prop) => todo!(),
                     Item::Weapon(weapon_type) => weapon_type.draw(space, textures, self.facing).await,
                 }
             },
@@ -899,7 +899,7 @@ impl Player {
 
         match &mut self.inventory.items[self.selected_item] {
             Some(item_slot) => match &mut item_slot.item {
-                Item::Prop(prop) => {return;},
+                Item::Prop(_prop) => {return;},
                 Item::Weapon(weapon_type) => {
                     angle_weapon_to_mouse(space, Some(weapon_type), self.body.body_handle, self.cursor_pos_rapier, self.facing);
                 },
@@ -918,7 +918,7 @@ impl Player {
         }
     }
 
-    pub fn jump(&mut self, body: &mut RigidBody, ctx: &mut ClientTickContext) {
+    pub fn jump(&mut self, body: &mut RigidBody, _ctx: &mut ClientTickContext) {
 
         // dont allow if moving, falling or jumping
         if body.linvel().y.abs() > 0.5 {

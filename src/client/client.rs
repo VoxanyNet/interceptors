@@ -1,7 +1,7 @@
-use std::{collections::HashMap, path::PathBuf, process::exit};
+use std::{collections::HashMap, process::exit};
 
 use interceptors_lib::{Assets, ClientIO, ClientId, ClientTickContext, Prefabs, area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, player::{ItemSlot, Player}, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::ClientTextureLoader, updates::{NetworkPacket, Ping}, weapons::weapon_type::WeaponType, world::World};
-use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, WHITE}, input::{KeyCode, is_key_released, show_mouse}, math::{Rect, vec2}, prelude::{Material, ShaderSource, gl_use_default_material, gl_use_material, load_material}, text::draw_text, texture::{DrawTextureParams, RenderTarget, draw_texture_ex, render_target}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
+use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, WHITE}, input::{KeyCode, is_key_released, show_mouse}, math::{Rect, vec2}, prelude::{Material, ShaderSource, gl_use_default_material, load_material}, text::draw_text, texture::{DrawTextureParams, RenderTarget, draw_texture_ex, render_target}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
 use rapier2d::math::Vector;
 
 use crate::{shaders::{CRT_FRAGMENT_SHADER, CRT_VERTEX_SHADER}};
@@ -31,7 +31,7 @@ pub struct Client {
 }
 
 impl Client {
-    pub async fn connect(assets: Assets, client_id: i64) -> Self {
+    pub async fn connect(assets: Assets, _client_id: i64) -> Self {
 
 
         show_mouse(true);
@@ -254,7 +254,7 @@ impl Client {
 
                     let player_body = area.space.rigid_body_set.get(player.body.body_handle).unwrap();
 
-                    let player_pos = player_body.position();
+                    let _player_pos = player_body.position();
 
                     player.set_velocity(update.velocity, &mut area.space);
                 },
@@ -563,7 +563,7 @@ impl Client {
         self.measure_latency();
         self.ping();
 
-        let mut ctx = ClientTickContext {
+        let ctx = ClientTickContext {
             network_io: &mut self.network_io,
             last_tick_duration: &self.last_tick_duration,
             client_id: &self.client_id,

@@ -97,7 +97,7 @@ impl EditorContextMenu for Decoration {
         Some(&mut self.layer)
     }
 
-    fn object_bounding_box(&self, space: Option<&Space>) -> macroquad::prelude::Rect {
+    fn object_bounding_box(&self, _space: Option<&Space>) -> macroquad::prelude::Rect {
         Rect::new(self.pos.x, self.pos.y, self.size.x, self.size.y)
     }
 

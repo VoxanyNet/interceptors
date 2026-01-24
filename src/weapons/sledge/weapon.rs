@@ -14,7 +14,7 @@ pub struct Sledge {
 
 impl Sledge {
 
-    pub fn new(space: &mut Space, pos: glamx::Vec2, owner: ClientId, player_rigid_body_handle: Option<RigidBodyHandle>) -> Self {
+    pub fn new(space: &mut Space, _pos: glamx::Vec2, _owner: ClientId, player_rigid_body_handle: Option<RigidBodyHandle>) -> Self {
         
         let body = space.rigid_body_set.insert(
             RigidBodyBuilder::dynamic()
@@ -44,14 +44,14 @@ impl Sledge {
         }
     }
 
-    pub fn save(&self, space: &Space) -> SledgeSave {
+    pub fn save(&self, _space: &Space) -> SledgeSave {
         SledgeSave {
 
 
         }
     }
 
-    pub async fn draw(&self, space: &Space, textures: &mut ClientTextureLoader, facing: Facing) {
+    pub async fn draw(&self, space: &Space, _textures: &mut ClientTextureLoader, _facing: Facing) {
         // let body = space.rigid_body_set.get(self.rigid_body).unwrap();
 
         // let collider = space.collider_set.get(self.collider).unwrap();
@@ -64,7 +64,7 @@ impl Sledge {
         
     }
 
-    pub fn from_save(save: LMGSave, space: &mut Space, player_rigid_body_handle: Option<RigidBodyHandle>, owner: ClientId) -> Self {
+    pub fn from_save(_save: LMGSave, space: &mut Space, player_rigid_body_handle: Option<RigidBodyHandle>, owner: ClientId) -> Self {
         Self::new(space, glamx::Vec2::ZERO, owner, player_rigid_body_handle)
     }
     

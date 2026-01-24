@@ -1,7 +1,7 @@
 
 use macroquad::{camera::Camera2D, math::Rect};
 
-use crate::{ClientTickContext, Prefabs, ServerIO, TickContext, area::Area, font_loader::FontLoader, texture_loader::ClientTextureLoader};
+use crate::{Prefabs, ServerIO, TickContext, area::Area, font_loader::FontLoader, texture_loader::ClientTextureLoader};
 
 pub struct World {
     pub areas: Vec<Area>

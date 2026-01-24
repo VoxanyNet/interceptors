@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use derive_more::From;
-use glamx::Pose2;
 use macroquad::{camera::{set_camera, Camera2D}, color::{Color, BLACK, GRAY, WHITE}, math::{Rect, Vec2}, shapes::draw_line, text::{draw_text_ex, TextParams}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::clear_background};
 use serde::{Deserialize, Serialize};
 
@@ -26,8 +25,8 @@ impl Item {
 
     pub fn stackable(&self) -> bool {
         match self {
-            Item::Prop(prop) => true,
-            Item::Weapon(weapon_type_item) => false,
+            Item::Prop(_prop) => true,
+            Item::Weapon(_weapon_type_item) => false,
         }
     }
 
@@ -59,7 +58,7 @@ impl Item {
         }
     }
 
-    pub fn name(&self, prefabs: &Prefabs) -> String {
+    pub fn name(&self, _prefabs: &Prefabs) -> String {
         match self {
             Item::Prop(prop) => prop.name(),
             Item::Weapon(weapon) => weapon.name()
@@ -202,7 +201,7 @@ impl StoreCategory {
 
     pub fn draw(&self, textures: &ClientTextureLoader, prefabs: &Prefabs, fonts: &FontLoader) {
 
-        let hovered_button_color = Color::new(0.78, 0.78, 0.78, 0.5);
+        let _hovered_button_color = Color::new(0.78, 0.78, 0.78, 0.5);
 
         for (index, item) in self.items.iter().enumerate() {
 
@@ -483,7 +482,7 @@ impl Drawable for Computer {
     async fn draw(&mut self, draw_context: &DrawContext) {
         self.prop.draw(draw_context).await;
 
-        let prop_pos = draw_context.space.rigid_body_set.get(self.prop.rigid_body_handle).unwrap().position();
+        let _prop_pos = draw_context.space.rigid_body_set.get(self.prop.rigid_body_handle).unwrap().position();
 
         let mut color = BLACK;
 
@@ -510,7 +509,7 @@ impl Drawable for Computer {
     
         clear_background(color);        
 
-        let font = draw_context.fonts.get(PathBuf::from("assets/fonts/CutePixel.ttf"));
+        let _font = draw_context.fonts.get(PathBuf::from("assets/fonts/CutePixel.ttf"));
 
         //draw_rectangle(0., 0., 20., 20., RED);
 

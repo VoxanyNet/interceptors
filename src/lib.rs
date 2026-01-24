@@ -2,9 +2,8 @@ use std::{collections::HashMap, f32::consts::PI, fs::read_to_string, net::{TcpLi
 
 use derive_more::From;
 use ewebsock::{WsReceiver, WsSender};
-use glamx::Pose2;
-use macroquad::{camera::Camera2D, color::{Color, WHITE}, file::load_string, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}};
-use rapier2d::{parry::query::Ray, prelude::{Collider, ColliderBuilder, ColliderHandle, QueryFilter, QueryPipeline, RigidBodyHandle}};
+use macroquad::{camera::Camera2D, color::{Color, WHITE}, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}};
+use rapier2d::{parry::query::Ray, prelude::{ColliderBuilder, ColliderHandle, QueryFilter, RigidBodyHandle}};
 use serde::{Deserialize, Serialize};
 use tungstenite::WebSocket;
 use include_dir::{Dir, include_dir};
@@ -76,7 +75,7 @@ pub fn get_intersections(
     let ray = Ray::new(glamx::vec2(origin.x, origin.y), glamx::vec2(intersection_vector.x, intersection_vector.y));
     let max_toi = 5000.0;
     let solid = true;
-    let filter = QueryFilter::default();
+    let _filter = QueryFilter::default();
 
     let mut impacts = Vec::new();
     
@@ -131,7 +130,7 @@ pub fn angle_weapon_to_mouse(
     // lol
     let body_body = space.rigid_body_set.get_mut(body_rigid_body_handle).unwrap();
 
-    let body_body_pos = Vec2::new(body_body.translation().x, body_body.translation().y);
+    let _body_body_pos = Vec2::new(body_body.translation().x, body_body.translation().y);
 
 
     let weapon_pos = space.rigid_body_set.get(weapon.as_ref().unwrap().rigid_body_handle().unwrap()).unwrap().translation();
@@ -468,7 +467,7 @@ impl ClientIO {
                                 _ => todo!("unhandled message type when trying to receive packet from server")
                             }
                         },
-                        ewebsock::WsEvent::Error(error) => {
+                        ewebsock::WsEvent::Error(_error) => {
 
 
                             return Vec::new();
@@ -782,7 +781,7 @@ impl<'a> TickContext<'a> {
     pub fn id(&self) -> Owner {
         match self {
             TickContext::Client(client_tick_context) => Owner::ClientId(*client_tick_context.client_id),
-            TickContext::Server(server_tick_context) => Owner::Server,
+            TickContext::Server(_server_tick_context) => Owner::Server,
         }
     }
 

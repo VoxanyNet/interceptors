@@ -50,7 +50,7 @@ impl LMG {
     }
     
 
-    pub fn new(space: &mut Space, pos: Vec2, owner: ClientId, player_rigid_body_handle: Option<RigidBodyHandle>, facing: Facing) -> Self {
+    pub fn new(_space: &mut Space, _pos: Vec2, owner: ClientId, player_rigid_body_handle: Option<RigidBodyHandle>, _facing: Facing) -> Self {
         Self {
             weapon: WeaponBase::new(
                 owner,

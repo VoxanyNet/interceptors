@@ -1,7 +1,7 @@
 use std::{
-    fmt::format, fs::{self, create_dir_all}, io, path::{Path, PathBuf}, process::exit
+    fs::{self}, io, path::PathBuf, process::exit
 };
-use clap::{Arg, Parser};
+use clap::Parser;
 use image::{GenericImageView, ImageReader};
 use interceptors_lib::{background::BackgroundSave, decoration::DecorationSave, prop::{Material, PropSave}};
 use macroquad::math::{Vec2, vec2};
@@ -170,7 +170,7 @@ fn asset_to_background(relative_path: &PathBuf, scale: Option<f32>) -> Result<St
 
                 match get_user_input().parse::<f32>() {
                     Ok(scale) => break scale,
-                    Err(error) => {
+                    Err(_error) => {
                         println!("Failed to parse scale input");
                         continue;
                     },
@@ -259,7 +259,7 @@ fn asset_to_prop(relative_path: &PathBuf, scale: Option<f32>) -> Result<String, 
     let prop_material_selection_index: usize = loop {
         match get_user_input().parse::<usize>() {
             Ok(index) => break index,
-            Err(e) => {
+            Err(_e) => {
                 println!("Failed to parse prop material selection index");
                 continue;
             },

@@ -17,7 +17,7 @@ impl DroppedItemId {
         }
     }
 
-    pub fn owner_tick(&mut self, space: &mut Space) {
+    pub fn owner_tick(&mut self, _space: &mut Space) {
 
     }
 }
@@ -53,7 +53,7 @@ impl DroppedItem {
     pub fn from_save(
         save: DroppedItemSave, 
         space: &mut Space, 
-        prefabs: &Prefabs,
+        _prefabs: &Prefabs,
         textures: TextureLoader
     ) -> Self {
 

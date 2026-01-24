@@ -40,8 +40,8 @@ impl Tile {
                 .pose(
                     Pose2::new(
                         vec2(
-                            (tile_index.0 as f32 * 50.),
-                            (tile_index.1 as f32 * 50.)
+                            tile_index.0 as f32 * 50. ,
+                            tile_index.1 as f32 * 50. 
                         ),
                     0.
                     )

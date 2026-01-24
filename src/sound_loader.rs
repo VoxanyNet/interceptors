@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use fxhash::FxHashMap;
-use macroquad::audio::{Sound, load_sound, load_sound_from_bytes, stop_sound};
+use macroquad::audio::{Sound, load_sound_from_bytes};
 
 use crate::normalize_path;
 

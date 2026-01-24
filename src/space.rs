@@ -1,6 +1,5 @@
 
-use glamx::vec2;
-use rapier2d::{na::vector, prelude::{CCDSolver, ColliderSet, ContactModificationContext, DefaultBroadPhase, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, NarrowPhase, PhysicsHooks, PhysicsPipeline, QueryPipeline, RigidBodySet, SolverFlags}};
+use rapier2d::prelude::{CCDSolver, ColliderSet, DefaultBroadPhase, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, NarrowPhase, PhysicsHooks, PhysicsPipeline, RigidBodySet, SolverFlags};
 
 pub struct MyPhysicsHooks;
 

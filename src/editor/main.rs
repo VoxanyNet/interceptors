@@ -2,8 +2,6 @@
 use std::{fs, path::{Path, PathBuf}};
 
 use clap::Parser;
-use interceptors_lib::background::BackgroundSave;
-use ldtk2::serde_json;
 use macroquad::{miniquad::conf::Platform, window::Conf};
 
 use crate::editor::AreaEditor;

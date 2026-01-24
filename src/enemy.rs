@@ -1,11 +1,11 @@
-use std::{f32::consts::PI, path::PathBuf, time::Instant};
+use std::{f32::consts::PI, path::PathBuf};
 
 use glamx::{Pose2, vec2};
 use macroquad::{color::{BLACK, GREEN}, math::Vec2, shapes::{draw_rectangle, draw_rectangle_lines}};
 use rapier2d::{parry::query::Ray, prelude::{ColliderHandle, Group, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, ClientTickContext, Owner, ServerTickContext, TickContext, angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, drawable::{DrawContext, Drawable}, get_angle_between_rapier_points, player::{Facing, Player, PlayerId}, prop::{DissolvedPixel, Prop}, rapier_to_macroquad, space::Space, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
+use crate::{ClientTickContext, Owner, TickContext, angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, drawable::{DrawContext, Drawable}, get_angle_between_rapier_points, player::{Facing, Player, PlayerId}, prop::{DissolvedPixel, Prop}, rapier_to_macroquad, space::Space, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct EnemyId {
@@ -145,7 +145,7 @@ impl Enemy {
             //     }
             // }
 
-            let collider_pos = space.collider_set.get(collider_handle).unwrap().position();
+            let _collider_pos = space.collider_set.get(collider_handle).unwrap().position();
 
             collisions.push(collider_handle);
 
@@ -208,7 +208,7 @@ impl Enemy {
         let blocking_colliders = self.get_colliders_between_enemy_and_target(space, players);
         
 
-        let weapon = if let Some(weapon) = &mut self.weapon {
+        let _weapon = if let Some(weapon) = &mut self.weapon {
             weapon
         } else {
             return;
@@ -399,8 +399,8 @@ impl Enemy {
     ) {
 
         match weapon_owner {
-            WeaponOwner::Enemy(enemy_id) => return,
-            WeaponOwner::Player(player_id) => {},
+            WeaponOwner::Enemy(_enemy_id) => return,
+            WeaponOwner::Player(_player_id) => {},
         }
 
         // body shot
@@ -446,7 +446,7 @@ impl Enemy {
 
     }
 
-    pub fn despawn_if_dead(&mut self, ctx: &mut TickContext, space: &mut Space, area_id: AreaId) {
+    pub fn despawn_if_dead(&mut self, ctx: &mut TickContext, _space: &mut Space, area_id: AreaId) {
         
         if let Some(death_time) = self.death_time {
             if death_time.elapsed().as_secs_f32() > 3. {

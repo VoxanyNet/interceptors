@@ -1,8 +1,6 @@
-use std::path::PathBuf;
 
 use interceptors_lib::{Assets, ambiance::Ambiance, button::Button, font_loader::FontLoader, load_assets, macroquad_to_rapier, sound_loader::SoundLoader, texture_loader::ClientTextureLoader};
-use macroquad::{audio::{PlaySoundParams, Sound, play_sound, play_sound_once, stop_sound}, camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, RED, WHITE}, input::{KeyCode, is_key_released, mouse_position, show_mouse}, math::{Rect, Vec2, vec2}, miniquad::window::{high_dpi, set_mouse_cursor}, prelude::{Material, ShaderSource, gl_use_default_material, gl_use_material, load_material}, rand::RandomRange, shapes::draw_rectangle_lines, text::{TextParams, draw_text, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, draw_texture, draw_texture_ex, render_target}, window::{clear_background, next_frame, screen_height, screen_width}};
-use web_sys::{HtmlCanvasElement, HtmlElement, wasm_bindgen::JsCast, window};
+use macroquad::{audio::{PlaySoundParams, Sound, play_sound, stop_sound}, camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, WHITE}, input::mouse_position, math::{Rect, Vec2, vec2}, prelude::{Material, ShaderSource, gl_use_default_material, gl_use_material, load_material}, rand::RandomRange, text::{TextParams, draw_text, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, draw_texture_ex, render_target}, window::{clear_background, next_frame, screen_height, screen_width}};
 
 use crate::{shaders::{CRT_FRAGMENT_SHADER, CRT_VERTEX_SHADER}};
 

@@ -1,14 +1,14 @@
 use std::{fs::read_to_string, path::PathBuf};
 
 use async_trait::async_trait;
-use glamx::{IVec2, Pose2, glam};
-use image::{DynamicImage, GenericImageView, Pixel};
+use glamx::{IVec2, Pose2};
+use image::{GenericImageView, Pixel};
 use macroquad::{audio::play_sound_once, color::Color, math::{Rect, Vec2}, shapes::{DrawRectangleParams, draw_rectangle_ex}};
-use rapier2d::{parry::utils::hashmap::HashMap, prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity, Voxels}};
+use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
-use strum::{AsRefStr, Display, EnumIter, EnumString};
+use strum::{Display, EnumIter};
 
-use crate::{ClientId, ClientTickContext, Owner, Prefabs, ServerIO, TextureLoader, TickContext, area::AreaId, draw_preview, draw_texture_onto_physics_body, drawable::{DrawContext, Drawable}, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, get_preview_resolution, player::PlayerId, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
+use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::AreaId, draw_preview, draw_texture_onto_physics_body, drawable::{DrawContext, Drawable}, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, get_preview_resolution, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Default, Debug, PartialEq, EnumIter, Display)]
 pub enum Material {
@@ -231,11 +231,11 @@ impl Prop {
         self.despawn = true;
     }
 
-    pub fn draw_preview(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
+    pub fn draw_preview(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, _prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
         draw_preview(textures, size, draw_pos, color, rotation, &self.sprite_path);
     }
 
-    pub fn get_preview_resolution(&self, size: f32, prefabs: &Prefabs, textures: &ClientTextureLoader) -> Vec2 {
+    pub fn get_preview_resolution(&self, size: f32, _prefabs: &Prefabs, textures: &ClientTextureLoader) -> Vec2 {
 
         get_preview_resolution(size, textures, &self.sprite_path)
     }
@@ -332,7 +332,7 @@ impl Prop {
     }
 
     
-    pub fn despawn_callback(&mut self, space: &mut Space, area_id: AreaId) {
+    pub fn despawn_callback(&mut self, space: &mut Space, _area_id: AreaId) {
         space.rigid_body_set.remove(self.rigid_body_handle, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
     }
     pub fn from_prefab(prefab_path: String, space: &mut Space, textures: TextureLoader) -> Self {
@@ -468,7 +468,7 @@ impl Prop {
         ctx: &mut TickContext, 
         space: &mut Space, 
         area_id: AreaId, 
-        dissolved_pixels: &mut Vec<DissolvedPixel>
+        _dissolved_pixels: &mut Vec<DissolvedPixel>
     ) {
 
         if let TickContext::Client(ctx) = ctx {
@@ -597,8 +597,8 @@ impl Prop {
 
                         let mut voxels: Vec<IVec2> = Vec::new();
 
-                        for x in (0..image.width() as u32) {
-                            for y in (0..image.height() as u32) {
+                        for x in 0..image.width() as u32  {
+                            for y in 0..image.height() as u32  {
                                 let color = image.get_pixel(x, y);
 
                                 if color.a > 0. {
@@ -620,8 +620,8 @@ impl Prop {
 
                         let mut voxels: Vec<IVec2> = Vec::new();
 
-                        for x in (0..image.width() as u32) {
-                            for y in (0..image.height() as u32) {
+                        for x in 0..image.width() as u32  {
+                            for y in 0..image.height() as u32  {
                                 let color = image.get_pixel(x, y);
 
                                 if color.alpha() != 0 {

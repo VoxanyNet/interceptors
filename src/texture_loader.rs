@@ -1,10 +1,9 @@
 use std::path::PathBuf;
 
 use fxhash::FxHashMap;
-use macroquad::texture::{self, load_texture, Texture2D};
-use web_sys::console;
+use macroquad::texture::{self, Texture2D};
 
-use crate::{TextureLoader, normalize_path};
+use crate::normalize_path;
 
 
 #[derive(Clone)]

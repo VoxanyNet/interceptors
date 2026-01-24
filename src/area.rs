@@ -1,11 +1,11 @@
 use std::{path::PathBuf, str::FromStr};
 
 use glamx::{Pose2, Vec2, vec2};
-use macroquad::{audio::{play_sound, PlaySoundParams}, camera::Camera2D, input::{is_key_released, KeyCode}, math::Rect};
+use macroquad::{camera::Camera2D, input::{is_key_released, KeyCode}, math::Rect};
 use noise::{NoiseFn, Perlin};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TextureLoader, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, selectable_object_id::{SelectableObject, SelectableObjectId}, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}, updates::{MasterUpdate, NetworkPacket}, uuid_u64, weapons::{shotgun::weapon::Shotgun, smg::weapon::SMG, weapon_type::WeaponType}};
+use crate::{ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TextureLoader, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, selectable_object_id::{SelectableObject, SelectableObjectId}, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}, updates::NetworkPacket, uuid_u64, weapons::smg::weapon::SMG};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -89,7 +89,7 @@ impl Area {
         self.despawn_entities();
     }
 
-    pub fn server_tick(&mut self, io: &mut ServerIO, dt: web_time::Duration) {
+    pub fn server_tick(&mut self, _io: &mut ServerIO, dt: web_time::Duration) {
 
         self.despawn_entities();
 
@@ -263,7 +263,7 @@ impl Area {
     }
 
 
-    pub fn get_selectable_object_mut(&mut self, selectable_object_id: SelectableObjectId) -> Option<SelectableObject> {
+    pub fn get_selectable_object_mut(&mut self, selectable_object_id: SelectableObjectId) -> Option<SelectableObject<'_>> {
         match selectable_object_id {
             SelectableObjectId::Decoration(decoration_index) => {
                 if let Some(decoration) = self.decorations.get_mut(decoration_index) {
@@ -274,7 +274,7 @@ impl Area {
                     None
                 }
             },
-            SelectableObjectId::Tile(location) => {
+            SelectableObjectId::Tile(_location) => {
                 None
             },
             SelectableObjectId::Prop(prop_id) => {
@@ -944,7 +944,7 @@ impl Area {
         let mut enemies: Vec<EnemySave> = Vec::new();
         let mut dropped_items: Vec<DroppedItemSave> = Vec::new();
         let mut ambiances: Vec<AmbianceSave> = Vec::new();
-        let mut tiles: Vec<TileSave> = vec![];
+        let tiles: Vec<TileSave> = vec![];
     
         for decoration in &self.decorations {
             decorations.push(

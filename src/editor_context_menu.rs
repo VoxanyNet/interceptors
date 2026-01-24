@@ -3,7 +3,7 @@ use std::{env::temp_dir, fs::{self}, path::PathBuf, process::Command, time::Syst
 use macroquad::{color::{DARKGRAY, GRAY, WHITE}, input::{KeyCode, is_key_down, is_key_released, is_mouse_button_released, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle, text::draw_text};
 use rapier2d::prelude::{ColliderHandle, RigidBodyHandle};
 
-use crate::{button::Button, mouse_world_pos, selectable_object_id::SelectableObjectId, space::Space, texture_loader::ClientTextureLoader, uuid_string};
+use crate::{button::Button, mouse_world_pos, space::Space, texture_loader::ClientTextureLoader, uuid_string};
 
 pub struct DataEditorContext<'a> {
     pub space: &'a mut Space,
@@ -215,11 +215,11 @@ pub trait EditorContextMenu {
         false
     }
 
-    fn data_editor_export(&self, ctx: &DataEditorContext) -> Option<String> {
+    fn data_editor_export(&self, _ctx: &DataEditorContext) -> Option<String> {
         None
     }
 
-    fn data_editor_import(&mut self, json: String, ctx: &mut DataEditorContext) {
+    fn data_editor_import(&mut self, _json: String, _ctx: &mut DataEditorContext) {
         // just do nothing by default
     }
 

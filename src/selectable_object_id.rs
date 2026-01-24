@@ -19,7 +19,7 @@ impl<'a> SelectableObject<'a> {
     pub fn get_layer(&self) -> u32 {
         match self {
             SelectableObject::Decoration(decoration) => decoration.draw_layer(),
-            SelectableObject::Tile(tile) => 0,
+            SelectableObject::Tile(_tile) => 0,
             SelectableObject::Prop(prop) => prop.draw_layer(),
             SelectableObject::Clip(clip) => clip.layer
         }
@@ -30,7 +30,7 @@ impl SelectableObjectId {
 
     pub fn get_object<'a> (&self, 
         props: &'a mut Vec<Prop>, 
-        tiles: &'a mut Vec<Vec<Option<Tile>>>, 
+        _tiles: &'a mut Vec<Vec<Option<Tile>>>, 
         decorations: &'a mut Vec<Decoration>,
         clips: &'a mut Vec<Clip>
     ) -> Option<SelectableObject<'a>> {
@@ -44,7 +44,7 @@ impl SelectableObjectId {
                     None
                 }
             },
-            SelectableObjectId::Tile(location) => {
+            SelectableObjectId::Tile(_location) => {
                 None
             },
             SelectableObjectId::Prop(prop_id) => {

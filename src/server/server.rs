@@ -1,7 +1,6 @@
 use std::{fs::read_to_string, process::exit};
 
-use interceptors_lib::{Assets, ClientId, Owner, Prefabs, ServerAssets, ServerIO, ServerTickContext, TickContext, area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, get_intersections, load_assets_server, load_prefabs, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket, PlayerDespawnUpdate}, weapons::weapon_type::WeaponType, world::World};
-use rapier2d::math::Vector;
+use interceptors_lib::{ClientId, Owner, Prefabs, ServerAssets, ServerIO, ServerTickContext, TickContext, area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, load_assets_server, load_prefabs, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket, PlayerDespawnUpdate}, weapons::weapon_type::WeaponType, world::World};
 use tungstenite::Message;
 
 pub struct Server {
@@ -160,12 +159,12 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
         for (client_id, network_packet) in network_packets {
             match &network_packet {
-                NetworkPacket::MasterUpdate(update) => {
+                NetworkPacket::MasterUpdate(_update) => {
                     panic!("received client bound update");
                 },
-                NetworkPacket::Ping(ping) => {
+                NetworkPacket::Ping(_ping) => {
 
-                    let client = self.network_io.clients.get_mut(&client_id).unwrap();
+                    let _client = self.network_io.clients.get_mut(&client_id).unwrap();
 
 
                     self.network_io.send_client(client_id, network_packet.clone());
@@ -324,7 +323,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
                     let player = area.players.iter_mut().find(|player| {player.id == update.player_id}).unwrap();
 
-                    let current_pos = area.space.rigid_body_set.get(player.body.body_handle).unwrap().position();
+                    let _current_pos = area.space.rigid_body_set.get(player.body.body_handle).unwrap().position();
 
                     player.set_pos(update.pos, &mut area.space);
 
@@ -526,7 +525,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
                     self.network_io.send_all_except(network_packet, client_id);
                 },
-                NetworkPacket::StupidDissolvedPixelVelocityUpdate(update) => {
+                NetworkPacket::StupidDissolvedPixelVelocityUpdate(_update) => {
                     
                     // server doesnt care about this!
                     self.network_io.send_all_except(network_packet, client_id);
@@ -625,9 +624,9 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
     pub fn tick(&mut self) {
 
-        let megabits = self.total_bits_sent as f32 / 1000000 as f32;
+        let _megabits = self.total_bits_sent as f32 / 1000000 as f32;
 
-        let mut ctx = ServerTickContext {
+        let ctx = ServerTickContext {
             network_io: &mut self.network_io,
             last_tick_duration: self.last_tick_duration,
         };

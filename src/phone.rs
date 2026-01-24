@@ -84,7 +84,7 @@ impl Phone {
     pub fn tick(&mut self) {
         self.update_animation();
     }
-    pub fn draw(&self, textures: &ClientTextureLoader, camera_rect: &Rect) {
+    pub fn draw(&self, textures: &ClientTextureLoader, _camera_rect: &Rect) {
         let texture = textures.get(&PathBuf::from(format!("assets/phone/{:?}.png", self.frame)));
 
         let mut params = DrawTextureParams::default();

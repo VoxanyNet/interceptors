@@ -14,7 +14,7 @@ pub struct Fragment {
 }
 
 impl Fragment {
-    pub fn new(space: &mut Space, texture: PathBuf, texture_source: Rect, mass: f32, scale: f32) {
+    pub fn new(_space: &mut Space, _texture: PathBuf, _texture_source: Rect, _mass: f32, _scale: f32) {
         
     }
 }

@@ -1,9 +1,7 @@
 use std::path::PathBuf;
 
 use fxhash::FxHashMap;
-use image::{DynamicImage, ImageReader, load_from_memory};
-use macroquad::texture::{self, load_texture, Texture2D};
-use web_sys::console;
+use image::{DynamicImage, load_from_memory};
 
 use crate::normalize_path;
 

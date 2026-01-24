@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::PathBuf};
 
-use macroquad::text::{Font, load_ttf_font, load_ttf_font_from_bytes};
+use macroquad::text::{Font, load_ttf_font_from_bytes};
 
 #[derive(Clone)]
 pub struct FontLoader {

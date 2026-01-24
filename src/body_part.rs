@@ -1,9 +1,8 @@
 use std::path::PathBuf;
 
-use glamx::{Pose2, Vec2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle};
 
-use crate::{ClientId, ClientTickContext, Owner, TickContext, draw_texture_onto_physics_body, space::Space, texture_loader::ClientTextureLoader};
+use crate::{Owner, draw_texture_onto_physics_body, space::Space, texture_loader::ClientTextureLoader};
 
 #[derive(Debug, Clone)]
 pub struct BodyPart {
