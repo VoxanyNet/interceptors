@@ -67,7 +67,7 @@ impl BodyPart {
             textures, 
             flip_x, 
             false, 
-            0.
+            0.,
         ).await
     }
 

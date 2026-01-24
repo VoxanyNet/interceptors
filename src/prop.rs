@@ -1,9 +1,9 @@
-use std::{fs::read_to_string, path::PathBuf};
+use std::{f32::consts::E, fs::read_to_string, path::PathBuf};
 
 use async_trait::async_trait;
 use glamx::{IVec2, Pose2};
 use image::{GenericImageView, Pixel};
-use macroquad::{audio::play_sound_once, color::Color, math::{Rect, Vec2}, shapes::{DrawRectangleParams, draw_rectangle_ex}};
+use macroquad::{audio::play_sound_once, color::{BLUE, Color, PURPLE, WHITE}, math::{Rect, Vec2}, shapes::{DrawRectangleParams, draw_circle, draw_rectangle_ex}, texture::{DrawTextureParams, draw_texture, draw_texture_ex}};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
@@ -572,7 +572,8 @@ impl Prop {
         let body = space.rigid_body_set.insert(
             RigidBodyBuilder::dynamic()
                 .pose(save.pos)
-                // .ccd_enabled(true)
+                
+                //.ccd_enabled(true)
                 // .soft_ccd_prediction(20.)
         );
 
@@ -597,12 +598,15 @@ impl Prop {
 
                         let mut voxels: Vec<IVec2> = Vec::new();
 
-                        for x in 0..image.width() as u32  {
-                            for y in 0..image.height() as u32  {
+                        for x in (0..image.width() as u32).step_by(4)  {
+                            for y in (0..image.height() as u32).step_by(4)  {
                                 let color = image.get_pixel(x, y);
 
                                 if color.a > 0. {
-                                    voxels.push(IVec2::new(x as i32, y as i32));
+                                    
+                                    voxels.push(IVec2::new(x as i32 / 4, y as i32 / 4));
+                                } else {
+                                    log::debug!("Skipping")
                                 }
                             }
                         }
@@ -620,12 +624,12 @@ impl Prop {
 
                         let mut voxels: Vec<IVec2> = Vec::new();
 
-                        for x in 0..image.width() as u32  {
-                            for y in 0..image.height() as u32  {
+                        for x in (0..image.width() as u32).step_by(4)  {
+                            for y in (0..image.height() as u32).step_by(4)  {
                                 let color = image.get_pixel(x, y);
 
                                 if color.alpha() != 0 {
-                                    voxels.push(IVec2::new(x as i32, y as i32));
+                                    voxels.push(IVec2::new(x as i32 / 4, y as i32 / 4));
                                 }
                             }
                         }
@@ -636,11 +640,13 @@ impl Prop {
             },
         };
 
+        log::debug!("number of voxels {:?}", voxels.len());
+
         
 
         let collider_handle = space.collider_set.insert_with_parent(
             ColliderBuilder::voxels(
-                glamx::Vec2::new(save.scale, save.scale),
+                glamx::Vec2::new(save.scale * 4., save.scale * 4.,),
                 &voxels
             ), 
             body, 
@@ -763,19 +769,30 @@ impl EditorContextMenu for Prop {
 #[async_trait]
 impl Drawable for Prop {
     async fn draw(&mut self, draw_context: &crate::drawable::DrawContext) {
-         if self.despawn {
+        if self.despawn {
             return;
         }
-        draw_texture_onto_physics_body(
-            self.rigid_body_handle, 
-            self.collider_handle, 
-            draw_context.space, 
-            &self.sprite_path, 
-             draw_context.textures, 
-            false, 
-            false, 
-            0.
-        ).await;
+
+        let body = draw_context.space.rigid_body_set.get(self.rigid_body_handle).unwrap();
+        let collider = draw_context.space.collider_set.get(self.collider_handle).unwrap();
+
+        let macroquad_pos = rapier_to_macroquad(body.center_of_mass());
+        let texture = draw_context.textures.get(&self.sprite_path);
+
+        let size = Vec2::new(texture.width() * self.scale, texture.height() * self.scale);
+        draw_texture_ex(
+            texture, 
+            macroquad_pos.x - (size.x / 2.), 
+            macroquad_pos.y - (size.y / 2.),
+            WHITE,
+            DrawTextureParams { 
+                dest_size: Some(size), 
+                rotation: body.rotation().angle() * -1., 
+                ..Default::default()
+            }
+
+
+        );
     }
 
     fn draw_layer(&self) -> u32 {
