@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr, time::{Duration, Instant}};
+use std::{path::PathBuf, str::FromStr};
 
 use glamx::{Pose2, Vec2, vec2};
 use macroquad::{audio::{play_sound, PlaySoundParams}, camera::Camera2D, input::{is_key_released, KeyCode}, math::Rect};

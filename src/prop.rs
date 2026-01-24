@@ -636,17 +636,20 @@ impl Prop {
             },
         };
 
-
         
 
-        let collider = space.collider_set.insert_with_parent(
+        let collider_handle = space.collider_set.insert_with_parent(
             ColliderBuilder::voxels(
-                glamx::Vec2::new(save.scale, save.scale), // each voxel is 4 pixels
+                glamx::Vec2::new(save.scale, save.scale),
                 &voxels
             ), 
             body, 
             &mut space.rigid_body_set
         );
+
+
+
+
 
         let id = match save.id {
             Some(id) => id,
@@ -656,7 +659,7 @@ impl Prop {
 
         Self {
             rigid_body_handle: body,
-            collider_handle: collider,
+            collider_handle,
             sprite_path: save.sprite_path,
             previous_velocity: RigidBodyVelocity::zero(),
             id,

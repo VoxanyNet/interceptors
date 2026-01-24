@@ -315,7 +315,10 @@ pub async fn draw_texture_onto_physics_body(
     let rigid_body = space.rigid_body_set.get(rigid_body_handle).unwrap();
     let collider = space.collider_set.get(collider_handle).unwrap();
 
-    let half_extents = collider.shape().compute_aabb(rigid_body.position()).half_extents();
+    let voxels = collider.shape().as_voxels().unwrap().local_aabb().half_extents();
+    log::debug!("{:?}", voxels);
+
+    let size = collider.shape().as_voxels().unwrap().domain()[1];
 
     let position = rigid_body.position().translation;
     let body_rotation = rigid_body.rotation().angle();
@@ -324,16 +327,16 @@ pub async fn draw_texture_onto_physics_body(
 
     draw_texture_ex(
         textures.get(texture_path), 
-        draw_pos.x - half_extents.x, 
-        draw_pos.y - half_extents.y, 
+        draw_pos.x - size.x as f32 / 2., 
+        draw_pos.y - size.y as f32 / 2., 
         WHITE, 
         DrawTextureParams {
-            dest_size: Some(vec2(half_extents.x * 2., half_extents.y * 2.)),
+            dest_size: Some(vec2(size.x as f32, size.y as f32)),
             source: None,
             rotation: (body_rotation * -1.) + additional_rotation,
             flip_x,
             flip_y,
-            pivot: None,
+            pivot: None
         }
     );
 

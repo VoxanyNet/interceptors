@@ -13,6 +13,7 @@
       0.0
     ]
   },
+  "scale": 2,
   "mass": 10.0,
   "sprite_path": "assets/stone2.png",
   "material": "None",

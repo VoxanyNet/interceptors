@@ -13,6 +13,7 @@
       0.0
     ]
   },
+  "scale": 2,
   "mass": 1000.0,
   "sprite_path": "assets/box2.png",
   "material": "Wood",
