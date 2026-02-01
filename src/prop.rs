@@ -3,12 +3,53 @@ use std::{f32::consts::E, fs::read_to_string, path::PathBuf};
 use async_trait::async_trait;
 use glamx::{IVec2, Pose2};
 use image::{GenericImageView, Pixel};
-use macroquad::{audio::play_sound_once, color::{BLUE, Color, PURPLE, WHITE}, math::{Rect, Vec2}, shapes::{DrawRectangleParams, draw_circle, draw_rectangle_ex}, texture::{DrawTextureParams, draw_texture, draw_texture_ex}};
-use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
+use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, BLUE, Color, PURPLE, WHITE}, math::{Rect, Vec2}, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{DrawRectangleParams, draw_circle, draw_rectangle, draw_rectangle_ex}, text, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture, draw_texture_ex, render_target}, window::clear_background};
+use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity, VoxelData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
+use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::AreaId, dissolved_pixel::DissolvedPixel, draw_preview, draw_texture_onto_physics_body, drawable::{DrawContext, Drawable}, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, get_preview_resolution, rapier_to_macroquad, space::{self, Space}, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
-use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::AreaId, draw_preview, draw_texture_onto_physics_body, drawable::{DrawContext, Drawable}, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, get_preview_resolution, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
+
+pub const DESTRUCTION_MASK_FRAGMENT_SHADER: &'static str = r#"
+#version 100
+precision lowp float;
+
+varying vec2 uv;
+varying vec4 color;
+
+uniform sampler2D Texture;
+uniform sampler2D Mask;
+
+void main() {
+    vec4 res = texture2D(Texture, uv);
+    vec4 mask = texture2D(Mask, uv);
+
+    // If the mask pixel is dark, don't draw this pixel
+    if (mask.r < 0.5) {
+        discard;
+    }
+
+    gl_FragColor = res * color;
+}
+"#; 
+
+pub const DESTRUCTION_MASK_VERTEXT_SHADER: &'static str = "#version 100
+attribute vec3 position;
+attribute vec2 texcoord;
+attribute vec4 color0;
+
+varying lowp vec2 uv;
+varying lowp vec4 color;
+
+uniform mat4 Model;
+uniform mat4 Projection;
+
+void main() {
+    gl_Position = Projection * Model * vec4(position, 1);
+    color = color0 / 255.0;
+    uv = texcoord;
+}
+";
 
 #[derive(Serialize, Deserialize, Clone, Copy, Default, Debug, PartialEq, EnumIter, Display)]
 pub enum Material {
@@ -17,191 +58,7 @@ pub enum Material {
     None
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default, Copy, PartialEq)]
-pub struct DissolvedPixelId {
-    id: u64
-}
-
-impl DissolvedPixelId {
-    pub fn new() -> Self {
-        Self {
-            id: uuid_u64(),
-        }
-    }
-}
-
-pub struct DissolvedPixel {
-    pub body: RigidBodyHandle,
-    pub collider: ColliderHandle,
-    color: Color,
-    scale: f32,
-    spawned: web_time::Instant,
-    pub despawn: bool
-}
-
-
-impl DissolvedPixel {
-
-    pub fn tick(&mut self) {
-
-        if self.despawn {
-            return;
-        }
-
-        let elapsed = self.spawned.elapsed().as_secs_f32();
-        
-        if elapsed == 0. {
-            return;
-        }
-
-
-        self.color.a -= 0.01 * elapsed;
-
-        if self.color.a <= 0. {
-            self.mark_despawn();
-        }
-
-    }
-
-    pub fn mark_despawn(&mut self) {
-        self.despawn = true;
-    }
-    pub fn despawn_callback(&mut self, space: &mut Space) {
-        space.rigid_body_set.remove(self.body, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
-    }
-
-    pub fn new(
-        pos: Pose2, 
-        space: &mut Space,
-        color: Color,
-        scale: f32,
-        mass: Option<f32>,
-        velocity: Option<RigidBodyVelocity<f32>>,
-    ) -> Self {
-
-        let velocity = match velocity {
-            Some(velocity) => velocity,
-            None => RigidBodyVelocity::zero(),
-        };
-
-        let mass = match mass {
-            Some(mass) => mass,
-            None => 1.,
-        };
-
-        let rigid_body = space.rigid_body_set.insert(
-            RigidBodyBuilder::dynamic()
-                .position(pos)
-                .angvel(velocity.angvel)
-                .linvel(velocity.linvel)
-        );
-
-        let collider = space.collider_set.insert_with_parent(
-            ColliderBuilder::cuboid(2., 2.).mass(mass),
-            rigid_body,
-            &mut space.rigid_body_set
-        );
-
-        Self {
-            body: rigid_body,
-            collider,
-            color,
-            scale,
-            spawned: web_time::Instant::now(),
-            despawn: false
-        }
-    }
-}
-
-
-
-#[async_trait]
-impl Drawable for DissolvedPixel {
-    async fn draw(&mut self, draw_context: &DrawContext) {
-        if self.despawn {
-            return;
-        }
-
-        let body = draw_context.space.rigid_body_set.get(self.body).unwrap();
-
-        let macroquad_pos = rapier_to_macroquad(body.translation());
-
-        let shape = draw_context.space.collider_set.get(self.collider).unwrap().shape().as_cuboid().unwrap();
-
-
-        draw_rectangle_ex(
-            macroquad_pos.x, 
-            macroquad_pos.y, 
-            (shape.half_extents.x * 2.) * self.scale, 
-            (shape.half_extents.y * 2.) * self.scale, 
-            DrawRectangleParams { 
-                offset: macroquad::math::Vec2::new(0.5, 0.5), 
-                rotation: body.rotation().angle() * -1., 
-                color: self.color 
-            }
-        );
-    }
-
-    fn draw_layer(&self) -> u32 {
-        1
-    }
-}
-
-pub trait PropTrait: EditorContextMenu + Drawable {
-    fn name(&self) -> String;
-    fn mark_despawn(&self);
-    fn draw_preview(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32);
-    fn get_preview_resolution(&self, size: f32, prefabs: &Prefabs, textures: &ClientTextureLoader) -> Vec2;
-    fn handle_bullet_impact(
-        &mut self, 
-        ctx: &mut TickContext, 
-        impact: &BulletImpactData, 
-        space: &mut Space, 
-        area_id: AreaId,
-        dissolved_pixels: &mut Vec<DissolvedPixel>
-    );
-
-    fn despawn_callback(&mut self, space: &mut Space, area_id: AreaId);
-
-    fn from_prefab(prefab_path: String, space: &mut Space) -> Self;
-
-    fn dissolve(
-        &mut self, 
-        textures: &ClientTextureLoader, 
-        space: &mut Space, 
-        dissolved_pixels: &mut Vec<DissolvedPixel>, 
-        ctx: Option<&mut ClientTickContext>, 
-        area_id: AreaId
-    );
-
-    fn play_impact_sound(&mut self, space: &Space, ctx: &mut ClientTickContext);
-
-    fn owner_tick(
-        &mut self, 
-        ctx: &mut TickContext, 
-        space: &mut Space, 
-        area_id: AreaId, 
-        dissolved_pixels: &mut Vec<DissolvedPixel>
-    );
-
-    fn tick(
-        &mut self, 
-        space: &mut Space, 
-        area_id: AreaId, 
-        ctx: &mut TickContext, 
-        dissolved_pixels: &mut Vec<DissolvedPixel>
-    );
-
-    fn set_pos(&mut self, position: Pose2, space: &mut Space);
-
-    fn set_velocity(&mut self, velocity: RigidBodyVelocity<f32>, space: &mut Space);
-
-    fn from_save(save: PropSave, space: &mut Space) -> Self;
-
-    fn save(&self, space: &Space) -> PropSave;
-}
-
-#[derive(PartialEq, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct Prop {
     pub rigid_body_handle: RigidBodyHandle,
     pub collider_handle: ColliderHandle,
@@ -217,7 +74,17 @@ pub struct Prop {
     context_menu_data: Option<EditorContextMenuData>,
     layer: u32,
     voxels_modified: bool,
-    pub scale: f32
+    pub scale: f32,
+    pub shader_material: Option<macroquad::material::Material>,
+    pub mask: Option<RenderTarget>,
+    pub removed_voxels: Vec<glamx::IVec2> 
+}
+
+// need to skip the mask render target in partialeq
+impl PartialEq for Prop {
+    fn eq(&self, other: &Self) -> bool {
+        self.rigid_body_handle == other.rigid_body_handle && self.collider_handle == other.collider_handle && self.sprite_path == other.sprite_path && self.previous_velocity == other.previous_velocity && self.material == other.material && self.id == other.id && self.owner == other.owner && self.last_sound_play == other.last_sound_play && self.despawn == other.despawn && self.last_pos_update == other.last_pos_update && self.name == other.name && self.context_menu_data == other.context_menu_data && self.layer == other.layer && self.voxels_modified == other.voxels_modified && self.scale == other.scale && self.shader_material == other.shader_material 
+    }
 }
 
 
@@ -254,6 +121,7 @@ impl Prop {
         }
 
         let rigid_body = space.rigid_body_set.get_mut(self.rigid_body_handle).unwrap();
+        let collider = space.collider_set.get_mut(self.collider_handle).unwrap();
 
         rigid_body.apply_impulse(
             glamx::Vec2::new(impact.bullet_vector.x * 5000., impact.bullet_vector.y * 5000.), 
@@ -310,24 +178,42 @@ impl Prop {
 
         // Server cannot dissolve props right now but we arent even going to do that so im going to worry about it
         if let TickContext::Client(ctx) = ctx {
-            self.dissolve(ctx.textures, space, dissolved_pixels, Some(ctx), area_id);
+            //self.dissolve(ctx.textures, space, dissolved_pixels, Some(ctx), area_id);
+
+            let impacted_voxels = self.get_voxel_world_positions(space)
+                .filter_map(
+                    |(voxel_grid_coords, voxel_world_pos)|
+                    {
+                        if (voxel_world_pos - impact.intersection_point).length().abs() > 30. {
+                            return None
+                        }
+
+                        Some(voxel_grid_coords)
+                    }
+                );
+
+            let impacted_voxels_vec: Vec<IVec2> = impacted_voxels.collect();
+
+            self.removed_voxels = impacted_voxels_vec.clone();
+            
+            log::debug!("Impacted voxels: {:?}", impacted_voxels_vec);
         }
         
-        self.mark_despawn();
+        //self.mark_despawn();
 
-        let packet = RemovePropUpdate {
-            prop_id: self.id,
-            area_id,
-        }.into();
+        // let packet = RemovePropUpdate {
+        //     prop_id: self.id,
+        //     area_id,
+        // }.into();
 
-        match ctx {
-            TickContext::Client(ctx) => {
-                ctx.network_io.send_network_packet(packet);
-            },
-            TickContext::Server(ctx) => {
-                ctx.network_io.send_all_clients(packet);
-            },
-        };
+        // match ctx {
+        //     TickContext::Client(ctx) => {
+        //         ctx.network_io.send_network_packet(packet);
+        //     },
+        //     TickContext::Server(ctx) => {
+        //         ctx.network_io.send_all_clients(packet);
+        //     },
+        // };
     
     }
 
@@ -679,6 +565,9 @@ impl Prop {
             layer: save.layer,
             voxels_modified: save.voxels.is_some(),
             scale: save.scale,
+            mask: None,
+            shader_material: None,
+            removed_voxels: vec![]
 
         }
     }
@@ -716,6 +605,98 @@ impl Prop {
             voxels,
             scale: self.scale
         }
+    }
+
+    fn draw_mask(
+        &mut self, 
+        draw_context: &crate::drawable::DrawContext,
+        texture: &Texture2D
+    ) {
+
+        if self.shader_material.is_none() {
+            self.shader_material = Some(
+                load_material(
+                    macroquad::prelude::ShaderSource::Glsl 
+                    { 
+                        vertex: DESTRUCTION_MASK_VERTEXT_SHADER, 
+                        fragment: DESTRUCTION_MASK_FRAGMENT_SHADER 
+                    }, 
+                    MaterialParams { 
+                        uniforms: vec![], 
+                        textures: vec!["Mask".to_string()],
+                        ..Default::default()
+                    }
+                ).unwrap()
+            )
+        }
+
+        if self.mask.is_none() {
+            self.mask = Some(
+                render_target(texture.width() as u32, texture.height() as u32)
+            )    
+        }
+
+        let mask = self.mask.as_mut().unwrap();
+        
+        let then = web_time::Instant::now();
+        let mut camera = Camera2D::from_display_rect(
+            Rect::new(0., 0., mask.texture.width(), mask.texture.height())
+        );  
+
+        camera.render_target = Some(mask.clone());
+        camera.zoom.y = -camera.zoom.y;
+
+
+        set_camera(&camera);
+
+        // clear the mask
+        clear_background(WHITE);
+        
+        let voxel_size = draw_context.space.collider_set.get(self.collider_handle).unwrap().shape().as_voxels().unwrap().voxel_size();
+
+        log::debug!("{}", voxel_size);
+        for removed_voxel in &self.removed_voxels {
+            
+            log::debug!("{:?}", removed_voxel);
+
+
+
+            draw_rectangle(
+                removed_voxel.x as f32 * 4., // we dont multiply by the scale here because the texture is scaled when it is drawn!
+                ((removed_voxel.y as f32 * 4.) * -1.) + texture.height(), // need to convert to macroquad coords
+                4., 
+                4., 
+                BLACK
+            );
+        }
+
+        //draw_rectangle(0., 0., 10., 10., BLACK);
+
+        set_camera(draw_context.default_camera);
+    } 
+
+    fn get_voxel_world_positions(
+        &self, 
+        space: &Space
+    ) -> impl Iterator<Item = (glamx::IVec2, glamx::Vec2)> {
+        let collider = space.collider_set.get(self.collider_handle).unwrap();
+
+        let cos = collider.rotation().cos();
+        let sin = collider.rotation().sin();
+
+        collider.shape().as_voxels().unwrap().voxels()
+            .map(
+                move |voxel| 
+                {
+                    let rotated_x = voxel.center.x * cos - voxel.center.y * sin;
+                    let rotated_y = voxel.center.x * sin + voxel.center.y * cos;
+
+                    let world_x = rotated_x + collider.translation().x;
+                    let world_y = rotated_y + collider.translation().y;
+
+                    (voxel.grid_coords, glamx::Vec2::new(world_x, world_y))
+                }
+            )
     }
 
 }
@@ -773,40 +754,53 @@ impl Drawable for Prop {
             return;
         }
 
+        let texture = draw_context.textures.get(&self.sprite_path);
+
+        self.draw_mask(draw_context, texture);
+
+        let mask = self.mask.as_ref().unwrap();
+        let material = self.shader_material.as_ref().unwrap();
+        material.set_texture("Mask", mask.texture.clone());
+
         let body = draw_context.space.rigid_body_set.get(self.rigid_body_handle).unwrap();
         let collider = draw_context.space.collider_set.get(self.collider_handle).unwrap();
 
-        let macroquad_pos = rapier_to_macroquad(body.center_of_mass());
-        let texture = draw_context.textures.get(&self.sprite_path);
+        
+        
+
+        let center_of_mass_macroquad_pos = rapier_to_macroquad(body.center_of_mass());
+        let macroquad_pos = rapier_to_macroquad(body.translation());
+
+        
+        
 
         let size = Vec2::new(texture.width() * self.scale, texture.height() * self.scale);
+        gl_use_material(material);
         draw_texture_ex(
             texture, 
-            macroquad_pos.x - (size.x / 2.), 
-            macroquad_pos.y - (size.y / 2.),
+            center_of_mass_macroquad_pos.x - (size.x / 2.), 
+            center_of_mass_macroquad_pos.y - (size.y / 2.),
             WHITE,
             DrawTextureParams { 
                 dest_size: Some(size), 
                 rotation: body.rotation().angle() * -1., 
                 ..Default::default()
             }
-
-
+        
         );
+        gl_use_default_material();
+
+        
     }
+
+    
 
     fn draw_layer(&self) -> u32 {
         self.layer
     }
 }
 
-// this SHOULD be a temporary fix to make dissolved pixels react to bullets
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct StupidDissolvedPixelVelocityUpdate {
-    pub area_id: AreaId,
-    pub bullet_vector: glamx::Vec2,
-    pub weapon_pos: glamx::Vec2
-}
+
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct PropSave {
@@ -845,6 +839,14 @@ impl PropId {
             id: uuid_u64(),
         }
     }
+}
+
+// this SHOULD be a temporary fix to make dissolved pixels react to bullets
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct StupidDissolvedPixelVelocityUpdate {
+    pub area_id: AreaId,
+    pub bullet_vector: glamx::Vec2,
+    pub weapon_pos: glamx::Vec2
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

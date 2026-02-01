@@ -32,16 +32,22 @@ fn round_to_nearest_50(n: f32) -> f32 {
 }
 
 fn window_conf() -> Conf {
-    let conf = Conf {
+
+    let mut platform = Platform::default();
+
+    // platform.linux_backend = macroquad::miniquad::conf::LinuxBackend::WaylandOnly;
+    // platform.wayland_decorations = macroquad::miniquad::conf::WaylandDecorations::ServerWithLibDecorFallback;
+
+    let mut conf = Conf {
         window_title: "Interceptors".to_owned(),
         window_width: 1280,
         window_height: 720,
         window_resizable: true,
         fullscreen: false, 
-        platform: Platform::default(),
+        platform,
         ..Default::default()
     };
-    //conf.platform.swap_interval = Some(0); // disable vsync
+    conf.platform.swap_interval = Some(1); // disable vsync
     conf
 }
 

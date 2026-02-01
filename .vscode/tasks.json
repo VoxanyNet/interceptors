@@ -4,10 +4,7 @@
         {
             "label": "Client",
             "type": "shell",
-            "command": "cargo watch -s \"./build_wasm.sh c-client\"",
-            "runOptions": {
-                "runOn": "folderOpen"
-            },
+            "command": "fuser -k 8000/tcp; cargo watch -s \"./build_wasm.sh c-client\"",
             "isBackground": true,
             "presentation": {
                 "reveal": "always",
@@ -23,10 +20,7 @@
             "label": "Server",
             "type": "shell",
             "isBackground": true,
-            "command": "cargo watch -x 'run --bin server'",
-            "runOptions": {
-                "runOn": "folderOpen"
-            },
+            "command": "fuser -k 5560/tcp; cargo watch -x 'run --bin server'",
             "presentation": {
                 "close": true,
                 "reveal": "always",

@@ -47,6 +47,8 @@ pub mod editor_context_menu;
 pub mod selectable_object_id;
 pub mod connection;
 pub mod server_texture_loader;
+pub mod dissolved_pixel;
+pub mod prop_fragment;
 
 #[derive(Clone, Debug)]
 pub struct IntersectionData {
@@ -54,7 +56,8 @@ pub struct IntersectionData {
     pub origin_collider: Option<ColliderHandle>,
     pub intersected_collider: ColliderHandle,
     pub intersection_vector: glamx::Vec2,
-    pub distance: glamx::Vec2
+    pub distance: glamx::Vec2,
+    pub intersection_point: glamx::Vec2
 } 
 
 pub fn get_intersections(
@@ -79,7 +82,7 @@ pub fn get_intersections(
 
     let mut impacts = Vec::new();
     
-    for (collider_handle, _, _) in query_pipeline.intersect_ray( 
+    for (collider_handle, _, ray_intersection) in query_pipeline.intersect_ray( 
         ray, 
         max_toi, 
         solid
@@ -89,6 +92,8 @@ pub fn get_intersections(
                 continue
             }
         };
+
+        let intersection_point = ray.point_at(ray_intersection.time_of_impact);
 
         let pos = space.collider_set.get(collider_handle).unwrap().position().translation;
 
@@ -100,8 +105,8 @@ pub fn get_intersections(
                 intersected_collider: collider_handle,
                 intersection_vector,
                 origin_collider,
-                distance
-                
+                distance,
+                intersection_point
             }
         );
 

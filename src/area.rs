@@ -5,7 +5,27 @@ use macroquad::{camera::Camera2D, input::{is_key_released, KeyCode}, math::Rect}
 use noise::{NoiseFn, Perlin};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TextureLoader, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{DissolvedPixel, NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, selectable_object_id::{SelectableObject, SelectableObjectId}, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}, updates::NetworkPacket, uuid_u64, weapons::smg::weapon::SMG};
+use crate::{
+    ClientId, 
+    ClientTickContext, 
+    Owner, 
+    Prefabs, 
+    ServerIO, 
+    SwapIter, 
+    TextureLoader, 
+    TickContext, 
+    ambiance::{Ambiance, AmbianceSave}, 
+    background::{Background, BackgroundSave}, 
+    bullet_trail::BulletTrail, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, 
+    dissolved_pixel::DissolvedPixel, 
+    drawable::{DrawContext, Drawable}, 
+    dropped_item::{DroppedItem, DroppedItemSave}, 
+    enemy::{Enemy, EnemySave, NewEnemyUpdate}, 
+    font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, 
+    prop::{NewProp, Prop, PropId, PropSave}, 
+    rapier_mouse_world_pos, 
+    selectable_object_id::{SelectableObject, SelectableObjectId}, 
+    sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}, updates::NetworkPacket, uuid_u64, weapons::smg::weapon::SMG};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {

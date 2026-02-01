@@ -666,6 +666,8 @@ impl WeaponBase {
                     bullet_vector: intersection.intersection_vector,
                     damage: self.base_damage,
                     knockback: self.knockback,
+                    intersection_point: intersection.intersection_point
+
                 }
             }
         ).collect()
