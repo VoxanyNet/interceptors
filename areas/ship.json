@@ -26,10 +26,13 @@
         110.1416
       ],
       "pos": [
-        1134.4106,
-        125.89374
+        1134.2471,
+        129.4909
       ],
-      "layer": 0
+      "layer": 0,
+      "one_way": false,
+      "health": null,
+      "material": "None"
     }
   ],
   "players": [],
@@ -45,14 +48,21 @@
   "master": null,
   "ambiance": [
     {
-        "pos": [0.0, 0.0],
-        "path": "assets/sounds/ship_ambiant_hum.wav",
-        "volume": 0.3
+      "path": "assets/sounds/ship_ambiant_hum.wav",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "volume": 0.3
     },
     {
-        "pos": [0.0, 0.0],
-        "path": "assets/sounds/ship_ambiant_thruster.wav",
-        "volume": 0.3
+      "path": "assets/sounds/ship_ambiant_thruster.wav",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "volume": 0.3
     }
-  ]
+  ],
+  "tiles": []
 }

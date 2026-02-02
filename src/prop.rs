@@ -1,9 +1,9 @@
-use std::{f32::consts::E, fs::read_to_string, path::PathBuf};
+use std::{f32::consts::E, fs::read_to_string, path::PathBuf, process::exit};
 
 use async_trait::async_trait;
 use glamx::{IVec2, Pose2};
 use image::{GenericImageView, Pixel};
-use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, BLUE, Color, PURPLE, WHITE}, math::{Rect, Vec2}, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{DrawRectangleParams, draw_circle, draw_rectangle, draw_rectangle_ex}, text, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture, draw_texture_ex, render_target}, window::clear_background};
+use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, BLUE, Color, PURPLE, RED, WHITE}, math::{Rect, Vec2}, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{DrawRectangleParams, draw_circle, draw_rectangle, draw_rectangle_ex}, text, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture, draw_texture_ex, render_target}, window::clear_background};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity, VoxelData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
@@ -180,11 +180,19 @@ impl Prop {
         if let TickContext::Client(ctx) = ctx {
             //self.dissolve(ctx.textures, space, dissolved_pixels, Some(ctx), area_id);
 
+            log::debug!("epic");
             let impacted_voxels = self.get_voxel_world_positions(space)
                 .filter_map(
                     |(voxel_grid_coords, voxel_world_pos)|
                     {
+                        if voxel_grid_coords.y == 0 {
+                            
+                        }
+
+                        //log::debug!("VOXEL WORLD POS: {}, VOXEL GRID COORDS: {:?}, IMPACT_POS: {:?}", voxel_world_pos, voxel_grid_coords, impact.intersection_point);
+
                         if (voxel_world_pos - impact.intersection_point).length().abs() > 30. {
+                            
                             return None
                         }
 
@@ -192,11 +200,23 @@ impl Prop {
                     }
                 );
 
+            log::debug!("gamer");
+            
+            
+
             let impacted_voxels_vec: Vec<IVec2> = impacted_voxels.collect();
+
+            let collider = space.collider_set.get_mut(self.collider_handle).unwrap();
+            for voxel in &impacted_voxels_vec {
+                collider.shape_mut().as_voxels_mut().unwrap().set_voxel(*voxel, false);
+            }
+            
+
+            
 
             self.removed_voxels = impacted_voxels_vec.clone();
             
-            log::debug!("Impacted voxels: {:?}", impacted_voxels_vec);
+            //log::debug!("Impacted voxels: {:?}", impacted_voxels_vec);
         }
         
         //self.mark_despawn();
@@ -539,10 +559,6 @@ impl Prop {
             &mut space.rigid_body_set
         );
 
-
-
-
-
         let id = match save.id {
             Some(id) => id,
             None => PropId::new(),
@@ -630,6 +646,8 @@ impl Prop {
             )
         }
 
+        //log::debug!("Texture width: {:?}, height: {:?}", texture.width(), texture.height());
+        
         if self.mask.is_none() {
             self.mask = Some(
                 render_target(texture.width() as u32, texture.height() as u32)
@@ -654,23 +672,23 @@ impl Prop {
         
         let voxel_size = draw_context.space.collider_set.get(self.collider_handle).unwrap().shape().as_voxels().unwrap().voxel_size();
 
-        log::debug!("{}", voxel_size);
+
         for removed_voxel in &self.removed_voxels {
-            
-            log::debug!("{:?}", removed_voxel);
-
-
-
             draw_rectangle(
                 removed_voxel.x as f32 * 4., // we dont multiply by the scale here because the texture is scaled when it is drawn!
-                ((removed_voxel.y as f32 * 4.) * -1.) + texture.height(), // need to convert to macroquad coords
+                (((removed_voxel.y as f32 * 4.) * -1.) + texture.height()) - 4., // need to convert to macroquad coords. THIS -4 COSTED ME HOURS
                 4., 
                 4., 
                 BLACK
             );
+
+            // if removed_voxel.y == 1 {
+            //     log::debug!("GAMING: {}", ((removed_voxel.y as f32 * 4.) * -1.) + texture.height());
+            // }
+            
         }
 
-        //draw_rectangle(0., 0., 10., 10., BLACK);
+        //draw_rectangle(10., 0., 10., 10., BLACK);
 
         set_camera(draw_context.default_camera);
     } 
@@ -765,21 +783,23 @@ impl Drawable for Prop {
         let body = draw_context.space.rigid_body_set.get(self.rigid_body_handle).unwrap();
         let collider = draw_context.space.collider_set.get(self.collider_handle).unwrap();
 
-        
-        
 
-        let center_of_mass_macroquad_pos = rapier_to_macroquad(body.center_of_mass());
+        //let center_of_mass_macroquad_pos = rapier_to_macroquad(body.center_of_mass());
         let macroquad_pos = rapier_to_macroquad(body.translation());
 
         
         
 
         let size = Vec2::new(texture.width() * self.scale, texture.height() * self.scale);
+
+        //log::debug!("{:?}", size);
+
+        
         gl_use_material(material);
         draw_texture_ex(
             texture, 
-            center_of_mass_macroquad_pos.x - (size.x / 2.), 
-            center_of_mass_macroquad_pos.y - (size.y / 2.),
+            macroquad_pos.x - (size.x / 2.), 
+            macroquad_pos.y - (size.y / 2.),
             WHITE,
             DrawTextureParams { 
                 dest_size: Some(size), 
@@ -790,6 +810,15 @@ impl Drawable for Prop {
         );
         gl_use_default_material();
 
+        draw_circle(macroquad_pos.x, macroquad_pos.y, 2., RED);
+
+        // let mut color = WHITE;
+        // color.a = 0.5;
+        // for voxel in self.get_voxel_world_positions(draw_context.space) {
+
+        //     let macroquad_pos = rapier_to_macroquad(voxel.1);
+        //     draw_rectangle(macroquad_pos.x - (2. * self.scale), macroquad_pos.y - (2. * self.scale), 4. * self.scale, 4. * self.scale, color);
+        // }
         
     }
 

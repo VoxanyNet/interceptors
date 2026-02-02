@@ -289,9 +289,10 @@ fn normalize_path(path: &PathBuf) -> PathBuf {
 
 #[cfg(target_os = "windows")]
 fn normalize_path(path: &PathBuf) -> PathBuf {
+
     let s = path
         .to_string_lossy()
-        .replace("/", "\\");
+        .replace("\\", "/");
 
     PathBuf::from(s)
 }
@@ -841,7 +842,6 @@ impl Prefabs {
     }
 
     pub fn load_prefab_data(&mut self, path: impl ToString, bytes: &[u8]) {
-
 
         let json_string = String::from_utf8(bytes.into()).unwrap();
 
