@@ -204,7 +204,7 @@ impl Prop {
             
             
 
-            let impacted_voxels_vec: Vec<IVec2> = impacted_voxels.collect();
+            let mut impacted_voxels_vec: Vec<IVec2> = impacted_voxels.collect();
 
             let collider = space.collider_set.get_mut(self.collider_handle).unwrap();
             for voxel in &impacted_voxels_vec {
@@ -214,7 +214,9 @@ impl Prop {
 
             
 
-            self.removed_voxels = impacted_voxels_vec.clone();
+            self.removed_voxels.append(&mut impacted_voxels_vec);
+            self.removed_voxels.dedup();
+           //self.removed_voxels = impacted_voxels_vec.clone();
             
             //log::debug!("Impacted voxels: {:?}", impacted_voxels_vec);
         }
@@ -786,24 +788,23 @@ impl Drawable for Prop {
 
         //let center_of_mass_macroquad_pos = rapier_to_macroquad(body.center_of_mass());
         let macroquad_pos = rapier_to_macroquad(body.translation());
-
         
         
 
         let size = Vec2::new(texture.width() * self.scale, texture.height() * self.scale);
 
-        //log::debug!("{:?}", size);
+        let pivot = Vec2::new(size.x , size.y);
 
-        
         gl_use_material(material);
         draw_texture_ex(
             texture, 
-            macroquad_pos.x - (size.x / 2.), 
-            macroquad_pos.y - (size.y / 2.),
+            macroquad_pos.x, 
+            macroquad_pos.y - pivot.y,
             WHITE,
             DrawTextureParams { 
                 dest_size: Some(size), 
                 rotation: body.rotation().angle() * -1., 
+                pivot: Some(macroquad_pos),
                 ..Default::default()
             }
         
