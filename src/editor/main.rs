@@ -33,7 +33,7 @@ fn round_to_nearest_50(n: f32) -> f32 {
 
 fn window_conf() -> Conf {
 
-    let mut platform = Platform::default();
+    let platform = Platform::default();
 
     // platform.linux_backend = macroquad::miniquad::conf::LinuxBackend::WaylandOnly;
     // platform.wayland_decorations = macroquad::miniquad::conf::WaylandDecorations::ServerWithLibDecorFallback;

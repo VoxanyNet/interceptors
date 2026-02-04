@@ -1,13 +1,13 @@
-use std::{f32::consts::E, fs::read_to_string, path::PathBuf, process::exit};
+use std::{fs::read_to_string, path::PathBuf};
 
 use async_trait::async_trait;
 use glamx::{IVec2, Pose2};
 use image::{GenericImageView, Pixel};
-use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, BLUE, Color, PURPLE, RED, WHITE}, math::{Rect, Vec2}, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{DrawRectangleParams, draw_circle, draw_rectangle, draw_rectangle_ex}, text, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture, draw_texture_ex, render_target}, window::clear_background};
-use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity, VoxelData};
+use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, Color, RED, WHITE}, math::{Rect, Vec2}, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{draw_circle, draw_rectangle}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex, render_target}, window::clear_background};
+use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
-use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::AreaId, dissolved_pixel::DissolvedPixel, draw_preview, draw_texture_onto_physics_body, drawable::{DrawContext, Drawable}, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, get_preview_resolution, rapier_to_macroquad, space::{self, Space}, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
+use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::AreaId, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, get_preview_resolution, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
 
 pub const DESTRUCTION_MASK_FRAGMENT_SHADER: &'static str = r#"
@@ -113,7 +113,7 @@ impl Prop {
         impact: &BulletImpactData, 
         space: &mut Space, 
         area_id: AreaId,
-        dissolved_pixels: &mut Vec<DissolvedPixel>
+        _dissolved_pixels: &mut Vec<DissolvedPixel>
     ) {
 
         if self.despawn {
@@ -121,7 +121,7 @@ impl Prop {
         }
 
         let rigid_body = space.rigid_body_set.get_mut(self.rigid_body_handle).unwrap();
-        let collider = space.collider_set.get_mut(self.collider_handle).unwrap();
+        let _collider = space.collider_set.get_mut(self.collider_handle).unwrap();
 
         rigid_body.apply_impulse(
             glamx::Vec2::new(impact.bullet_vector.x * 5000., impact.bullet_vector.y * 5000.), 
@@ -177,7 +177,7 @@ impl Prop {
         // if health < 0 {}
 
         // Server cannot dissolve props right now but we arent even going to do that so im going to worry about it
-        if let TickContext::Client(ctx) = ctx {
+        if let TickContext::Client(_ctx) = ctx {
             //self.dissolve(ctx.textures, space, dissolved_pixels, Some(ctx), area_id);
 
             log::debug!("epic");
@@ -658,7 +658,7 @@ impl Prop {
 
         let mask = self.mask.as_mut().unwrap();
         
-        let then = web_time::Instant::now();
+        let _then = web_time::Instant::now();
         let mut camera = Camera2D::from_display_rect(
             Rect::new(0., 0., mask.texture.width(), mask.texture.height())
         );  
@@ -672,7 +672,7 @@ impl Prop {
         // clear the mask
         clear_background(WHITE);
         
-        let voxel_size = draw_context.space.collider_set.get(self.collider_handle).unwrap().shape().as_voxels().unwrap().voxel_size();
+        let _voxel_size = draw_context.space.collider_set.get(self.collider_handle).unwrap().shape().as_voxels().unwrap().voxel_size();
 
 
         for removed_voxel in &self.removed_voxels {
@@ -783,7 +783,7 @@ impl Drawable for Prop {
         material.set_texture("Mask", mask.texture.clone());
 
         let body = draw_context.space.rigid_body_set.get(self.rigid_body_handle).unwrap();
-        let collider = draw_context.space.collider_set.get(self.collider_handle).unwrap();
+        let _collider = draw_context.space.collider_set.get(self.collider_handle).unwrap();
 
 
         //let center_of_mass_macroquad_pos = rapier_to_macroquad(body.center_of_mass());
