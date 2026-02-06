@@ -61,9 +61,13 @@ path = "src/lib.rs"
 [profile.dev.package.rapier2d]
 opt-level = 3
 
+[profile.dev.package.hound]
+opt-level = 3
+
 [profile.release]
 debug = true  
 
 
 [features]
 discord = []
+no-sound = []

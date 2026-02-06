@@ -14,7 +14,7 @@ impl World {
         }
     }
 
-    pub fn server_tick(&mut self, io:&mut ServerIO, dt: web_time::Duration) {
+    pub fn server_tick(&mut self, io: &mut ServerIO, dt: web_time::Duration) {
 
         for area in &mut self.areas {
             area.server_tick(io, dt);

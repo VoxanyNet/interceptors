@@ -444,8 +444,6 @@ impl WeaponBase {
 
     pub fn play_hold_fire_begin_sound(&self, ctx: &mut ClientTickContext) {
 
-        log::debug!("Start");
-
         if let Some(hold_fire_begin_sound) = &self.hold_fire_begin_sound_path {
             let sound = ctx.sounds.get(hold_fire_begin_sound.clone());
             
@@ -461,7 +459,6 @@ impl WeaponBase {
 
     pub fn play_hold_fire_end_sound(&self, ctx: &mut ClientTickContext) {
 
-        log::debug!("End");
         if let Some(hold_fire_end_sound) = &self.hold_fire_end_sound_path {
             let sound = ctx.sounds.get(hold_fire_end_sound.clone());
             

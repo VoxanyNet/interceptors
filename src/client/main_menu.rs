@@ -98,7 +98,7 @@ impl MainMenu {
             }
         );
 
-        let sound = self.sound_loader.get("assets/sounds/hard_drive_spinning.wav".into());
+        let sound = self.sound_loader.get("assets/sounds/hard_drive_spinning.ogg".into());
         self.sounds.push(sound.clone());
         
         play_sound(
@@ -109,7 +109,7 @@ impl MainMenu {
             }
         );
 
-        let sound = self.sound_loader.get("assets/sounds/drive_spin_up.wav".into());
+        let sound = self.sound_loader.get("assets/sounds/drive_spin_up.ogg".into());
         self.sounds.push(sound.clone());
 
         play_sound(
@@ -181,7 +181,7 @@ impl MainMenu {
             self.played_radio_chatter = true;
 
             play_sound(
-                self.sound_loader.get("assets/sounds/radio_chatter.wav".into()),
+                self.sound_loader.get("assets/sounds/radio_chatter.ogg".into()),
                 PlaySoundParams {
                     looped: false,
                     volume: 0.1,

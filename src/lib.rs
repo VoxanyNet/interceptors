@@ -282,6 +282,7 @@ fn normalize_path(path: &PathBuf) -> PathBuf {
     PathBuf::from(s)
 }
 
+
 // #[cfg(not(target_arch = "wasm32"))]
 // fn normalize_path(path: &PathBuf) -> PathBuf {
 //     path.clone()
@@ -963,23 +964,46 @@ pub async fn load_assets() -> Assets {
 
         let path = PathBuf::from("assets/").join(asset.path().to_path_buf());
 
+
+
         let asset = match asset.as_file() {
             Some(asset) => asset,
             None => continue,
         };
+
+        log::debug!("{:?}", path);
 
         asset_count += 1;
 
         let data = asset.contents();
 
         
-        if path.extension().unwrap() == "wav" {
+        if path.extension().unwrap() == "wav" { 
 
-            sounds.load(path.clone(), data).await
+            #[cfg(not(feature = "no-sound"))]
+            sounds.load(path.clone(), data).await;
+
+            #[cfg(feature = "no-sound")] {
+                let silent = include_bytes!("../assets/sounds/debug_silent.wav");
+                sounds.load(path.clone(), silent).await;
+            }
+            
+            
+        }
+
+        if path.extension().unwrap() == "ogg" { 
+
+            #[cfg(not(feature = "no-sound"))]
+            sounds.load(path.clone(), data).await;
+
+            #[cfg(feature = "no-sound")] {
+                let silent = include_bytes!("../assets/sounds/debug_silent.wav");
+                sounds.load(path.clone(), silent).await;
+            }
         }
 
         if path.extension().unwrap() == "png" {
-            textures.load(path.clone(), data);
+            textures.load(path.clone(), data); 
         }
 
         if path.extension().unwrap() == "ttf" {

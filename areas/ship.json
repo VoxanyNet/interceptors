@@ -48,7 +48,7 @@
   "master": null,
   "ambiance": [
     {
-      "path": "assets/sounds/ship_ambiant_hum.wav",
+      "path": "assets/sounds/ship_ambiant_hum.ogg",
       "pos": [
         0.0,
         0.0
@@ -56,7 +56,7 @@
       "volume": 0.3
     },
     {
-      "path": "assets/sounds/ship_ambiant_thruster.wav",
+      "path": "assets/sounds/ship_ambiant_thruster.ogg",
       "pos": [
         0.0,
         0.0

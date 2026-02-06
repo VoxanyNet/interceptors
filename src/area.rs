@@ -228,7 +228,6 @@ impl Area {
             //wasted_time += then.elapsed();
         }
 
-        //log::debug!("{:?}", wasted_time);
     }
 
     pub fn tick_props(&mut self, ctx: &mut TickContext) {

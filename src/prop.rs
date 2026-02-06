@@ -180,7 +180,6 @@ impl Prop {
         if let TickContext::Client(_ctx) = ctx {
             //self.dissolve(ctx.textures, space, dissolved_pixels, Some(ctx), area_id);
 
-            log::debug!("epic");
             let impacted_voxels = self.get_voxel_world_positions(space)
                 .filter_map(
                     |(voxel_grid_coords, voxel_world_pos)|
@@ -188,8 +187,6 @@ impl Prop {
                         if voxel_grid_coords.y == 0 {
                             
                         }
-
-                        //log::debug!("VOXEL WORLD POS: {}, VOXEL GRID COORDS: {:?}, IMPACT_POS: {:?}", voxel_world_pos, voxel_grid_coords, impact.intersection_point);
 
                         if (voxel_world_pos - impact.intersection_point).length().abs() > 30. {
                             
@@ -199,10 +196,6 @@ impl Prop {
                         Some(voxel_grid_coords)
                     }
                 );
-
-            log::debug!("gamer");
-            
-            
 
             let mut impacted_voxels_vec: Vec<IVec2> = impacted_voxels.collect();
 
@@ -216,9 +209,7 @@ impl Prop {
 
             self.removed_voxels.append(&mut impacted_voxels_vec);
             self.removed_voxels.dedup();
-           //self.removed_voxels = impacted_voxels_vec.clone();
-            
-            //log::debug!("Impacted voxels: {:?}", impacted_voxels_vec);
+
         }
         
         //self.mark_despawn();
@@ -379,6 +370,22 @@ impl Prop {
         _dissolved_pixels: &mut Vec<DissolvedPixel>
     ) {
 
+        let voxels = space.collider_set.get_mut(self.collider_handle).unwrap().shape_mut().as_voxels_mut().unwrap();
+
+        
+        for voxel in voxels.voxels() {
+
+            
+            let voxel_type = voxel.state.voxel_type();
+            
+            log::debug!("{:?}", voxel_type);
+
+        }
+        // for voxel in voxels.voxels() {
+
+        // }
+        
+
         if let TickContext::Client(ctx) = ctx {
             self.play_impact_sound(space, ctx);
         }
@@ -514,7 +521,7 @@ impl Prop {
                                     
                                     voxels.push(IVec2::new(x as i32 / 4, y as i32 / 4));
                                 } else {
-                                    log::debug!("Skipping")
+                                    
                                 }
                             }
                         }
@@ -547,11 +554,7 @@ impl Prop {
                 }
             },
         };
-
-        log::debug!("number of voxels {:?}", voxels.len());
-
         
-
         let collider_handle = space.collider_set.insert_with_parent(
             ColliderBuilder::voxels(
                 glamx::Vec2::new(save.scale * 4., save.scale * 4.,),
@@ -647,8 +650,6 @@ impl Prop {
                 ).unwrap()
             )
         }
-
-        //log::debug!("Texture width: {:?}, height: {:?}", texture.width(), texture.height());
         
         if self.mask.is_none() {
             self.mask = Some(
@@ -683,14 +684,8 @@ impl Prop {
                 4., 
                 BLACK
             );
-
-            // if removed_voxel.y == 1 {
-            //     log::debug!("GAMING: {}", ((removed_voxel.y as f32 * 4.) * -1.) + texture.height());
-            // }
             
         }
-
-        //draw_rectangle(10., 0., 10., 10., BLACK);
 
         set_camera(draw_context.default_camera);
     } 
@@ -783,7 +778,7 @@ impl Drawable for Prop {
         material.set_texture("Mask", mask.texture.clone());
 
         let body = draw_context.space.rigid_body_set.get(self.rigid_body_handle).unwrap();
-        let _collider = draw_context.space.collider_set.get(self.collider_handle).unwrap();
+        let collider = draw_context.space.collider_set.get(self.collider_handle).unwrap();
 
 
         //let center_of_mass_macroquad_pos = rapier_to_macroquad(body.center_of_mass());
@@ -813,8 +808,17 @@ impl Drawable for Prop {
 
         draw_circle(macroquad_pos.x, macroquad_pos.y, 2., RED);
 
-        // let mut color = WHITE;
-        // color.a = 0.5;
+        let mut color = WHITE;
+        color.a = 0.5;
+        
+        
+        for voxel in collider.shape().as_voxels().unwrap().voxels() {
+            
+            let pos = collider.shape().as_voxels().unwrap().voxel_center(voxel.grid_coords);
+            let macroquad_pos = rapier_to_macroquad(pos);
+            draw_rectangle(macroquad_pos.x - (2. * self.scale), macroquad_pos.y - (2. * self.scale), 4. * self.scale, 4. * self.scale, color);
+
+        }
         // for voxel in self.get_voxel_world_positions(draw_context.space) {
 
         //     let macroquad_pos = rapier_to_macroquad(voxel.1);

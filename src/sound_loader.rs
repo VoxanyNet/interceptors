@@ -26,7 +26,9 @@ impl SoundLoader {
 
         if !self.cache.contains_key(&sound_path) {
 
+    
             let sound = load_sound_from_bytes(bytes).await.unwrap();
+            
 
             self.cache.insert(sound_path, sound);
         }
