@@ -1,13 +1,13 @@
-use std::{fs::read_to_string, path::PathBuf};
+use std::{collections::HashSet, fs::read_to_string, path::PathBuf};
 
 use async_trait::async_trait;
 use glamx::{IVec2, Pose2};
 use image::{GenericImageView, Pixel};
-use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, Color, RED, WHITE}, math::{Rect, Vec2}, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{draw_circle, draw_rectangle}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex, render_target}, window::clear_background};
-use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
+use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, BLUE, Color, GREEN, RED, VIOLET, WHITE}, math::{Rect, Vec2}, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{draw_circle, draw_rectangle}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex, render_target}, window::clear_background};
+use rapier2d::prelude::{AxisMask, ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity, VoxelData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
-use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::AreaId, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, get_preview_resolution, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
+use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::AreaId, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
 
 pub const DESTRUCTION_MASK_FRAGMENT_SHADER: &'static str = r#"
@@ -77,7 +77,8 @@ pub struct Prop {
     pub scale: f32,
     pub shader_material: Option<macroquad::material::Material>,
     pub mask: Option<RenderTarget>,
-    pub removed_voxels: Vec<glamx::IVec2> 
+    pub removed_voxels: Vec<VoxelData>, 
+
 }
 
 // need to skip the mask render target in partialeq
@@ -106,6 +107,70 @@ impl Prop {
 
         get_preview_resolution(size, textures, &self.sprite_path)
     }
+
+    pub fn break_apart(
+        &mut self, 
+        space: &Space,
+        impacted_voxels: &Vec<VoxelData>
+    ) { 
+        let voxels = space.collider_set.get(self.collider_handle).unwrap().shape().as_voxels().unwrap();
+
+        // where we start flood fills
+        // we only start a flood fill from a seed if the prior flood didnt contain that seed 
+        let mut potential_island_seeds: Vec<glamx::IVec2> = Vec::new();
+
+        // all neighboring voxels to impacted voxels are marked as potential island seeds
+        for voxel in impacted_voxels {
+            let neighbors = [
+                glamx::IVec2 { x: voxel.grid_coords.x + 1, y: voxel.grid_coords.y},
+                glamx::IVec2 { x: voxel.grid_coords.x - 1, y: voxel.grid_coords.y},
+                glamx::IVec2 { x: voxel.grid_coords.x, y: voxel.grid_coords.y + 1},
+                glamx::IVec2 { x: voxel.grid_coords.x, y: voxel.grid_coords.y - 1}
+            ];
+
+            for neighbor in neighbors {
+
+                if let Some(voxel_state) = voxels.voxel_state(neighbor) {
+                    if !voxel_state.is_empty() {
+                        potential_island_seeds.push(neighbor);
+                    }
+                }
+                
+            }
+        }
+
+        // the actual resulting islands
+        let mut islands: Vec<HashSet<glamx::IVec2>> = vec![];
+
+        // we mark down all the voxels we've already added to an island
+        // this way we can make sure we dont use one of them as a seed (since we already know they don't belong to a new island)
+        let mut global_visited_voxels: HashSet<glamx::IVec2> = HashSet::new(); 
+
+        
+
+        for (idx, seed) in potential_island_seeds.iter().enumerate() {
+            
+            if global_visited_voxels.contains(&seed) {
+        
+                continue;
+            } 
+
+            let new_island = flood_fill(
+                *seed, 
+                &voxels
+            );
+
+
+            for voxel in &new_island {
+                global_visited_voxels.insert(*voxel);
+            }
+
+            islands.push(new_island);
+
+
+        }
+    }
+
 
     pub fn handle_bullet_impact(
         &mut self, 
@@ -182,29 +247,41 @@ impl Prop {
 
             let impacted_voxels = self.get_voxel_world_positions(space)
                 .filter_map(
-                    |(voxel_grid_coords, voxel_world_pos)|
+                    |(voxel, voxel_world_pos)|
                     {
-                        if voxel_grid_coords.y == 0 {
+                        if voxel.grid_coords.y == 0 {
                             
                         }
 
-                        if (voxel_world_pos - impact.intersection_point).length().abs() > 30. {
+                        if (voxel_world_pos - impact.intersection_point).length().abs() > 10. {
                             
                             return None
                         }
 
-                        Some(voxel_grid_coords)
+                        Some(voxel)
                     }
                 );
+            
+           
 
-            let mut impacted_voxels_vec: Vec<IVec2> = impacted_voxels.collect();
+            let mut impacted_voxels_vec: Vec<VoxelData> = impacted_voxels.collect();
 
-            let collider = space.collider_set.get_mut(self.collider_handle).unwrap();
-            for voxel in &impacted_voxels_vec {
-                collider.shape_mut().as_voxels_mut().unwrap().set_voxel(*voxel, false);
-            }
             
 
+            
+
+            let collider = space.collider_set.get_mut(self.collider_handle).unwrap();
+            
+            for voxel in &impacted_voxels_vec {
+                
+                collider.shape_mut().as_voxels_mut().unwrap().set_voxel(voxel.grid_coords, false);
+            }
+
+
+
+            let then = web_time::Instant::now();
+            self.break_apart(space, &impacted_voxels_vec);
+            log::debug!("break apart: {:?}", then.elapsed());
             
 
             self.removed_voxels.append(&mut impacted_voxels_vec);
@@ -373,14 +450,6 @@ impl Prop {
         let voxels = space.collider_set.get_mut(self.collider_handle).unwrap().shape_mut().as_voxels_mut().unwrap();
 
         
-        for voxel in voxels.voxels() {
-
-            
-            let voxel_type = voxel.state.voxel_type();
-            
-            log::debug!("{:?}", voxel_type);
-
-        }
         // for voxel in voxels.voxels() {
 
         // }
@@ -678,8 +747,8 @@ impl Prop {
 
         for removed_voxel in &self.removed_voxels {
             draw_rectangle(
-                removed_voxel.x as f32 * 4., // we dont multiply by the scale here because the texture is scaled when it is drawn!
-                (((removed_voxel.y as f32 * 4.) * -1.) + texture.height()) - 4., // need to convert to macroquad coords. THIS -4 COSTED ME HOURS
+                removed_voxel.grid_coords.x as f32 * 4., // we dont multiply by the scale here because the texture is scaled when it is drawn!
+                (((removed_voxel.grid_coords.y as f32 * 4.) * -1.) + texture.height()) - 4., // need to convert to macroquad coords. THIS -4 COSTED ME HOURS
                 4., 
                 4., 
                 BLACK
@@ -693,7 +762,7 @@ impl Prop {
     fn get_voxel_world_positions(
         &self, 
         space: &Space
-    ) -> impl Iterator<Item = (glamx::IVec2, glamx::Vec2)> {
+    ) -> impl Iterator<Item = (VoxelData, glamx::Vec2)> {
         let collider = space.collider_set.get(self.collider_handle).unwrap();
 
         let cos = collider.rotation().cos();
@@ -709,7 +778,7 @@ impl Prop {
                     let world_x = rotated_x + collider.translation().x;
                     let world_y = rotated_y + collider.translation().y;
 
-                    (voxel.grid_coords, glamx::Vec2::new(world_x, world_y))
+                    (voxel, glamx::Vec2::new(world_x, world_y))
                 }
             )
     }
@@ -812,18 +881,26 @@ impl Drawable for Prop {
         color.a = 0.5;
         
         
-        for voxel in collider.shape().as_voxels().unwrap().voxels() {
+        // for voxel in collider.shape().as_voxels().unwrap().voxels() {
             
-            let pos = collider.shape().as_voxels().unwrap().voxel_center(voxel.grid_coords);
-            let macroquad_pos = rapier_to_macroquad(pos);
-            draw_rectangle(macroquad_pos.x - (2. * self.scale), macroquad_pos.y - (2. * self.scale), 4. * self.scale, 4. * self.scale, color);
-
-        }
-        // for voxel in self.get_voxel_world_positions(draw_context.space) {
-
-        //     let macroquad_pos = rapier_to_macroquad(voxel.1);
+        //     let pos = collider.shape().as_voxels().unwrap().voxel_center(voxel.grid_coords);
+        //     let macroquad_pos = rapier_to_macroquad(pos);
         //     draw_rectangle(macroquad_pos.x - (2. * self.scale), macroquad_pos.y - (2. * self.scale), 4. * self.scale, 4. * self.scale, color);
+
         // }
+        for voxel in self.get_voxel_world_positions(draw_context.space) {
+
+            let mut color = match collider.shape().as_voxels().unwrap().voxel_state(voxel.0.grid_coords).unwrap().voxel_type() {
+                rapier2d::prelude::VoxelType::Empty => RED,
+                rapier2d::prelude::VoxelType::Vertex => GREEN,
+                rapier2d::prelude::VoxelType::Face => BLUE,
+                rapier2d::prelude::VoxelType::Interior => VIOLET,
+            };
+
+            color.a = 0.5;
+            let macroquad_pos = rapier_to_macroquad(voxel.1);
+            draw_rectangle(macroquad_pos.x - (2. * self.scale), macroquad_pos.y - (2. * self.scale), 4. * self.scale, 4. * self.scale, color);
+        }
         
     }
 

@@ -1,9 +1,10 @@
-use std::{collections::HashMap, f32::consts::PI, fs::read_to_string, net::{TcpListener, TcpStream}, path::PathBuf, process::exit, str::FromStr};
+use std::{collections::{HashMap, HashSet, VecDeque}, f32::consts::PI, fs::read_to_string, net::{TcpListener, TcpStream}, path::PathBuf, process::exit, str::FromStr};
 
 use derive_more::From;
 use ewebsock::{WsReceiver, WsSender};
+use glamx::IVec2;
 use macroquad::{camera::Camera2D, color::{Color, WHITE}, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}};
-use rapier2d::{parry::query::Ray, prelude::{ColliderBuilder, ColliderHandle, QueryFilter, RigidBodyHandle}};
+use rapier2d::{parry::query::Ray, prelude::{AxisMask, ColliderBuilder, ColliderHandle, QueryFilter, RigidBodyHandle, VoxelData, Voxels, VoxelsChunkRef}};
 use serde::{Deserialize, Serialize};
 use tungstenite::WebSocket;
 use include_dir::{Dir, include_dir};
@@ -50,6 +51,42 @@ pub mod server_texture_loader;
 pub mod dissolved_pixel;
 pub mod prop_fragment;
 
+
+pub fn flood_fill(start_point: glamx::IVec2, voxels: &Voxels) -> HashSet<glamx::IVec2> {
+    let mut island_voxels = HashSet::new();
+    // this is epic! ai made this though so i don't get the credit but i do understand what its doing which is more than what can be said for a lot of people
+    let mut traversal_queue: VecDeque<glamx::IVec2> = VecDeque::new();
+
+    traversal_queue.push_back(start_point);
+    island_voxels.insert(start_point);
+
+    while let Some(current_voxel) = traversal_queue.pop_front() {
+        let neighbors = [
+            glamx::IVec2 { x: current_voxel.x + 1, y: current_voxel.y},
+            glamx::IVec2 { x: current_voxel.x - 1, y: current_voxel.y},
+            glamx::IVec2 { x: current_voxel.x, y: current_voxel.y + 1},
+            glamx::IVec2 { x: current_voxel.x, y: current_voxel.y - 1}
+        ];
+        
+        for neighbor in neighbors {
+
+            
+            if !island_voxels.insert(neighbor) {
+                continue;
+            }
+
+            if let Some(state) = voxels.voxel_state(neighbor) {
+                if !state.is_empty() {
+                    traversal_queue.push_back(neighbor);
+                    continue;
+                }
+            }
+
+        }   
+    }
+
+    island_voxels
+}
 #[derive(Clone, Debug)]
 pub struct IntersectionData {
     pub origin: glamx::Vec2,
@@ -970,8 +1007,6 @@ pub async fn load_assets() -> Assets {
             Some(asset) => asset,
             None => continue,
         };
-
-        log::debug!("{:?}", path);
 
         asset_count += 1;
 
