@@ -71,3 +71,4 @@ debug = true
 [features]
 discord = []
 no-sound = []
+nightly = []

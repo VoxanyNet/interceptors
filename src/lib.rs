@@ -1,3 +1,4 @@
+#![cfg_attr(feature = "nightly", feature(optimize_attribute))]
 use std::{collections::{HashMap, HashSet, VecDeque}, f32::consts::PI, fs::read_to_string, net::{TcpListener, TcpStream}, path::PathBuf, process::exit, str::FromStr};
 
 use derive_more::From;

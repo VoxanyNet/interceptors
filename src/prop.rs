@@ -1,3 +1,4 @@
+
 use std::{collections::HashSet, fs::read_to_string, path::PathBuf};
 
 use async_trait::async_trait;
@@ -8,6 +9,7 @@ use rapier2d::prelude::{AxisMask, ColliderBuilder, ColliderHandle, RigidBodyBuil
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::AreaId, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
+
 
 
 pub const DESTRUCTION_MASK_FRAGMENT_SHADER: &'static str = r#"
@@ -77,7 +79,7 @@ pub struct Prop {
     pub scale: f32,
     pub shader_material: Option<macroquad::material::Material>,
     pub mask: Option<RenderTarget>,
-    pub removed_voxels: Vec<VoxelData>, 
+    pub removed_voxels: Vec<IVec2>, 
 
 }
 
@@ -108,12 +110,13 @@ impl Prop {
         get_preview_resolution(size, textures, &self.sprite_path)
     }
 
+    #[cfg_attr(feature = "nightly", optimize(speed))]
     pub fn break_apart(
         &mut self, 
-        space: &Space,
-        impacted_voxels: &Vec<VoxelData>
+        space: &mut Space,
+        impacted_voxels: &Vec<glamx::IVec2>
     ) { 
-        let voxels = space.collider_set.get(self.collider_handle).unwrap().shape().as_voxels().unwrap();
+        let voxels = space.collider_set.get_mut(self.collider_handle).unwrap().shape_mut().as_voxels_mut().unwrap();
 
         // where we start flood fills
         // we only start a flood fill from a seed if the prior flood didnt contain that seed 
@@ -122,10 +125,10 @@ impl Prop {
         // all neighboring voxels to impacted voxels are marked as potential island seeds
         for voxel in impacted_voxels {
             let neighbors = [
-                glamx::IVec2 { x: voxel.grid_coords.x + 1, y: voxel.grid_coords.y},
-                glamx::IVec2 { x: voxel.grid_coords.x - 1, y: voxel.grid_coords.y},
-                glamx::IVec2 { x: voxel.grid_coords.x, y: voxel.grid_coords.y + 1},
-                glamx::IVec2 { x: voxel.grid_coords.x, y: voxel.grid_coords.y - 1}
+                glamx::IVec2 { x: voxel.x + 1, y: voxel.y},
+                glamx::IVec2 { x: voxel.x - 1, y: voxel.y},
+                glamx::IVec2 { x: voxel.x, y: voxel.y + 1},
+                glamx::IVec2 { x: voxel.x, y: voxel.y - 1}
             ];
 
             for neighbor in neighbors {
@@ -169,6 +172,15 @@ impl Prop {
 
 
         }
+
+        if let Some(island) = islands.get(1) {
+            for voxel in island {
+                voxels.set_voxel(*voxel, false);
+                self.removed_voxels.push(*voxel);
+                
+            }
+        }
+        
     }
 
 
@@ -258,13 +270,13 @@ impl Prop {
                             return None
                         }
 
-                        Some(voxel)
+                        Some(voxel.grid_coords)
                     }
                 );
             
            
 
-            let mut impacted_voxels_vec: Vec<VoxelData> = impacted_voxels.collect();
+            let mut impacted_voxels_vec: Vec<glamx::IVec2> = impacted_voxels.collect();
 
             
 
@@ -274,7 +286,7 @@ impl Prop {
             
             for voxel in &impacted_voxels_vec {
                 
-                collider.shape_mut().as_voxels_mut().unwrap().set_voxel(voxel.grid_coords, false);
+                collider.shape_mut().as_voxels_mut().unwrap().set_voxel(*voxel, false);
             }
 
 
@@ -747,8 +759,8 @@ impl Prop {
 
         for removed_voxel in &self.removed_voxels {
             draw_rectangle(
-                removed_voxel.grid_coords.x as f32 * 4., // we dont multiply by the scale here because the texture is scaled when it is drawn!
-                (((removed_voxel.grid_coords.y as f32 * 4.) * -1.) + texture.height()) - 4., // need to convert to macroquad coords. THIS -4 COSTED ME HOURS
+                removed_voxel.x as f32 * 4., // we dont multiply by the scale here because the texture is scaled when it is drawn!
+                (((removed_voxel.y as f32 * 4.) * -1.) + texture.height()) - 4., // need to convert to macroquad coords. THIS -4 COSTED ME HOURS
                 4., 
                 4., 
                 BLACK
