@@ -4,9 +4,6 @@ version = "0.1.0"
 edition = "2024"
 #build = "build.rs"
 
-[target.'cfg(target_os = "linux")']
-rustflags = ["-C", "link-arg=-fuse-ld=mold"]
-
 [dependencies]
 bitcode = { version = "0.6.6", features = ["serde"] }
 ewebsock = "0.8.0"
@@ -60,12 +57,6 @@ path = "src/lib.rs"
 
 [profile.dev.package.rapier2d]
 opt-level = 3
-
-[profile.dev.package.hound]
-opt-level = 3
-
-[profile.release]
-debug = true  
 
 
 [features]

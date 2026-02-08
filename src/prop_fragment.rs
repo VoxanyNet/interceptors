@@ -19,21 +19,6 @@ pub struct PropFragment {
 
 impl PropFragment {
 
-    pub fn new(voxel_points: HashSet<glamx::Vec2>) -> Self {
-
-    
-        Self {
-            sprite_path: todo!(),
-            collider: todo!(),
-            body: todo!(),
-            mask: todo!(),
-            shader_material: todo!(),
-            despawn: todo!(),
-            layer: todo!(),
-            scale: todo!(),
-            
-        }
-    }
     fn draw_mask(
         &mut self,
         draw_context: &DrawContext,

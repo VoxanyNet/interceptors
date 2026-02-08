@@ -110,7 +110,6 @@ impl Prop {
         get_preview_resolution(size, textures, &self.sprite_path)
     }
 
-    #[cfg_attr(feature = "nightly", optimize(speed))]
     pub fn break_apart(
         &mut self, 
         space: &mut Space,
@@ -172,6 +171,7 @@ impl Prop {
         }
         
         if islands.len() <= 1 {
+            log::debug!("No new islands");
             return;
         }
         let new_islands = &islands.split_off(1);
@@ -304,11 +304,30 @@ impl Prop {
             let collider = space.collider_set.get_mut(self.collider_handle).unwrap();
             
             for voxel in &impacted_voxels_vec {
+
+                log::debug!("setting voxel {:?} to false", voxel);
                 
                 collider.shape_mut().as_voxels_mut().unwrap().set_voxel(*voxel, false);
             }
 
+            let mut despawn = true;
 
+            let then = web_time::Instant::now();
+            'check_for_no_voxels: for voxel in collider.shape_mut().as_voxels_mut().unwrap().voxels() {
+                if !voxel.state.is_empty() {
+                    despawn = false;
+                    break 'check_for_no_voxels;
+                }
+            }
+            log::debug!("check for no voxels: {:?}", then.elapsed());
+
+            if despawn == true {
+                self.mark_despawn();
+
+                return;
+            }
+
+            
 
             let then = web_time::Instant::now();
             self.break_apart(space, &impacted_voxels_vec, props);
