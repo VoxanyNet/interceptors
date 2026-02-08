@@ -71,13 +71,15 @@ pub fn flood_fill(start_point: glamx::IVec2, voxels: &Voxels) -> HashSet<glamx::
         
         for neighbor in neighbors {
 
-            
-            if !island_voxels.insert(neighbor) {
+            if island_voxels.contains(&neighbor) {
                 continue;
             }
 
             if let Some(state) = voxels.voxel_state(neighbor) {
                 if !state.is_empty() {
+
+                    island_voxels.insert(neighbor);
+                    
                     traversal_queue.push_back(neighbor);
                     continue;
                 }

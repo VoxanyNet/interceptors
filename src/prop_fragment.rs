@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{collections::HashSet, path::PathBuf};
 
 use async_trait::async_trait;
 use macroquad::{camera::{Camera2D, set_camera}, color::WHITE, math::{Rect, Vec2}, prelude::{Material, MaterialParams, gl_use_default_material, gl_use_material, load_material}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex, render_target}};
@@ -8,7 +8,6 @@ use crate::{drawable::{DrawContext, Drawable}, prop::{DESTRUCTION_MASK_FRAGMENT_
 
 pub struct PropFragment {
     sprite_path: PathBuf,
-    source_rect: Rect,
     collider: ColliderHandle,
     body: RigidBodyHandle,
     mask: Option<RenderTarget>,
@@ -20,10 +19,11 @@ pub struct PropFragment {
 
 impl PropFragment {
 
-    pub fn new() -> Self {
+    pub fn new(voxel_points: HashSet<glamx::Vec2>) -> Self {
+
+    
         Self {
             sprite_path: todo!(),
-            source_rect: todo!(),
             collider: todo!(),
             body: todo!(),
             mask: todo!(),

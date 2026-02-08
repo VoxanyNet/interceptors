@@ -2,9 +2,9 @@
 use std::{collections::HashSet, fs::read_to_string, path::PathBuf};
 
 use async_trait::async_trait;
-use glamx::{IVec2, Pose2};
+use glamx::{IVec2, Pose2, vec2};
 use image::{GenericImageView, Pixel};
-use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, BLUE, Color, GREEN, RED, VIOLET, WHITE}, math::{Rect, Vec2}, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{draw_circle, draw_rectangle}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex, render_target}, window::clear_background};
+use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, BLUE, Color, GREEN, RED, VIOLET, WHITE}, math::{Rect, Vec2}, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{draw_circle, draw_rectangle}, text::draw_text, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex, render_target}, window::clear_background};
 use rapier2d::prelude::{AxisMask, ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity, VoxelData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
@@ -114,7 +114,8 @@ impl Prop {
     pub fn break_apart(
         &mut self, 
         space: &mut Space,
-        impacted_voxels: &Vec<glamx::IVec2>
+        impacted_voxels: &Vec<glamx::IVec2>,
+        props: &mut Vec<Prop>
     ) { 
         let voxels = space.collider_set.get_mut(self.collider_handle).unwrap().shape_mut().as_voxels_mut().unwrap();
 
@@ -147,9 +148,7 @@ impl Prop {
 
         // we mark down all the voxels we've already added to an island
         // this way we can make sure we dont use one of them as a seed (since we already know they don't belong to a new island)
-        let mut global_visited_voxels: HashSet<glamx::IVec2> = HashSet::new(); 
-
-        
+        let mut global_visited_voxels: HashSet<glamx::IVec2> = HashSet::new();         
 
         for (idx, seed) in potential_island_seeds.iter().enumerate() {
             
@@ -170,16 +169,35 @@ impl Prop {
 
             islands.push(new_island);
 
+        }
+        
+        if islands.len() <= 1 {
+            return;
+        }
+        let new_islands = &islands.split_off(1);
 
+        for island in new_islands {
+            let voxels: Vec<glamx::IVec2> = island.iter().cloned().collect();
+
+            let new_prop = Self::fragment_from_existing(&self, voxels, space, impacted_voxels);
+            log::debug!("new prop!");
+            props.push(new_prop);
         }
 
-        if let Some(island) = islands.get(1) {
+        // need to iterate twice due to borrowing issue that i can probably resolve
+        // we need to check if we should just ditch the hashmap for a vec because i dont think the membership speed increase is worth it
+        for island in new_islands {
+
+            let voxels = space.collider_set.get_mut(self.collider_handle).unwrap().shape_mut().as_voxels_mut().unwrap();
+            
             for voxel in island {
                 voxels.set_voxel(*voxel, false);
-                self.removed_voxels.push(*voxel);
-                
+                self.removed_voxels.push(*voxel); 
             }
+            
         }
+
+        
         
     }
 
@@ -190,6 +208,7 @@ impl Prop {
         impact: &BulletImpactData, 
         space: &mut Space, 
         area_id: AreaId,
+        props: &mut Vec<Prop>,
         _dissolved_pixels: &mut Vec<DissolvedPixel>
     ) {
 
@@ -292,7 +311,7 @@ impl Prop {
 
 
             let then = web_time::Instant::now();
-            self.break_apart(space, &impacted_voxels_vec);
+            self.break_apart(space, &impacted_voxels_vec, props);
             log::debug!("break apart: {:?}", then.elapsed());
             
 
@@ -563,6 +582,67 @@ impl Prop {
         space.rigid_body_set.get_mut(self.rigid_body_handle).unwrap().set_vels(velocity, true);
     }
 
+    pub fn fragment_from_existing(
+        other: &Self, 
+        fragment_voxels: Vec<glamx::IVec2>,
+        space: &mut Space,
+        impacted_voxels: &Vec<glamx::IVec2> // this is for a dumb fix
+    ) -> Self {
+
+        let other_body = space.rigid_body_set.get(other.rigid_body_handle).unwrap();
+
+        let body = space.rigid_body_set.insert(
+            RigidBodyBuilder::dynamic()
+                .pose(*other_body.position())
+                .linvel(other_body.linvel())
+                .angvel(other_body.angvel())
+        );
+
+  
+        let collider_handle = space.collider_set.insert_with_parent(
+            ColliderBuilder::voxels(vec2(other.scale * 4., other.scale * 4.), &fragment_voxels), 
+            body, 
+            &mut space.rigid_body_set
+        );
+
+        let other_collider = space.collider_set.get(other.collider_handle).unwrap();
+        let other_voxels = other_collider.shape().as_voxels().unwrap();
+        
+        // we need to make sure that all explicitly deleted voxels get transferred over to the new prop but the voxels that were removed in the most recent fire don't get added to the list until after this function is run so we needed to pass in this tick's impacted voxels so we can add it. there is probably a better way to do this but im tired and its 4am and this will work
+        let mut removed_voxels = other.removed_voxels.clone();
+        removed_voxels.extend(impacted_voxels);
+
+        for voxel in other_voxels.voxels() {
+            // draw over voxels that are part of the other prop
+            if !fragment_voxels.contains(&voxel.grid_coords)  {
+                removed_voxels.push(voxel.grid_coords);
+            }
+        }
+
+        removed_voxels.extend(&other.removed_voxels);
+
+        Self {
+            rigid_body_handle: body,
+            collider_handle: collider_handle,
+            sprite_path: other.sprite_path.clone(),
+            previous_velocity: other.previous_velocity,
+            material: other.material,
+            id: PropId::new(),
+            owner: other.owner,
+            last_sound_play: other.last_sound_play,
+            despawn: false,
+            last_pos_update: web_time::Instant::now(),
+            name: other.name.clone(),
+            context_menu_data: None,
+            layer: other.layer,
+            voxels_modified: true,
+            scale: other.scale,
+            shader_material: None,
+            mask: None,
+            removed_voxels,
+        }
+    }
+
     pub fn from_save(save: PropSave, space: &mut Space, textures: TextureLoader) -> Self {
 
         let body = space.rigid_body_set.insert(
@@ -572,14 +652,6 @@ impl Prop {
                 //.ccd_enabled(true)
                 // .soft_ccd_prediction(20.)
         );
-
-
-        // let collider = space.collider_set.insert_with_parent(
-        //     ColliderBuilder::cuboid(save.size.x / 2., save.size.y / 2.)
-        //         .mass(save.mass),
-        //     body,
-        //     &mut space.rigid_body_set
-        // );
         
 
         // this is so amazingly horrible for such a stupid reason i must make it better
@@ -900,19 +972,22 @@ impl Drawable for Prop {
         //     draw_rectangle(macroquad_pos.x - (2. * self.scale), macroquad_pos.y - (2. * self.scale), 4. * self.scale, 4. * self.scale, color);
 
         // }
-        for voxel in self.get_voxel_world_positions(draw_context.space) {
+        // for voxel in self.get_voxel_world_positions(draw_context.space) {
 
-            let mut color = match collider.shape().as_voxels().unwrap().voxel_state(voxel.0.grid_coords).unwrap().voxel_type() {
-                rapier2d::prelude::VoxelType::Empty => RED,
-                rapier2d::prelude::VoxelType::Vertex => GREEN,
-                rapier2d::prelude::VoxelType::Face => BLUE,
-                rapier2d::prelude::VoxelType::Interior => VIOLET,
-            };
+        //     let mut color = match collider.shape().as_voxels().unwrap().voxel_state(voxel.0.grid_coords).unwrap().voxel_type() {
+        //         rapier2d::prelude::VoxelType::Empty => RED,
+        //         rapier2d::prelude::VoxelType::Vertex => GREEN,
+        //         rapier2d::prelude::VoxelType::Face => BLUE,
+        //         rapier2d::prelude::VoxelType::Interior => VIOLET,
+        //     };
 
-            color.a = 0.5;
-            let macroquad_pos = rapier_to_macroquad(voxel.1);
-            draw_rectangle(macroquad_pos.x - (2. * self.scale), macroquad_pos.y - (2. * self.scale), 4. * self.scale, 4. * self.scale, color);
-        }
+        //     color.a = 0.5;
+        //     let macroquad_pos = rapier_to_macroquad(voxel.1);
+        //     draw_rectangle(macroquad_pos.x - (2. * self.scale), macroquad_pos.y - (2. * self.scale), 4. * self.scale, 4. * self.scale, color);
+            
+        // }
+
+        //draw_text(&format!("{:?}",self.id), macroquad_pos.x, macroquad_pos.y, 12., WHITE);
         
     }
 

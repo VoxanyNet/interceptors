@@ -49,11 +49,12 @@ impl SMG {
 
     pub fn fire(&mut self, ctx: &mut TickContext, weapon_fire_context: &mut WeaponFireContext) {
         
-        
+        //let bullet_inaccurary = Some(0.1);
+        let bullet_inaccuracy = None;
         self.weapon_base.fire(
             ctx, 
             weapon_fire_context, 
-            Some(0.1), 
+            bullet_inaccuracy, 
             Some(1)
         );
     }

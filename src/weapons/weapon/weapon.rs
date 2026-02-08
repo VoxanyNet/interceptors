@@ -4,7 +4,7 @@ use glamx::Pose2;
 use macroquad::{audio::{PlaySoundParams, play_sound}, color::Color, input::{is_mouse_button_down, is_mouse_button_released}, math::Vec2, rand::RandomRange};
 use rapier2d::{math::Vector, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 
-use crate::{ClientId, ClientTickContext, TickContext, area::AreaId, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, enemy::EnemyId, get_intersections, get_preview_resolution, player::{Facing, PlayerId}, prop::StupidDissolvedPixelVelocityUpdate, space::Space, texture_loader::ClientTextureLoader, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon_save::WeaponSave, weapon_fire_context::WeaponFireContext}};
+use crate::{ClientId, ClientTickContext, SwapIter, TickContext, area::AreaId, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, enemy::EnemyId, get_intersections, get_preview_resolution, player::{Facing, PlayerId}, prop::StupidDissolvedPixelVelocityUpdate, space::Space, texture_loader::ClientTextureLoader, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon_save::WeaponSave, weapon_fire_context::WeaponFireContext}};
 
 
 #[derive(Clone)]
@@ -339,14 +339,28 @@ impl WeaponBase {
             };
         }
 
-        for prop in &mut *weapon_fire_context.props {
+        let mut prop_iter = SwapIter::new(&mut weapon_fire_context.props);
+
+        while prop_iter.not_done() {
+            let (props, mut prop) = prop_iter.next();
 
             let collider = prop.collider_handle;
 
             for impact in impacts.iter().filter(|impact| {impact.impacted_collider == collider}) {
-                prop.handle_bullet_impact(ctx, &impact, weapon_fire_context.space, weapon_fire_context.area_id, weapon_fire_context.dissolved_pixels);
+                prop.handle_bullet_impact(
+                    ctx, 
+                    &impact, 
+                    weapon_fire_context.space, 
+                    weapon_fire_context.area_id,
+                    props, 
+                    weapon_fire_context.dissolved_pixels
+                );
             };
+
+            prop_iter.restore(prop);
+
         }
+     
 
         for dissolved_pixel in &mut *weapon_fire_context.dissolved_pixels {
 
