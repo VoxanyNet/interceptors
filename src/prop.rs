@@ -640,6 +640,8 @@ impl Prop {
 
         removed_voxels.extend(&other.removed_voxels);
 
+        log::debug!("{:?}", other.shader_material.is_some());
+
         Self {
             rigid_body_handle: body,
             collider_handle: collider_handle,
@@ -656,7 +658,7 @@ impl Prop {
             layer: other.layer,
             voxels_modified: true,
             scale: other.scale,
-            shader_material: None,
+            shader_material: other.shader_material.clone(),
             mask: None,
             removed_voxels,
         }
