@@ -1,31 +1,12 @@
 use std::{path::PathBuf, str::FromStr};
 
 use glamx::{Pose2, Vec2, vec2};
-use macroquad::{camera::Camera2D, input::{is_key_released, KeyCode}, math::Rect};
+use macroquad::{camera::Camera2D, color::WHITE, input::{KeyCode, is_key_released}, math::Rect, prelude::{gl_use_default_material, gl_use_material}, shapes::draw_rectangle, time::get_time, window::{clear_background, screen_height, screen_width}};
 use noise::{NoiseFn, Perlin};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    ClientId, 
-    ClientTickContext, 
-    Owner, 
-    Prefabs, 
-    ServerIO, 
-    SwapIter, 
-    TextureLoader, 
-    TickContext, 
-    ambiance::{Ambiance, AmbianceSave}, 
-    background::{Background, BackgroundSave}, 
-    bullet_trail::BulletTrail, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, 
-    dissolved_pixel::DissolvedPixel, 
-    drawable::{DrawContext, Drawable}, 
-    dropped_item::{DroppedItem, DroppedItemSave}, 
-    enemy::{Enemy, EnemySave, NewEnemyUpdate}, 
-    font_loader::FontLoader, player::{Facing, NewPlayer, Player, PlayerSave}, 
-    prop::{NewProp, Prop, PropId, PropSave}, 
-    rapier_mouse_world_pos, 
-    selectable_object_id::{SelectableObject, SelectableObjectId}, 
-    sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}, updates::NetworkPacket, uuid_u64, weapons::smg::weapon::SMG};
+    ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TextureLoader, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, material_loader::MaterialLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, selectable_object_id::{SelectableObject, SelectableObjectId}, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}, updates::NetworkPacket, uuid_u64, weapons::smg::weapon::SMG};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -142,6 +123,7 @@ impl Area {
         prefabs: &Prefabs, 
         camera: &Camera2D, 
         fonts: &FontLoader, 
+        materials: &MaterialLoader,
         elapsed: web_time::Duration,
         exclude_layers: Vec<u32>,
         editor: bool
@@ -172,12 +154,21 @@ impl Area {
             elapsed_time: &elapsed,
             default_camera: camera,
             editor,
+            materials
         };
 
         // backgrounds are handled seperately because they are always drawn below everything and dont have a layer
         for background in &mut self.backgrounds {
             background.draw(&draw_context).await
         }
+
+        // let material = draw_context.materials.get("materials/stars");
+        // material.set_uniform("Time", get_time() as f32);
+        // material.set_uniform("Resolution", vec2(500., 500.));
+
+        // gl_use_material(material);
+        // draw_rectangle(0., 0., 5000., 5000., WHITE);
+        // gl_use_default_material();
 
         for object in drawable_objects {
 

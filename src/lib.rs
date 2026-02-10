@@ -1,15 +1,15 @@
-use std::{collections::{HashMap, HashSet, VecDeque}, f32::consts::PI, fs::read_to_string, net::{TcpListener, TcpStream}, path::PathBuf, process::exit, str::FromStr};
+use std::{collections::{HashMap, HashSet, VecDeque}, f32::consts::PI, fs::read_to_string, net::{TcpListener, TcpStream}, path::{Path, PathBuf}, process::exit, str::FromStr};
 
 use derive_more::From;
 use ewebsock::{WsReceiver, WsSender};
 use glamx::IVec2;
-use macroquad::{camera::Camera2D, color::{Color, WHITE}, input::{is_key_down, is_key_released, mouse_position, KeyCode}, math::{vec2, Rect, Vec2}, shapes::DrawRectangleParams, texture::{draw_texture_ex, DrawTextureParams}};
+use macroquad::{camera::Camera2D, color::{Color, WHITE}, input::{KeyCode, is_key_down, is_key_released, mouse_position}, math::{Rect, Vec2, vec2}, prelude::load_material, shapes::DrawRectangleParams, texture::{DrawTextureParams, draw_texture_ex}};
 use rapier2d::{parry::query::Ray, prelude::{AxisMask, ColliderBuilder, ColliderHandle, QueryFilter, RigidBodyHandle, VoxelData, Voxels, VoxelsChunkRef}};
 use serde::{Deserialize, Serialize};
 use tungstenite::WebSocket;
 use include_dir::{Dir, include_dir};
 
-use crate::{all_keys::ALL_KEYS, font_loader::FontLoader, player::Facing, screen_shake::ScreenShakeParameters, server_texture_loader::ServerTextureLoader, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, weapons::weapon_type::WeaponType};
+use crate::{all_keys::ALL_KEYS, font_loader::FontLoader, material_loader::MaterialLoader, player::Facing, screen_shake::ScreenShakeParameters, server_texture_loader::ServerTextureLoader, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, weapons::weapon_type::WeaponType};
 
 pub mod space;
 pub mod updates;
@@ -898,16 +898,53 @@ impl Prefabs {
 
 #[derive(Clone)]
 /// Safe to clone because these are all handles
+/// Assets is a terrible name because I wouldn't really consider some of these to be 'assets'
+/// 'DynamicContent' might be a better name
 pub struct Assets {
     pub sounds: SoundLoader,
     pub fonts: FontLoader,
     pub textures: ClientTextureLoader,
-    pub prefabs: Prefabs
+    pub prefabs: Prefabs,
+    pub material_loader: MaterialLoader
 }
 
 pub struct ServerAssets {
     pub textures: ServerTextureLoader,
     pub prefabs: Prefabs
+}
+
+pub fn load_materials() -> MaterialLoader {
+    let mut material_loader = MaterialLoader::new();
+
+    let materials = include_dir!("materials");
+
+    let glob = "*";
+    
+
+    for entry in materials.find(glob).unwrap() {
+        
+        // we only want to walk through directories
+        if let Some(entry_directory) = entry.as_dir() {
+            
+            let material_meta = serde_json::from_str(
+                entry_directory.get_file(entry_directory.path().join("meta.json")).unwrap().contents_utf8().unwrap()
+            ).unwrap();
+
+            
+            let fragment_shader = entry_directory.get_file(entry_directory.path().join("fragment.glsl")).unwrap().contents_utf8().unwrap().to_string();
+            let vertex_shader = entry_directory.get_file(entry_directory.path().join("vertex.glsl")).unwrap().contents_utf8().unwrap().to_string();
+
+            material_loader.load(
+                PathBuf::from("materials/").join(entry_directory.path()), 
+                material_meta, 
+                vertex_shader, 
+                fragment_shader
+            );
+        }
+
+    }
+
+    material_loader
 }
 
 pub fn load_prefabs() -> Prefabs {
@@ -985,12 +1022,15 @@ pub fn load_assets_server() -> ServerAssets {
         prefabs,
     }
 }
+
 pub async fn load_assets() -> Assets {
 
     let mut sounds = SoundLoader::new();
     let mut fonts = FontLoader::new();
     let mut textures = ClientTextureLoader::new();
+
     let prefabs = load_prefabs();
+    let materials = load_materials();
     
 
     let glob = "**/*";
@@ -1003,8 +1043,6 @@ pub async fn load_assets() -> Assets {
 
 
         let path = PathBuf::from("assets/").join(asset.path().to_path_buf());
-
-
 
         let asset = match asset.as_file() {
             Some(asset) => asset,
@@ -1060,6 +1098,7 @@ pub async fn load_assets() -> Assets {
         fonts,
         textures,
         prefabs,
+        material_loader: materials
     }
 
 }

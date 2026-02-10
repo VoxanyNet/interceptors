@@ -3389,7 +3389,9 @@
         -49.501495
       ],
       "layer": 1,
-      "one_way": false
+      "one_way": false,
+      "health": null,
+      "material": "None"
     },
     {
       "size": [
@@ -3401,7 +3403,9 @@
         197.41214
       ],
       "layer": 1,
-      "one_way": true
+      "one_way": true,
+      "health": null,
+      "material": "None"
     },
     {
       "size": [
@@ -3413,7 +3417,9 @@
         15.119232
       ],
       "layer": 1,
-      "one_way": false
+      "one_way": false,
+      "health": null,
+      "material": "None"
     }
   ],
   "players": [],
@@ -3432,7 +3438,31 @@
       "parallax": 0.1
     }
   ],
-  "generic_physics_props": [],
+  "generic_physics_props": [
+    {
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 1.0,
+          "im": -0.00010430733
+        },
+        "translation": [
+          402.8734,
+          20.501276
+        ]
+      },
+      "mass": 1856.0,
+      "sprite_path": "assets\\anvil.png",
+      "id": {
+        "id": 2026656159167827974
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Anvil",
+      "layer": 0,
+      "voxels": null
+    }
+  ],
   "enemies": [],
   "computer_pos": null,
   "dropped_items": [],

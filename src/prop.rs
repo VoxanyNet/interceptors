@@ -171,7 +171,7 @@ impl Prop {
         }
         
         if islands.len() <= 1 {
-            log::debug!("No new islands");
+    
             return;
         }
         let new_islands = &islands.split_off(1);
@@ -807,23 +807,6 @@ impl Prop {
         draw_context: &crate::drawable::DrawContext,
         texture: &Texture2D
     ) {
-
-        if self.shader_material.is_none() {
-            self.shader_material = Some(
-                load_material(
-                    macroquad::prelude::ShaderSource::Glsl 
-                    { 
-                        vertex: DESTRUCTION_MASK_VERTEXT_SHADER, 
-                        fragment: DESTRUCTION_MASK_FRAGMENT_SHADER 
-                    }, 
-                    MaterialParams { 
-                        uniforms: vec![], 
-                        textures: vec!["Mask".to_string()],
-                        ..Default::default()
-                    }
-                ).unwrap()
-            )
-        }
         
         if self.mask.is_none() {
             self.mask = Some(
@@ -895,7 +878,7 @@ impl EditorContextMenu for Prop {
         let space = space.unwrap();
 
         let pos = space.rigid_body_set.get(self.rigid_body_handle).unwrap().translation();
-        let size = space.collider_set.get(self.collider_handle).unwrap().shape().as_cuboid().unwrap().half_extents;
+        let size = space.collider_set.get(self.collider_handle).unwrap().shape().as_voxels().unwrap().local_aabb().half_extents();
 
         let mpos = rapier_to_macroquad(pos);
 
@@ -948,8 +931,11 @@ impl Drawable for Prop {
         self.draw_mask(draw_context, texture);
 
         let mask = self.mask.as_ref().unwrap();
-        let material = self.shader_material.as_ref().unwrap();
+
+        let then = web_time::Instant::now();
+        let material = draw_context.materials.get("materials/destruction");
         material.set_texture("Mask", mask.texture.clone());
+        log::debug!("Loading material: {:?}", then.elapsed());
 
         let body = draw_context.space.rigid_body_set.get(self.rigid_body_handle).unwrap();
         let collider = draw_context.space.collider_set.get(self.collider_handle).unwrap();
@@ -980,8 +966,6 @@ impl Drawable for Prop {
         );
         gl_use_default_material();
 
-        draw_circle(macroquad_pos.x, macroquad_pos.y, 2., RED);
-
         let mut color = WHITE;
         color.a = 0.5;
         
@@ -993,20 +977,20 @@ impl Drawable for Prop {
         //     draw_rectangle(macroquad_pos.x - (2. * self.scale), macroquad_pos.y - (2. * self.scale), 4. * self.scale, 4. * self.scale, color);
 
         // }
-        // for voxel in self.get_voxel_world_positions(draw_context.space) {
+        for voxel in self.get_voxel_world_positions(draw_context.space) {
 
-        //     let mut color = match collider.shape().as_voxels().unwrap().voxel_state(voxel.0.grid_coords).unwrap().voxel_type() {
-        //         rapier2d::prelude::VoxelType::Empty => RED,
-        //         rapier2d::prelude::VoxelType::Vertex => GREEN,
-        //         rapier2d::prelude::VoxelType::Face => BLUE,
-        //         rapier2d::prelude::VoxelType::Interior => VIOLET,
-        //     };
+            let mut color = match collider.shape().as_voxels().unwrap().voxel_state(voxel.0.grid_coords).unwrap().voxel_type() {
+                rapier2d::prelude::VoxelType::Empty => RED,
+                rapier2d::prelude::VoxelType::Vertex => GREEN,
+                rapier2d::prelude::VoxelType::Face => BLUE,
+                rapier2d::prelude::VoxelType::Interior => VIOLET,
+            };
 
-        //     color.a = 0.5;
-        //     let macroquad_pos = rapier_to_macroquad(voxel.1);
-        //     draw_rectangle(macroquad_pos.x - (2. * self.scale), macroquad_pos.y - (2. * self.scale), 4. * self.scale, 4. * self.scale, color);
+            color.a = 0.5;
+            let macroquad_pos = rapier_to_macroquad(voxel.1);
+            draw_rectangle(macroquad_pos.x - (2. * self.scale), macroquad_pos.y - (2. * self.scale), 4. * self.scale, 4. * self.scale, color);
             
-        // }
+        }
 
         //draw_text(&format!("{:?}",self.id), macroquad_pos.x, macroquad_pos.y, 12., WHITE);
         

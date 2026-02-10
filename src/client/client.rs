@@ -1,6 +1,6 @@
 use std::{collections::HashMap, process::exit};
 
-use interceptors_lib::{Assets, ClientIO, ClientId, ClientTickContext, Prefabs, area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, player::{ItemSlot, Player}, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::ClientTextureLoader, updates::{NetworkPacket, Ping}, weapons::weapon_type::WeaponType, world::World};
+use interceptors_lib::{Assets, ClientIO, ClientId, ClientTickContext, Prefabs, area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, material_loader::MaterialLoader, player::{ItemSlot, Player}, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::ClientTextureLoader, updates::{NetworkPacket, Ping}, weapons::weapon_type::WeaponType, world::World};
 use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, WHITE}, input::{KeyCode, is_key_released, show_mouse}, math::{Rect, vec2}, prelude::{Material, ShaderSource, gl_use_default_material, load_material}, text::draw_text, texture::{DrawTextureParams, RenderTarget, draw_texture_ex, render_target}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
 use rapier2d::math::Vector;
 
@@ -28,6 +28,7 @@ pub struct Client {
     spawned: bool,
     fonts: FontLoader,
     test_button: Button,
+    material_loader: MaterialLoader
 }
 
 impl Client {
@@ -158,8 +159,8 @@ impl Client {
             spawned: false,
             camera,
             fonts: assets.fonts,
-            test_button
-
+            test_button,
+            material_loader: assets.material_loader
         }
         
 
@@ -649,7 +650,15 @@ impl Client {
 
         clear_background(BLACK);
 
-        self.world.draw(&mut self.textures, &self.camera_rect, &self.prefab_data, &self.camera, &self.fonts, self.start.elapsed()).await;
+        self.world.draw(
+            &mut self.textures, 
+            &self.material_loader,
+            &self.camera_rect, 
+            &self.prefab_data, 
+            &self.camera, 
+            &self.fonts, 
+            self.start.elapsed()
+        ).await;
 
         //self.phone.draw(&self.textures, &self.camera_rect);
                 
@@ -667,7 +676,7 @@ impl Client {
         draw_fps();
         
 
-        draw_text(&format!("{:?}", then.elapsed()), 0., 40., 20., WHITE);
+        draw_text(&format!("Tick time: {:?}", then.elapsed()), 0., 60., 20., WHITE);
 
         next_frame().await;
 

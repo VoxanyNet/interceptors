@@ -1,0 +1,13 @@
+{
+    "textures": [],
+    "uniforms": [
+        {
+            "name": "Time",
+            "uniform_type": "Float1"
+        }, 
+        {
+            "name": "Resolution",
+            "uniform_type": "Float2"
+        }
+    ]
+}
