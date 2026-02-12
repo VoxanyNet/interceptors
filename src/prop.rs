@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use glamx::{IVec2, Pose2, vec2};
 use image::{GenericImageView, Pixel};
 use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, BLUE, Color, GREEN, RED, VIOLET, WHITE}, math::{Rect, Vec2}, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{draw_circle, draw_rectangle}, text::draw_text, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex, render_target}, window::clear_background};
-use rapier2d::prelude::{AxisMask, ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity, VoxelData};
+use rapier2d::prelude::{AxisMask, ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyType, RigidBodyVelocity, VoxelData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::AreaId, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
@@ -272,6 +272,7 @@ impl Prop {
         
         // if health < 0 {}
 
+        log::debug!("Handling bullet impact");
         // Server cannot dissolve props right now but we arent even going to do that so im going to worry about it
         if let TickContext::Client(_ctx) = ctx {
             //self.dissolve(ctx.textures, space, dissolved_pixels, Some(ctx), area_id);
@@ -666,11 +667,17 @@ impl Prop {
 
     pub fn from_save(save: PropSave, space: &mut Space, textures: TextureLoader) -> Self {
 
+        let body_builder = match save.rigid_body_type {
+            RigidBodyType::Dynamic => RigidBodyBuilder::dynamic(),
+            RigidBodyType::Fixed => RigidBodyBuilder::fixed(),
+            RigidBodyType::KinematicPositionBased => RigidBodyBuilder::kinematic_position_based(),
+            RigidBodyType::KinematicVelocityBased => RigidBodyBuilder::kinematic_velocity_based()
+        };
+
         let body = space.rigid_body_set.insert(
-            RigidBodyBuilder::dynamic()
+            body_builder
                 .pose(save.pos)
-                
-                //.ccd_enabled(true)
+                .ccd_enabled(true)
                 // .soft_ccd_prediction(20.)
         );
         
@@ -681,6 +688,8 @@ impl Prop {
 
                 let image = client_texture_loader.get(&save.sprite_path).get_texture_data();
 
+                let max_voxel_y = (image.height() as i32 / 4) - 1;
+
                 match &save.voxels {
                     Some(voxels) => voxels.clone(),
                     None => {
@@ -689,11 +698,42 @@ impl Prop {
 
                         for x in (0..image.width() as u32).step_by(4)  {
                             for y in (0..image.height() as u32).step_by(4)  {
-                                let color = image.get_pixel(x, y);
+                                // create an average of the 4x4 neighborhood
+                                // start with bottom left
+                                let mut color = image.get_pixel(x, y);
+                                let mut pixel_count = 1;
+
+                                for x_offset in 0..4 {
+                                    for y_offset in 0..4 {
+                                        let pixel = image.get_pixel(x + x_offset, y + y_offset);
+
+                                        color.r += pixel.r;
+                                        color.g += pixel.g;
+                                        color.b += pixel.b;
+                                        color.a += pixel.a;
+
+                                        pixel_count += 1;
+
+                                    }
+                                }
+                            
+
+                                color.r /= pixel_count as f32;
+                                color.g /= pixel_count as f32;
+                                color.b /= pixel_count as f32;
+                                //color.a /= pixel_count as f32;
+                                
 
                                 if color.a > 0. {
                                     
-                                    voxels.push(IVec2::new(x as i32 / 4, y as i32 / 4));
+                                    let voxel_x = x as i32 / 4;
+                                    let current_voxel_y = y as i32 / 4;
+
+                                    let flipped_y = max_voxel_y - current_voxel_y;
+
+                                    voxels.push(
+                                        IVec2::new(voxel_x, flipped_y)
+                                    );
                                 } else {
                                     
                                 }
@@ -798,7 +838,8 @@ impl Prop {
             name: self.name.clone(),
             layer: self.layer,
             voxels,
-            scale: self.scale
+            scale: self.scale,
+            rigid_body_type: body.body_type()
         }
     }
 
@@ -935,7 +976,7 @@ impl Drawable for Prop {
         let then = web_time::Instant::now();
         let material = draw_context.materials.get("materials/destruction");
         material.set_texture("Mask", mask.texture.clone());
-        log::debug!("Loading material: {:?}", then.elapsed());
+        //log::debug!("Loading material: {:?}", then.elapsed());
 
         let body = draw_context.space.rigid_body_set.get(self.rigid_body_handle).unwrap();
         let collider = draw_context.space.collider_set.get(self.collider_handle).unwrap();
@@ -1023,9 +1064,14 @@ pub struct PropSave {
     pub layer: u32,
     // only provide voxels if they have been modified from what the image would generate
     #[serde(default)]
-    pub voxels: Option<Vec<glamx::IVec2>>
+    pub voxels: Option<Vec<glamx::IVec2>>,
+    #[serde(default="default_body_type")]
+    pub rigid_body_type: RigidBodyType
 }
 
+fn default_body_type() -> RigidBodyType {
+    RigidBodyType::Dynamic
+}
 
 fn default_prop_name() -> String {
     "Unnamed Prop".to_string()

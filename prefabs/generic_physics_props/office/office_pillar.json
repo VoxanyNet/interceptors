@@ -1,0 +1,22 @@
+{
+  "scale": 2.0,
+  "pos": {
+    "rotation": {
+      "re": 1.0,
+      "im": 0.0
+    },
+    "translation": [
+      0.0,
+      0.0
+    ]
+  },
+  "mass": 500.0,
+  "sprite_path": "assets/office/pillar.png",
+  "id": null,
+  "owner": null,
+  "material": "None",
+  "name": "Pillar",
+  "layer": 0,
+  "voxels": null,
+  "rigid_body_type": "Fixed"
+}

@@ -1,0 +1,65 @@
+{
+  "spawn_point": [
+    440.0,
+    230.0
+  ],
+  "decorations": [
+    {
+      "pos": [
+        164.93298,
+        78.312195
+      ],
+      "size": [
+        1345.0,
+        580.0
+      ],
+      "sprite_path": "assets/office/back.png",
+      "animated_sprite_paths": null,
+      "frame_duration": null,
+      "layer": 0
+    }
+  ],
+  "clips": [
+    {
+      "size": [
+        1046.89,
+        39.653137
+      ],
+      "pos": [
+        834.079,
+        82.37436
+      ],
+      "layer": 1,
+      "one_way": false,
+      "health": null,
+      "material": "None"
+    }
+  ],
+  "players": [],
+  "backgrounds": [
+    {
+      "repeat": true,
+      "pos": [
+        493.0,
+        360.0
+      ],
+      "sprite_path": "assets/checkerboard.png",
+      "size": [
+        1000.0,
+        650.0
+      ],
+      "parallax": 0.25
+    }
+  ],
+  "generic_physics_props": [],
+  "enemies": [],
+  "computer_pos": null,
+  "dropped_items": [],
+  "max_camera_y": 0.0,
+  "minimum_camera_width": 1920.0,
+  "minimum_camera_height": 1080.0,
+  "despawn_y": 0.0,
+  "master": null,
+  "ambiance": [],
+  "tiles": []
+}

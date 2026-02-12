@@ -6,6 +6,7 @@ use image::{GenericImageView, ImageReader};
 use interceptors_lib::{background::BackgroundSave, decoration::DecorationSave, prop::{Material, PropSave}};
 use macroquad::math::{Vec2, vec2};
 use colored::Colorize;
+use rapier2d::prelude::RigidBodyType;
 use strum::IntoEnumIterator;
 
 use crate::prefab_type::PrefabType;
@@ -147,6 +148,8 @@ fn asset_to_prefab(asset_path: String, prefab_type: Option<PrefabType>, scale: O
             )
         );
     
+    fs::create_dir_all(prefab_save_directory).unwrap();
+
     println!("{}", &json_string);
     println!("Press enter to save prefab to {}...", &prefab_save_path.to_string_lossy());
 
@@ -249,6 +252,34 @@ fn asset_to_prop(relative_path: &PathBuf, scale: Option<f32>) -> Result<String, 
     println!("Enter name: ");
     let name = get_user_input();
 
+    println!("Select body type: ");
+    let body_types = vec![RigidBodyType::Fixed, RigidBodyType::Dynamic];
+    for (index, body_type) in body_types.iter().enumerate() {
+        println!("({}) {:?}", index, body_type);
+    }
+
+    let body_type_selection_index: usize = loop {
+        match get_user_input().parse::<usize>() {
+            Ok(index) => break index,
+            Err(_e) => {
+                println!("Failed to parse body type selection index");
+                continue;
+            },
+        }
+    };  
+
+    let body_type: &RigidBodyType = loop {
+
+        match body_types
+            .get(body_type_selection_index) {
+                Some(body_type) => break body_type,
+                None => {
+                    println!("Invalid body type selection");
+                    continue;
+                },
+            }
+    };
+
     println!("Select material: ");
 
     for (index, material) in Material::iter().enumerate() {
@@ -294,7 +325,8 @@ fn asset_to_prop(relative_path: &PathBuf, scale: Option<f32>) -> Result<String, 
         material: *prop_material,
         name,
         layer: 0,
-        voxels: None
+        voxels: None,
+        rigid_body_type: *body_type
     };
 
     return serde_json::to_string_pretty(&prop_save)

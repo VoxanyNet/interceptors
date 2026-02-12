@@ -3443,15 +3443,15 @@
       "scale": 2.0,
       "pos": {
         "rotation": {
-          "re": 1.0,
-          "im": -0.00010430733
+          "re": 0.99999994,
+          "im": 0.0005162247
         },
         "translation": [
-          402.8734,
-          20.501276
+          413.86523,
+          20.43247
         ]
       },
-      "mass": 1856.0,
+      "mass": 2688.0,
       "sprite_path": "assets\\anvil.png",
       "id": {
         "id": 2026656159167827974
@@ -3459,6 +3459,282 @@
       "owner": null,
       "material": "None",
       "name": "Anvil",
+      "layer": 0,
+      "voxels": null
+    },
+    {
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.99999976,
+          "im": 0.00075917837
+        },
+        "translation": [
+          643.58514,
+          20.405724
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets/stone1.png",
+      "id": {
+        "id": 2569150827966313474
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Stone 1",
+      "layer": 0,
+      "voxels": null
+    },
+    {
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.99999994,
+          "im": -0.00041549912
+        },
+        "translation": [
+          556.5306,
+          20.399994
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets/stone1.png",
+      "id": {
+        "id": 16394673950505219769
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Stone 1",
+      "layer": 0,
+      "voxels": null
+    },
+    {
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.9999985,
+          "im": -0.0017491033
+        },
+        "translation": [
+          555.75226,
+          60.33192
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets/stone1.png",
+      "id": {
+        "id": 8857719956483570859
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Stone 1",
+      "layer": 0,
+      "voxels": null
+    },
+    {
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.005715379,
+          "im": -0.9999837
+        },
+        "translation": [
+          641.211,
+          132.23941
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets/stone1.png",
+      "id": {
+        "id": 15628863126096868104
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Stone 1",
+      "layer": 0,
+      "voxels": null
+    },
+    {
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.99999696,
+          "im": -0.0024678542
+        },
+        "translation": [
+          569.13434,
+          100.26814
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets/stone1.png",
+      "id": {
+        "id": 12865224116438485321
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Stone 1",
+      "layer": 0,
+      "voxels": null
+    },
+    {
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": -0.000082600476,
+          "im": 1.0
+        },
+        "translation": [
+          542.43646,
+          20.511948
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets/stone1.png",
+      "id": {
+        "id": 9881816559343561899
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Stone 1",
+      "layer": 0,
+      "voxels": null
+    },
+    {
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 1.0,
+          "im": -0.00013110682
+        },
+        "translation": [
+          256.45035,
+          20.42017
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets/stone1.png",
+      "id": {
+        "id": 5212068574315005230
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Stone 1",
+      "layer": 0,
+      "voxels": null
+    },
+    {
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.87601453,
+          "im": -0.48228478
+        },
+        "translation": [
+          323.28418,
+          55.202255
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets/stone1.png",
+      "id": {
+        "id": 5061637915209192051
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Stone 1",
+      "layer": 0,
+      "voxels": null
+    },
+    {
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": -0.020867407,
+          "im": 0.9997823
+        },
+        "translation": [
+          255.76848,
+          21.139679
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets/stone1.png",
+      "id": {
+        "id": 487881039573139487
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Stone 1",
+      "layer": 0,
+      "voxels": null
+    },
+    {
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.9922537,
+          "im": 0.12422784
+        },
+        "translation": [
+          211.64261,
+          91.064835
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets/stone1.png",
+      "id": {
+        "id": 1096373251541175280
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Stone 1",
+      "layer": 0,
+      "voxels": null
+    },
+    {
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": -0.9270897,
+          "im": -0.37483972
+        },
+        "translation": [
+          335.88876,
+          121.41405
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets/stone1.png",
+      "id": {
+        "id": 4917776300493226690
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Stone 1",
+      "layer": 0,
+      "voxels": null
+    },
+    {
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": -0.99999934,
+          "im": -0.0011924338
+        },
+        "translation": [
+          480.43723,
+          100.43065
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets/stone1.png",
+      "id": {
+        "id": 12692929360905045975
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Stone 1",
       "layer": 0,
       "voxels": null
     }

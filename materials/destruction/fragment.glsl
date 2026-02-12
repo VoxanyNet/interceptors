@@ -11,8 +11,8 @@ void main() {
     vec4 res = texture2D(Texture, uv);
     vec4 mask = texture2D(Mask, uv);
 
-    // If the mask pixel is dark, don't draw this pixel
-    if (mask.r < 0.5) {
+    // Discard if the mask is dark OR if the original sprite was transparent
+    if (mask.r < 0.5 || res.a < 0.1) {
         discard;
     }
 
