@@ -161,6 +161,8 @@ impl Prop {
                 &voxels
             );
 
+            
+
 
             for voxel in &new_island {
                 global_visited_voxels.insert(*voxel);
@@ -190,9 +192,16 @@ impl Prop {
 
             let voxels = space.collider_set.get_mut(self.collider_handle).unwrap().shape_mut().as_voxels_mut().unwrap();
             
-            for voxel in island {
-                voxels.set_voxel(*voxel, false);
-                self.removed_voxels.push(*voxel); 
+            for voxel_index in island {
+    
+
+                if impacted_voxels.contains(voxel_index) {
+                    continue;
+                }
+                
+                voxels.set_voxel(*voxel_index, false);
+                self.removed_voxels.push(*voxel_index);
+                
             }
             
         }
@@ -620,7 +629,7 @@ impl Prop {
 
   
         let collider_handle = space.collider_set.insert_with_parent(
-            ColliderBuilder::voxels(vec2(other.scale * 4., other.scale * 4.), &fragment_voxels), 
+            ColliderBuilder::voxels(vec2(8., 8.), &fragment_voxels), 
             body, 
             &mut space.rigid_body_set
         );
@@ -688,7 +697,7 @@ impl Prop {
 
                 let image = client_texture_loader.get(&save.sprite_path).get_texture_data();
 
-                let max_voxel_y = (image.height() as i32 / 4) - 1;
+                let max_voxel_y = ((image.height() * save.scale as usize) as i32 / 8) - 1;
 
                 match &save.voxels {
                     Some(voxels) => voxels.clone(),
@@ -696,16 +705,34 @@ impl Prop {
 
                         let mut voxels: Vec<IVec2> = Vec::new();
 
-                        for x in (0..image.width() as u32).step_by(4)  {
-                            for y in (0..image.height() as u32).step_by(4)  {
-                                // create an average of the 4x4 neighborhood
+                        
+                        for scaled_x in (0..(image.width() * save.scale as usize) as u32).step_by(8)  {
+                            for scaled_y in (0..(image.height() * save.scale as usize) as u32).step_by(8)  {
+                                // create an average of the 8x8 neighborhood
                                 // start with bottom left
-                                let mut color = image.get_pixel(x, y);
+                                
                                 let mut pixel_count = 1;
 
-                                for x_offset in 0..4 {
-                                    for y_offset in 0..4 {
-                                        let pixel = image.get_pixel(x + x_offset, y + y_offset);
+                                let mut color = BLACK;
+                                color.a = 0.;
+
+                                for x_offset in 0..8 {
+                                    for y_offset in 0..8 {
+
+                                        if scaled_x + x_offset >= (image.width() * save.scale as usize) as u32 {
+                                            log::debug!("Skipping pixel {} as it was too far to the right", scaled_x + x_offset);
+                                            continue;
+                                        } 
+
+                                        if scaled_y + y_offset >= (image.height() * save.scale as usize) as u32 {
+                                            log::debug!("Skipping pixel {} as it was too down", scaled_x + x_offset);
+                                            continue;
+                                        }  
+                                        
+                                        
+                                        // we need to divide by the scale to get the closest ACTUAL pixel. 
+                                        let pixel = image.get_pixel((scaled_x + x_offset) / save.scale as u32, (scaled_y + y_offset) / save.scale as u32);
+                                        
 
                                         color.r += pixel.r;
                                         color.g += pixel.g;
@@ -726,8 +753,8 @@ impl Prop {
 
                                 if color.a > 0. {
                                     
-                                    let voxel_x = x as i32 / 4;
-                                    let current_voxel_y = y as i32 / 4;
+                                    let voxel_x = scaled_x as i32 / 8;
+                                    let current_voxel_y = scaled_y as i32 / 8;
 
                                     let flipped_y = max_voxel_y - current_voxel_y;
 
@@ -771,7 +798,7 @@ impl Prop {
         
         let collider_handle = space.collider_set.insert_with_parent(
             ColliderBuilder::voxels(
-                glamx::Vec2::new(save.scale * 4., save.scale * 4.,),
+                glamx::Vec2::new(8., 8.,),
                 &voxels
             ), 
             body, 
@@ -875,11 +902,14 @@ impl Prop {
 
 
         for removed_voxel in &self.removed_voxels {
+
+            // THIS MASK TEXTURE IS SCALED ALONGSIDE THE REAL TEXTURE SO THE VOXEL SIZE NEEDS TO BE DIVIDED TO KEEP IT CONSTANT
+            //log::debug!("drawing masked voxel at x: {}, y: {}", removed_voxel.x * 8, removed_voxel.y * 8);
             draw_rectangle(
-                removed_voxel.x as f32 * 4., // we dont multiply by the scale here because the texture is scaled when it is drawn!
-                (((removed_voxel.y as f32 * 4.) * -1.) + texture.height()) - 4., // need to convert to macroquad coords. THIS -4 COSTED ME HOURS
-                4., 
-                4., 
+                (removed_voxel.x as f32 * (8. / self.scale)), 
+                ((((removed_voxel.y as f32 * (8. / self.scale)) * -1.) + texture.height()) - (8. / self.scale)),
+                8. / self.scale, 
+                8. / self.scale, 
                 BLACK
             );
             
@@ -1029,7 +1059,7 @@ impl Drawable for Prop {
 
             color.a = 0.5;
             let macroquad_pos = rapier_to_macroquad(voxel.1);
-            draw_rectangle(macroquad_pos.x - (2. * self.scale), macroquad_pos.y - (2. * self.scale), 4. * self.scale, 4. * self.scale, color);
+            draw_rectangle(macroquad_pos.x - (4.), macroquad_pos.y - (4.), 8., 8., color);
             
         }
 

@@ -6,12 +6,12 @@
   "decorations": [
     {
       "pos": [
-        164.93298,
-        78.312195
+        170.0,
+        87.0
       ],
       "size": [
-        1345.0,
-        580.0
+        1516.0,
+        652.0
       ],
       "sprite_path": "assets/office/back.png",
       "animated_sprite_paths": null,
@@ -22,12 +22,12 @@
   "clips": [
     {
       "size": [
-        1046.89,
+        1166.89,
         39.653137
       ],
       "pos": [
-        834.079,
-        82.37436
+        930.6815,
+        9.657379
       ],
       "layer": 1,
       "one_way": false,
@@ -51,7 +51,128 @@
       "parallax": 0.25
     }
   ],
-  "generic_physics_props": [],
+  "generic_physics_props": [
+    {
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 1.0,
+          "im": 0.0
+        },
+        "translation": [
+          345.0,
+          242.0
+        ]
+      },
+      "mass": 27840.0,
+      "sprite_path": "assets/office/floor.png",
+      "id": {
+        "id": 8023157446943151401
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Floor",
+      "layer": 0,
+      "voxels": null,
+      "rigid_body_type": "Fixed"
+    },
+    {
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 1.0,
+          "im": 0.0
+        },
+        "translation": [
+          735.0,
+          277.0
+        ]
+      },
+      "mass": 9216.0,
+      "sprite_path": "assets/office/office_pillar.png",
+      "id": {
+        "id": 454417842208166410
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Pillar",
+      "layer": 0,
+      "voxels": null,
+      "rigid_body_type": "Fixed"
+    },
+    {
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 1.0,
+          "im": 0.0
+        },
+        "translation": [
+          1075.0,
+          277.0
+        ]
+      },
+      "mass": 9216.0,
+      "sprite_path": "assets/office/office_pillar.png",
+      "id": {
+        "id": 552679399733325868
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Pillar",
+      "layer": 0,
+      "voxels": null,
+      "rigid_body_type": "Fixed"
+    },
+    {
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 1.0,
+          "im": 0.0
+        },
+        "translation": [
+          733.51416,
+          37.729248
+        ]
+      },
+      "mass": 9216.0,
+      "sprite_path": "assets/office/office_pillar.png",
+      "id": {
+        "id": 15436045300724327460
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Pillar",
+      "layer": 0,
+      "voxels": null,
+      "rigid_body_type": "Fixed"
+    },
+    {
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 1.0,
+          "im": 0.0
+        },
+        "translation": [
+          1076.1136,
+          37.729248
+        ]
+      },
+      "mass": 9216.0,
+      "sprite_path": "assets/office/office_pillar.png",
+      "id": {
+        "id": 15688961072468002526
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Pillar",
+      "layer": 0,
+      "voxels": null,
+      "rigid_body_type": "Fixed"
+    }
+  ],
   "enemies": [],
   "computer_pos": null,
   "dropped_items": [],

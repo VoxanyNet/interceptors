@@ -11,7 +11,7 @@
     ]
   },
   "mass": 500.0,
-  "sprite_path": "assets/office/pillar.png",
+  "sprite_path": "assets/office/office_pillar.png",
   "id": null,
   "owner": null,
   "material": "None",

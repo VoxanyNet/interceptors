@@ -31,8 +31,10 @@
             "cargo": {
                 "args": [
                     "build",
+                    "-F no-sound",
                     "--bin=client",
                     "--package=interceptors"
+
                 ],
                 "filter": {
                     "name": "client",

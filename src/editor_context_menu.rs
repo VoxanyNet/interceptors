@@ -108,8 +108,15 @@ pub trait EditorContextMenu {
         
         menu_data.data_editor_last_edit = Some(fs::metadata(&menu_data.data_editor_file_path).unwrap().created().unwrap());
 
+        #[cfg(target_os = "linux")]
         Command::new("codium")
             .arg(&menu_data.data_editor_file_path)
+            .spawn().unwrap();
+
+        #[cfg(target_os = "windows")]
+        Command::new("powershell")
+            .arg("-Command")
+            .arg(format!("codium \"{}\"", &menu_data.data_editor_file_path.to_string_lossy().to_string()))
             .spawn().unwrap();
     }
 
