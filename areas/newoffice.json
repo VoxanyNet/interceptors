@@ -67,7 +67,7 @@
       "mass": 27840.0,
       "sprite_path": "assets/office/floor.png",
       "id": {
-        "id": 8023157446943151401
+        "id": 8023157446943151401 
       },
       "owner": null,
       "material": "None",
@@ -98,7 +98,7 @@
       "name": "Pillar",
       "layer": 0,
       "voxels": null,
-      "rigid_body_type": "Fixed"
+      "rigid_body_type": "Dynamic"
     },
     {
       "scale": 2.0,
@@ -122,7 +122,7 @@
       "name": "Pillar",
       "layer": 0,
       "voxels": null,
-      "rigid_body_type": "Fixed"
+      "rigid_body_type": "Dynamic"
     },
     {
       "scale": 2.0,
@@ -146,7 +146,7 @@
       "name": "Pillar",
       "layer": 0,
       "voxels": null,
-      "rigid_body_type": "Fixed"
+      "rigid_body_type": "Dynamic"
     },
     {
       "scale": 2.0,
@@ -170,7 +170,7 @@
       "name": "Pillar",
       "layer": 0,
       "voxels": null,
-      "rigid_body_type": "Fixed"
+      "rigid_body_type": "Dynamic"
     }
   ],
   "enemies": [],

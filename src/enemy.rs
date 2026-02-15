@@ -181,7 +181,8 @@ impl Enemy {
         bullet_trails: &mut Vec<BulletTrail>,
         area_id: AreaId,
         dissolved_pixels: &mut Vec<DissolvedPixel>,
-        enemies: &mut Vec<Enemy>
+        enemies: &mut Vec<Enemy>,
+        impact_points: &mut Vec<glamx::Vec2>
     ) {
 
         if let Some(weapon) = &mut self.weapon {
@@ -231,7 +232,7 @@ impl Enemy {
 
         // we could maybe make it so that the enemy explicity points at the prop it wants to destroy but for now we just blindly fire the weapon if we know a prop is in the way
 
-        self.fire_weapon(props, space, ctx, players, bullet_trails, area_id, dissolved_pixels, enemies);    
+        self.fire_weapon(props, space, ctx, players, bullet_trails, area_id, dissolved_pixels, enemies, impact_points);    
 
 
 
@@ -512,7 +513,8 @@ impl Enemy {
         bullet_trails: &mut Vec<BulletTrail>, 
         area_id: AreaId, 
         dissolved_pixels: &mut Vec<DissolvedPixel>, 
-        enemies: &mut Vec<Enemy>
+        enemies: &mut Vec<Enemy>,
+        impact_points: &mut Vec<glamx::Vec2>
     ) {
 
         if let Some(weapon) = &mut self.weapon {
@@ -526,7 +528,8 @@ impl Enemy {
                 area_id,
                 dissolved_pixels,
                 enemies,
-                weapon_owner: WeaponOwner::Enemy(self.id)
+                weapon_owner: WeaponOwner::Enemy(self.id),
+                impact_points
             });
 
             self.last_fired_weapon = web_time::Instant::now();
@@ -545,7 +548,8 @@ impl Enemy {
         area_id: AreaId, 
         dissolved_pixels: &mut Vec<DissolvedPixel>, 
         enemies: &mut Vec<Enemy>,
-        despawn_y: f32
+        despawn_y: f32,
+        impact_points: &mut Vec<glamx::Vec2>
     ) {
         
 
@@ -603,14 +607,14 @@ impl Enemy {
         if self.health > 0 {
             match self.task {
             Task::BreakingProps => {
-                self.break_obstacles(props, space, ctx, players, bullet_trails, area_id, dissolved_pixels, enemies);
+                self.break_obstacles(props, space, ctx, players, bullet_trails, area_id, dissolved_pixels, enemies, impact_points);
             },
             Task::ChasePlayer => {
                 self.follow_target(space, players);
             },
             Task::AttackPlayer => {
 
-                self.fire_weapon(props, space, ctx, players, bullet_trails, area_id, dissolved_pixels, enemies);
+                self.fire_weapon(props, space, ctx, players, bullet_trails, area_id, dissolved_pixels, enemies, impact_points);
 
                 self.follow_target(space, players);
 
@@ -667,6 +671,7 @@ impl Enemy {
         area_id: AreaId,
         dissolved_pixels: &mut Vec<DissolvedPixel>, 
         enemies: &mut Vec<Enemy>,
+        impact_points: &mut Vec<glamx::Vec2>
     ) {
 
         let then = web_time::Instant::now();
@@ -699,7 +704,7 @@ impl Enemy {
         
 
         if ctx.id() == self.owner {
-            self.owner_tick(props, space, ctx, players, bullet_trails, area_id, dissolved_pixels, enemies, despawn_y);
+            self.owner_tick(props, space, ctx, players, bullet_trails, area_id, dissolved_pixels, enemies, despawn_y, impact_points);
         }
 
         

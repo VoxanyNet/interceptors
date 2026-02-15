@@ -9,5 +9,6 @@ pub struct WeaponFireContext<'a> {
     pub area_id: AreaId,
     pub dissolved_pixels: &'a mut Vec<DissolvedPixel>,
     pub enemies: &'a mut Vec<Enemy>,
-    pub weapon_owner: WeaponOwner
+    pub weapon_owner: WeaponOwner,
+    pub impact_points: &'a mut Vec<glamx::Vec2>
 }

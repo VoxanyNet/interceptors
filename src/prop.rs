@@ -182,31 +182,51 @@ impl Prop {
             let voxels: Vec<glamx::IVec2> = island.iter().cloned().collect();
 
             let new_prop = Self::fragment_from_existing(&self, voxels, space, impacted_voxels);
-            log::debug!("new prop!");
             props.push(new_prop);
-        }
+        }   
+
+
+        let mut new_voxels: HashSet<IVec2> = space.collider_set.get_mut(self.collider_handle).unwrap().shape_mut().as_voxels_mut().unwrap().voxels()
+            .filter_map(
+                |x|
+                {
+                    if !x.state.is_empty() {
+                        Some(x.grid_coords)
+                    } else {
+                        None
+                    }
+                }
+            ).collect();
 
         // need to iterate twice due to borrowing issue that i can probably resolve
         // we need to check if we should just ditch the hashmap for a vec because i dont think the membership speed increase is worth it
         for island in new_islands {
 
-            let voxels = space.collider_set.get_mut(self.collider_handle).unwrap().shape_mut().as_voxels_mut().unwrap();
-            
             for voxel_index in island {
     
 
                 if impacted_voxels.contains(voxel_index) {
                     continue;
                 }
-                
-                voxels.set_voxel(*voxel_index, false);
+                new_voxels.remove(voxel_index);
                 self.removed_voxels.push(*voxel_index);
                 
             }
             
         }
 
+        let new_voxels_vec: Vec<IVec2> = new_voxels.iter().cloned().collect();
+
+        space.collider_set.remove(self.collider_handle, &mut space.island_manager, &mut space.rigid_body_set, true);
         
+        
+        let new_collider_handle = space.collider_set.insert_with_parent(
+            ColliderBuilder::voxels(vec2(8., 8.), &new_voxels_vec), 
+            self.rigid_body_handle, 
+            &mut space.rigid_body_set
+        );
+
+        self.collider_handle = new_collider_handle;
         
     }
 
@@ -226,7 +246,6 @@ impl Prop {
         }
 
         let rigid_body = space.rigid_body_set.get_mut(self.rigid_body_handle).unwrap();
-        let _collider = space.collider_set.get_mut(self.collider_handle).unwrap();
 
         rigid_body.apply_impulse(
             glamx::Vec2::new(impact.bullet_vector.x * 5000., impact.bullet_vector.y * 5000.), 
@@ -234,57 +253,20 @@ impl Prop {
         );
 
         //manually create a prop velocity update if we dont own it (because if we do it just happens automatically)
-
-        
-        match self.owner {
-            Some(owner) => {
-                if ctx.id() != owner {
-                    let packet = crate::updates::NetworkPacket::PropVelocityUpdate(
-                        PropVelocityUpdate {
-                            velocity: *rigid_body.vels(),
-                            id: self.id,
-                            area_id,
-                        }
-                    );
-
-                    match ctx {
-                        TickContext::Client(ctx) => {
-                            ctx.network_io.send_network_packet(packet);
-                        },
-                        TickContext::Server(ctx) => {
-                            ctx.network_io.send_all_clients(packet);
-                        },
-                    };
-
-                }
-            },
-            None => {},
+        if let Some(owner) = self.owner {
+            if ctx.id() != owner {
+                ctx.send_network_packet(
+                    PropVelocityUpdate {
+                        velocity: *rigid_body.vels(),
+                        id: self.id,
+                        area_id,
+                    }.into()
+                );
+            }
         }
 
-        // we must manually send a velocity update here because we are despawning the prop here and it wont get automatically updated in the tick method
-        let packet = crate::updates::NetworkPacket::PropVelocityUpdate(
-            PropVelocityUpdate {
-                velocity: *rigid_body.vels(),
-                id: self.id,
-                area_id,
-            }
-        );
-
-        match ctx {
-            TickContext::Client(ctx) => {
-                ctx.network_io.send_network_packet(packet);
-            },
-            TickContext::Server(ctx) => {
-                ctx.network_io.send_all_clients(packet);
-            },
-        };
-        
-        // if health < 0 {}
-
-        log::debug!("Handling bullet impact");
         // Server cannot dissolve props right now but we arent even going to do that so im going to worry about it
         if let TickContext::Client(_ctx) = ctx {
-            //self.dissolve(ctx.textures, space, dissolved_pixels, Some(ctx), area_id);
 
             let impacted_voxels = self.get_voxel_world_positions(space)
                 .filter_map(
@@ -306,30 +288,28 @@ impl Prop {
            
 
             let mut impacted_voxels_vec: Vec<glamx::IVec2> = impacted_voxels.collect();
+            impacted_voxels_vec.dedup();
 
-            
-
-            
-
-            let collider = space.collider_set.get_mut(self.collider_handle).unwrap();
-            
             for voxel in &impacted_voxels_vec {
 
-                log::debug!("setting voxel {:?} to false", voxel);
+                let collider = space.collider_set.get_mut(self.collider_handle).unwrap();
                 
                 collider.shape_mut().as_voxels_mut().unwrap().set_voxel(*voxel, false);
+
+                self.voxels_modified = true;
+
             }
 
             let mut despawn = true;
 
-            let then = web_time::Instant::now();
+            let collider = space.collider_set.get_mut(self.collider_handle).unwrap();
+
             'check_for_no_voxels: for voxel in collider.shape_mut().as_voxels_mut().unwrap().voxels() {
                 if !voxel.state.is_empty() {
                     despawn = false;
                     break 'check_for_no_voxels;
                 }
             }
-            log::debug!("check for no voxels: {:?}", then.elapsed());
 
             if despawn == true {
                 self.mark_despawn();
@@ -337,33 +317,13 @@ impl Prop {
                 return;
             }
 
-            
-
-            let then = web_time::Instant::now();
             self.break_apart(space, &impacted_voxels_vec, props);
-            log::debug!("break apart: {:?}", then.elapsed());
             
 
             self.removed_voxels.append(&mut impacted_voxels_vec);
             self.removed_voxels.dedup();
 
         }
-        
-        //self.mark_despawn();
-
-        // let packet = RemovePropUpdate {
-        //     prop_id: self.id,
-        //     area_id,
-        // }.into();
-
-        // match ctx {
-        //     TickContext::Client(ctx) => {
-        //         ctx.network_io.send_network_packet(packet);
-        //     },
-        //     TickContext::Server(ctx) => {
-        //         ctx.network_io.send_all_clients(packet);
-        //     },
-        // };
     
     }
 
@@ -637,7 +597,7 @@ impl Prop {
         let other_collider = space.collider_set.get(other.collider_handle).unwrap();
         let other_voxels = other_collider.shape().as_voxels().unwrap();
         
-        // we need to make sure that all explicitly deleted voxels get transferred over to the new prop but the voxels that were removed in the most recent fire don't get added to the list until after this function is run so we needed to pass in this tick's impacted voxels so we can add it. there is probably a better way to do this but im tired and its 4am and this will work
+        // we need to make sure that all explicitly deleted voxels get transferred over to the new prop but the voxels that were removed in the most recent fire don't get added to the list until after this function is run so we needed to pass in this tick's impacted voxels so we can add it. there is probably a better way to do this but im tired and its z and this will work
         let mut removed_voxels = other.removed_voxels.clone();
         removed_voxels.extend(impacted_voxels);
 
@@ -758,8 +718,13 @@ impl Prop {
 
                                     let flipped_y = max_voxel_y - current_voxel_y;
 
+                                    log::debug!("Adding voxel: {:?}, {:?}", voxel_x, flipped_y);
                                     voxels.push(
+
+                                        
                                         IVec2::new(voxel_x, flipped_y)
+
+                                        
                                     );
                                 } else {
                                     
@@ -809,6 +774,8 @@ impl Prop {
             Some(id) => id,
             None => PropId::new(),
         };
+
+        log::debug!("ID: {:?}", id);
 
 
         Self {
@@ -897,8 +864,7 @@ impl Prop {
 
         // clear the mask
         clear_background(WHITE);
-        
-        let _voxel_size = draw_context.space.collider_set.get(self.collider_handle).unwrap().shape().as_voxels().unwrap().voxel_size();
+    
 
 
         for removed_voxel in &self.removed_voxels {
@@ -1048,20 +1014,20 @@ impl Drawable for Prop {
         //     draw_rectangle(macroquad_pos.x - (2. * self.scale), macroquad_pos.y - (2. * self.scale), 4. * self.scale, 4. * self.scale, color);
 
         // }
-        for voxel in self.get_voxel_world_positions(draw_context.space) {
+        // for voxel in self.get_voxel_world_positions(draw_context.space) {
 
-            let mut color = match collider.shape().as_voxels().unwrap().voxel_state(voxel.0.grid_coords).unwrap().voxel_type() {
-                rapier2d::prelude::VoxelType::Empty => RED,
-                rapier2d::prelude::VoxelType::Vertex => GREEN,
-                rapier2d::prelude::VoxelType::Face => BLUE,
-                rapier2d::prelude::VoxelType::Interior => VIOLET,
-            };
+        //     let mut color = match collider.shape().as_voxels().unwrap().voxel_state(voxel.0.grid_coords).unwrap().voxel_type() {
+        //         rapier2d::prelude::VoxelType::Empty => RED,
+        //         rapier2d::prelude::VoxelType::Vertex => GREEN,
+        //         rapier2d::prelude::VoxelType::Face => BLUE,
+        //         rapier2d::prelude::VoxelType::Interior => VIOLET,
+        //     };
 
-            color.a = 0.5;
-            let macroquad_pos = rapier_to_macroquad(voxel.1);
-            draw_rectangle(macroquad_pos.x - (4.), macroquad_pos.y - (4.), 8., 8., color);
+        //     color.a = 0.5;
+        //     let macroquad_pos = rapier_to_macroquad(voxel.1);
+        //     draw_rectangle(macroquad_pos.x - (4.), macroquad_pos.y - (4.), 8., 8., color);
             
-        }
+        // }
 
         //draw_text(&format!("{:?}",self.id), macroquad_pos.x, macroquad_pos.y, 12., WHITE);
         
@@ -1165,6 +1131,12 @@ pub struct RemovePropUpdate {
 pub struct DissolveProp {
     pub prop_id: PropId,
     pub area_id: AreaId
+}
+
+pub struct UpdatePropVoxels {
+    pub prop_id: PropId,
+    pub area_id: AreaId,
+    pub new_voxels: Vec<IVec2>,
 }
 
 

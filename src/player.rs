@@ -537,6 +537,7 @@ impl Player {
         area_id: AreaId,
         enemies: &mut Vec<Enemy>,
         dissolved_pixels: &mut Vec<DissolvedPixel>,
+        impact_points: &mut Vec<glamx::Vec2>,
         _dropped_items: &mut Vec<DroppedItem>,
     ) {
 
@@ -575,6 +576,7 @@ impl Player {
                     dissolved_pixels,
                     enemies,
                     weapon_owner: WeaponOwner::Player(self.id),
+                    impact_points
                 };
     
                 weapon_type.fire(ctx, weapon_fire_context);
@@ -745,7 +747,8 @@ impl Player {
         max_camera_y: f32,
         minimum_camera_width: f32,
         minimum_camera_height: f32,
-        tiles: &mut Vec<Vec<Option<Tile>>>
+        tiles: &mut Vec<Vec<Option<Tile>>>,
+        impact_points: &mut Vec<glamx::Vec2>
 
     ) {
 
@@ -769,7 +772,8 @@ impl Player {
                 dropped_items, 
                 max_camera_y, 
                 minimum_camera_width, 
-                minimum_camera_height
+                minimum_camera_height,
+                impact_points
             );
         }   
 
@@ -1028,6 +1032,7 @@ impl Player {
         max_camera_y: f32,
         minimum_camera_width: f32,
         minimum_camera_height: f32,
+        impact_points: &mut Vec<glamx::Vec2>
     ) {
 
 
@@ -1041,7 +1046,7 @@ impl Player {
             self.face_towards_mouse(space, ctx, area_id);
         }
 
-        self.use_item(ctx, space, props, players, bullet_trails, self.facing, area_id, enemies, dissolved_pixels, dropped_items);
+        self.use_item(ctx, space, props, players, bullet_trails, self.facing, area_id, enemies, dissolved_pixels,impact_points,  dropped_items);
         self.send_position_network_update(ctx, space, area_id);
         self.dash(space);
         self.pickup_item(dropped_items, space, ctx, area_id);

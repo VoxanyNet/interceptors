@@ -1,12 +1,12 @@
 use std::{path::PathBuf, str::FromStr};
 
 use glamx::{Pose2, Vec2, vec2};
-use macroquad::{camera::Camera2D, color::WHITE, input::{KeyCode, is_key_released}, math::Rect, prelude::{gl_use_default_material, gl_use_material}, shapes::draw_rectangle, time::get_time, window::{clear_background, screen_height, screen_width}};
+use macroquad::{camera::Camera2D, color::{RED, WHITE}, input::{KeyCode, is_key_released}, math::Rect, prelude::{gl_use_default_material, gl_use_material}, shapes::{draw_circle, draw_rectangle}, time::get_time, window::{clear_background, screen_height, screen_width}};
 use noise::{NoiseFn, Perlin};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TextureLoader, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, material_loader::MaterialLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, selectable_object_id::{SelectableObject, SelectableObjectId}, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}, updates::NetworkPacket, uuid_u64, weapons::smg::weapon::SMG};
+    ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TextureLoader, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, material_loader::MaterialLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}, updates::NetworkPacket, uuid_u64, weapons::smg::weapon::SMG};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -42,7 +42,8 @@ pub struct Area {
     pub ambiance: Vec<Ambiance>,
     pub wave_data: WaveData,
     pub compound_test: Vec<CompoundTest>,
-    pub tiles: Vec<Vec<Option<Tile>>>
+    pub tiles: Vec<Vec<Option<Tile>>>,
+    pub impact_points: Vec<glamx::Vec2>
 }
 
 pub struct WaveData {
@@ -178,6 +179,13 @@ impl Area {
             object.draw(&draw_context).await;
         }
 
+        for impact_point in &self.impact_points {
+            let m_pos = rapier_to_macroquad(*impact_point);
+            let mut color = RED;
+            color.a = 0.2;
+            draw_circle(m_pos.x, m_pos.y, 5., color);
+        }
+
 
 
     }
@@ -211,7 +219,8 @@ impl Area {
                 &mut self.bullet_trails,
                 self.id,
                 &mut self.dissolved_pixels,
-                enemies
+                enemies,
+                &mut self.impact_points
             );
 
             //let then = Instant::now();
@@ -259,7 +268,8 @@ impl Area {
                 self.max_camera_y,
                 self.minimum_camera_width, 
                 self.minimum_camera_height,
-                &mut self.tiles
+                &mut self.tiles,
+                &mut self.impact_points
             );
 
             players_iter.restore(player);
@@ -391,7 +401,8 @@ impl Area {
             ambiance: Vec::new(),
             wave_data: WaveData::default(),
             compound_test: Vec::new(),
-            tiles: vec![vec![None; world_height]; world_width]
+            tiles: vec![vec![None; world_height]; world_width],
+            impact_points: vec![],
         }
     }
 
@@ -938,7 +949,8 @@ impl Area {
             ambiance,
             wave_data: WaveData::default(),
             compound_test: Vec::new(),
-            tiles
+            tiles,
+            impact_points: Vec::new()
 
         }
     }
