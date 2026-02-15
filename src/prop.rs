@@ -116,13 +116,17 @@ impl Prop {
         impacted_voxels: &Vec<glamx::IVec2>,
         props: &mut Vec<Prop>
     ) { 
-        let voxels = space.collider_set.get_mut(self.collider_handle).unwrap().shape_mut().as_voxels_mut().unwrap();
+        let voxels = space.collider_set
+            .get_mut(self.collider_handle)
+            .unwrap()
+            .shape_mut()
+            .as_voxels_mut()
+            .unwrap();
 
-        // where we start flood fills
-        // we only start a flood fill from a seed if the prior flood didnt contain that seed 
-        let mut potential_island_seeds: Vec<glamx::IVec2> = Vec::new();
+        let mut potential_island_seeds: HashSet<glamx::IVec2> = HashSet::new();
+        let mut islands: Vec<HashSet<glamx::IVec2>> = Vec::new();
+        let mut global_visited_voxels: HashSet<glamx::IVec2> = HashSet::new(); 
 
-        // all neighboring voxels to impacted voxels are marked as potential island seeds
         for voxel in impacted_voxels {
             let neighbors = [
                 glamx::IVec2 { x: voxel.x + 1, y: voxel.y},
@@ -135,24 +139,18 @@ impl Prop {
 
                 if let Some(voxel_state) = voxels.voxel_state(neighbor) {
                     if !voxel_state.is_empty() {
-                        potential_island_seeds.push(neighbor);
+                        potential_island_seeds.insert(neighbor);
                     }
                 }
                 
             }
         }
 
-        // the actual resulting islands
-        let mut islands: Vec<HashSet<glamx::IVec2>> = vec![];
-
-        // we mark down all the voxels we've already added to an island
-        // this way we can make sure we dont use one of them as a seed (since we already know they don't belong to a new island)
-        let mut global_visited_voxels: HashSet<glamx::IVec2> = HashSet::new();         
-
-        for (idx, seed) in potential_island_seeds.iter().enumerate() {
+        for (idx, seed) in potential_island_seeds
+            .iter()
+            .enumerate() {
             
             if global_visited_voxels.contains(&seed) {
-        
                 continue;
             } 
 
@@ -160,9 +158,6 @@ impl Prop {
                 *seed, 
                 &voxels
             );
-
-            
-
 
             for voxel in &new_island {
                 global_visited_voxels.insert(*voxel);
@@ -172,21 +167,28 @@ impl Prop {
 
         }
         
-        if islands.len() <= 1 {
-    
+        if islands.len() <= 1 {    
             return;
         }
-        let new_islands = &islands.split_off(1);
 
-        for island in new_islands {
+        let new_islands = islands.split_off(1);
+
+        for island in &new_islands {
             let voxels: Vec<glamx::IVec2> = island.iter().cloned().collect();
-
             let new_prop = Self::fragment_from_existing(&self, voxels, space, impacted_voxels);
             props.push(new_prop);
         }   
 
 
-        let mut new_voxels: HashSet<IVec2> = space.collider_set.get_mut(self.collider_handle).unwrap().shape_mut().as_voxels_mut().unwrap().voxels()
+        // Determine the new voxel state of this prop
+
+        let mut new_voxels: HashSet<IVec2> = space.collider_set
+            .get_mut(self.collider_handle)
+            .unwrap()
+            .shape_mut()
+            .as_voxels_mut()
+            .unwrap()
+            .voxels()
             .filter_map(
                 |x|
                 {
@@ -198,26 +200,26 @@ impl Prop {
                 }
             ).collect();
 
-        // need to iterate twice due to borrowing issue that i can probably resolve
-        // we need to check if we should just ditch the hashmap for a vec because i dont think the membership speed increase is worth it
         for island in new_islands {
-
             for voxel_index in island {
-    
 
-                if impacted_voxels.contains(voxel_index) {
+                // this makes sure we don't double remove an impacted voxel 
+                if impacted_voxels.contains(&voxel_index) {
                     continue;
                 }
-                new_voxels.remove(voxel_index);
-                self.removed_voxels.push(*voxel_index);
-                
+                new_voxels.remove(&voxel_index);
+                self.removed_voxels.push(voxel_index); 
             }
-            
         }
 
         let new_voxels_vec: Vec<IVec2> = new_voxels.iter().cloned().collect();
 
-        space.collider_set.remove(self.collider_handle, &mut space.island_manager, &mut space.rigid_body_set, true);
+        space.collider_set.remove(
+            self.collider_handle, 
+            &mut space.island_manager, 
+            &mut space.rigid_body_set, 
+            true
+        );
         
         
         let new_collider_handle = space.collider_set.insert_with_parent(
@@ -230,6 +232,31 @@ impl Prop {
         
     }
 
+    fn get_impacted_voxels(
+        &self, 
+        space: &Space,
+        impact: &BulletImpactData
+    ) -> Vec<glamx::IVec2> {
+
+        self.get_voxel_world_positions(space)
+            .filter(|(_, voxel_world_pos)| {
+                (voxel_world_pos - impact.intersection_point).length() < 10.
+            })
+            .map(|(voxel, _)| voxel.grid_coords)
+            .collect()
+
+        
+    }
+    fn check_if_no_voxels(&self, space: &Space) -> bool {
+        let collider = space.collider_set.get(self.collider_handle).unwrap();
+        
+        !collider
+            .shape()
+            .as_voxels()
+            .unwrap()
+            .voxels()
+            .any(|voxel| !voxel.state.is_empty())
+    } 
 
     pub fn handle_bullet_impact(
         &mut self, 
@@ -241,89 +268,64 @@ impl Prop {
         _dissolved_pixels: &mut Vec<DissolvedPixel>
     ) {
 
-        if self.despawn {
-            return;
-        }
+        if self.despawn {return}
 
-        let rigid_body = space.rigid_body_set.get_mut(self.rigid_body_handle).unwrap();
+        let rigid_body = space
+            .rigid_body_set
+            .get_mut(self.rigid_body_handle)
+            .unwrap();
 
         rigid_body.apply_impulse(
-            glamx::Vec2::new(impact.bullet_vector.x * 5000., impact.bullet_vector.y * 5000.), 
+            glamx::Vec2::new(
+                impact.bullet_vector.x * 5000., 
+                impact.bullet_vector.y * 5000.
+            ), 
             true
         );
 
-        //manually create a prop velocity update if we dont own it (because if we do it just happens automatically)
-        if let Some(owner) = self.owner {
-            if ctx.id() != owner {
-                ctx.send_network_packet(
-                    PropVelocityUpdate {
-                        velocity: *rigid_body.vels(),
-                        id: self.id,
-                        area_id,
-                    }.into()
-                );
-            }
+        // need to manually send velocity update if we arent the owner
+        if let Some(owner) = self.owner && ctx.id() != owner {
+            ctx.send_network_packet(
+                PropVelocityUpdate {
+                    velocity: *rigid_body.vels(),
+                    id: self.id,
+                    area_id,
+                }.into()
+            );
         }
 
-        // Server cannot dissolve props right now but we arent even going to do that so im going to worry about it
-        if let TickContext::Client(_ctx) = ctx {
+        // only break apart props on client side FOR NOW
+        let TickContext::Client(_) = ctx else {
+            return;
+        };
 
-            let impacted_voxels = self.get_voxel_world_positions(space)
-                .filter_map(
-                    |(voxel, voxel_world_pos)|
-                    {
-                        if voxel.grid_coords.y == 0 {
-                            
-                        }
+        let mut impacted_voxels = self.get_impacted_voxels(space, impact);
 
-                        if (voxel_world_pos - impact.intersection_point).length().abs() > 10. {
-                            
-                            return None
-                        }
-
-                        Some(voxel.grid_coords)
-                    }
-                );
-            
-           
-
-            let mut impacted_voxels_vec: Vec<glamx::IVec2> = impacted_voxels.collect();
-            impacted_voxels_vec.dedup();
-
-            for voxel in &impacted_voxels_vec {
-
-                let collider = space.collider_set.get_mut(self.collider_handle).unwrap();
-                
-                collider.shape_mut().as_voxels_mut().unwrap().set_voxel(*voxel, false);
-
-                self.voxels_modified = true;
-
-            }
-
-            let mut despawn = true;
-
-            let collider = space.collider_set.get_mut(self.collider_handle).unwrap();
-
-            'check_for_no_voxels: for voxel in collider.shape_mut().as_voxels_mut().unwrap().voxels() {
-                if !voxel.state.is_empty() {
-                    despawn = false;
-                    break 'check_for_no_voxels;
-                }
-            }
-
-            if despawn == true {
-                self.mark_despawn();
-
-                return;
-            }
-
-            self.break_apart(space, &impacted_voxels_vec, props);
-            
-
-            self.removed_voxels.append(&mut impacted_voxels_vec);
-            self.removed_voxels.dedup();
-
+        // this will probably never be zero
+        if impacted_voxels.len() != 0 {
+            self.voxels_modified = true;
         }
+
+        let collider_voxels = space.collider_set
+            .get_mut(self.collider_handle)
+            .unwrap()
+            .shape_mut()
+            .as_voxels_mut()
+            .unwrap();
+        
+        for voxel in &impacted_voxels {
+            collider_voxels.set_voxel(*voxel, false);
+        }
+
+        if self.check_if_no_voxels(space) == true {
+            self.mark_despawn();
+            return;
+        }
+
+        self.break_apart(space, &impacted_voxels, props);
+
+        self.removed_voxels.append(&mut impacted_voxels);
+        self.removed_voxels.dedup();
     
     }
 
@@ -888,12 +890,17 @@ impl Prop {
         &self, 
         space: &Space
     ) -> impl Iterator<Item = (VoxelData, glamx::Vec2)> {
+
         let collider = space.collider_set.get(self.collider_handle).unwrap();
 
         let cos = collider.rotation().cos();
         let sin = collider.rotation().sin();
 
-        collider.shape().as_voxels().unwrap().voxels()
+        collider
+            .shape()
+            .as_voxels()
+            .unwrap()
+            .voxels()
             .map(
                 move |voxel| 
                 {
