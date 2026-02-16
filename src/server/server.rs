@@ -159,6 +159,21 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
         for (client_id, network_packet) in network_packets {
             match &network_packet {
+
+                NetworkPacket::UpdatePropVoxels(update) => {
+                    // just forward it for now
+                    self.network_io.send_all_except(
+                        network_packet, 
+                        client_id
+                    );
+                }
+                NetworkPacket::SetPropVoxel(update) => {
+                    // just forward it for now
+                    self.network_io.send_all_except(
+                        network_packet, 
+                        client_id
+                    );
+                }
                 NetworkPacket::MasterUpdate(_update) => {
                     panic!("received client bound update");
                 },

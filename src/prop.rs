@@ -5,10 +5,10 @@ use async_trait::async_trait;
 use glamx::{IVec2, Pose2, vec2};
 use image::{GenericImageView, Pixel};
 use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, BLUE, Color, GREEN, RED, VIOLET, WHITE}, math::{Rect, Vec2}, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{draw_circle, draw_rectangle}, text::draw_text, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex, render_target}, window::clear_background};
-use rapier2d::prelude::{AxisMask, ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyType, RigidBodyVelocity, VoxelData};
+use rapier2d::prelude::{AxisMask, ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyType, RigidBodyVelocity, SharedShape, VoxelData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
-use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::AreaId, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
+use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::{Area, AreaId}, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
 
 
@@ -79,7 +79,7 @@ pub struct Prop {
     pub scale: f32,
     pub shader_material: Option<macroquad::material::Material>,
     pub mask: Option<RenderTarget>,
-    pub removed_voxels: Vec<IVec2>, 
+    pub removed_voxels: Vec<glamx::IVec2>, 
 
 }
 
@@ -112,10 +112,12 @@ impl Prop {
 
     pub fn break_apart(
         &mut self, 
+        area_id: AreaId,
+        ctx: &mut TickContext,
         space: &mut Space,
         impacted_voxels: &Vec<glamx::IVec2>,
         props: &mut Vec<Prop>
-    ) { 
+    ) -> Option<Vec<IVec2>> { 
         let voxels = space.collider_set
             .get_mut(self.collider_handle)
             .unwrap()
@@ -168,7 +170,7 @@ impl Prop {
         }
         
         if islands.len() <= 1 {    
-            return;
+            return None;
         }
 
         let new_islands = islands.split_off(1);
@@ -176,6 +178,14 @@ impl Prop {
         for island in &new_islands {
             let voxels: Vec<glamx::IVec2> = island.iter().cloned().collect();
             let new_prop = Self::fragment_from_existing(&self, voxels, space, impacted_voxels);
+            
+            ctx.send_network_packet(
+                NewProp {
+                    prop: new_prop.save(space),
+                    area_id,
+                }.into()
+            );
+            
             props.push(new_prop);
         }   
 
@@ -228,7 +238,11 @@ impl Prop {
             &mut space.rigid_body_set
         );
 
+        
+
         self.collider_handle = new_collider_handle;
+
+        return Some(new_voxels_vec)
         
     }
 
@@ -267,6 +281,9 @@ impl Prop {
         props: &mut Vec<Prop>,
         _dissolved_pixels: &mut Vec<DissolvedPixel>
     ) {
+
+        // OPTIMIZATION IDEA
+        // dont recreate the shape twice. i dont wanna type the rest out but you'll figure it out
 
         if self.despawn {return}
 
@@ -312,20 +329,47 @@ impl Prop {
             .shape_mut()
             .as_voxels_mut()
             .unwrap();
-        
-        for voxel in &impacted_voxels {
-            collider_voxels.set_voxel(*voxel, false);
-        }
 
+
+        let mut new_voxels: Vec<glamx::IVec2> = collider_voxels.voxels()
+            .filter(|voxel| !impacted_voxels.contains(&voxel.grid_coords))
+            .map(|voxel| voxel.grid_coords)
+            .collect();
+        
+        space.collider_set
+            .get_mut(self.collider_handle)
+            .unwrap()
+            .set_shape(
+                SharedShape::voxels(glamx::vec2(8., 8.), &new_voxels)
+            );
+
+
+        // COPY THIS ABOVE??
         if self.check_if_no_voxels(space) == true {
             self.mark_despawn();
             return;
         }
 
-        self.break_apart(space, &impacted_voxels, props);
+        if let Some(break_apart_new_voxels) = self.break_apart(area_id, ctx, space, &impacted_voxels, props) {
+            log::debug!("break apart new voxels with length: {} impacted voxels len: {}", break_apart_new_voxels.len(), impacted_voxels.len());
+            new_voxels = break_apart_new_voxels;
+        }
 
         self.removed_voxels.append(&mut impacted_voxels);
         self.removed_voxels.dedup();
+
+        ctx.send_network_packet(
+            UpdatePropVoxels {
+                prop_id: self.id,
+                area_id: area_id,
+                new_voxels: new_voxels,
+                removed_voxels: self.removed_voxels.clone(),
+            }.into()
+        ); 
+        if impacted_voxels.len() > 0 {
+            
+            
+        }
     
     }
 
@@ -621,7 +665,7 @@ impl Prop {
             previous_velocity: other.previous_velocity,
             material: other.material,
             id: PropId::new(),
-            owner: other.owner,
+            owner: None,
             last_sound_play: other.last_sound_play,
             despawn: false,
             last_pos_update: web_time::Instant::now(),
@@ -798,7 +842,7 @@ impl Prop {
             scale: save.scale,
             mask: None,
             shader_material: None,
-            removed_voxels: vec![]
+            removed_voxels: save.removed_voxels
 
         }
     }
@@ -835,7 +879,8 @@ impl Prop {
             layer: self.layer,
             voxels,
             scale: self.scale,
-            rigid_body_type: body.body_type()
+            rigid_body_type: body.body_type(),
+            removed_voxels: self.removed_voxels.clone()
         }
     }
 
@@ -1069,7 +1114,9 @@ pub struct PropSave {
     #[serde(default)]
     pub voxels: Option<Vec<glamx::IVec2>>,
     #[serde(default="default_body_type")]
-    pub rigid_body_type: RigidBodyType
+    pub rigid_body_type: RigidBodyType,
+    #[serde(default)]
+    pub removed_voxels: Vec<glamx::IVec2>
 }
 
 fn default_body_type() -> RigidBodyType {
@@ -1140,11 +1187,21 @@ pub struct DissolveProp {
     pub area_id: AreaId
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UpdatePropVoxels {
     pub prop_id: PropId,
     pub area_id: AreaId,
-    pub new_voxels: Vec<IVec2>,
+    pub new_voxels: Vec<glamx::IVec2>,
+    pub removed_voxels: Vec<glamx::IVec2> // there might be a better way to handle this
 }
 
+/// Set individual prop voxel
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SetPropVoxel {
+    pub prop_id: PropId,
+    pub area_id: AreaId,
+    pub voxel_index: glamx::IVec2,
+    pub filled: bool
+}
 
 

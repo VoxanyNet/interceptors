@@ -2,7 +2,7 @@ use std::{collections::HashMap, process::exit};
 
 use interceptors_lib::{Assets, ClientIO, ClientId, ClientTickContext, Prefabs, area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, material_loader::MaterialLoader, player::{ItemSlot, Player}, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::ClientTextureLoader, updates::{NetworkPacket, Ping}, weapons::weapon_type::WeaponType, world::World};
 use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, WHITE}, input::{KeyCode, is_key_released, show_mouse}, math::{Rect, vec2}, prelude::{Material, ShaderSource, gl_use_default_material, load_material}, text::draw_text, texture::{DrawTextureParams, RenderTarget, draw_texture_ex, render_target}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
-use rapier2d::math::Vector;
+use rapier2d::{math::Vector, prelude::{ColliderBuilder, SharedShape}};
 
 use crate::{shaders::{CRT_FRAGMENT_SHADER, CRT_VERTEX_SHADER}};
 
@@ -204,6 +204,59 @@ impl Client {
 
         for packet in packets {
             match packet {
+
+                NetworkPacket::SetPropVoxel(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                    let prop = area.props.iter_mut().find(|prop| {prop.id == update.prop_id});
+
+                    let Some(prop) = prop else {
+                        continue;
+                    };
+
+                    let voxels = area.space.collider_set
+                        .get_mut(prop.collider_handle)
+                        .unwrap()
+                        .shape_mut()
+                        .as_voxels_mut()
+                        .unwrap();
+
+
+                    let new_voxels: Vec<glamx::IVec2> = voxels.voxels()
+                        .filter(|voxel| voxel.grid_coords != update.voxel_index)
+                        .map(|voxel| voxel.grid_coords)
+                        .collect();
+                    
+                    area.space.collider_set
+                        .get_mut(prop.collider_handle)
+                        .unwrap()
+                        .set_shape(
+                            SharedShape::voxels(glamx::vec2(8., 8.), &new_voxels)
+                        );
+
+                    prop.removed_voxels.push(update.voxel_index);
+                },
+
+                NetworkPacket::UpdatePropVoxels(update) => {
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+
+                    let prop = area.props.iter_mut().find(|prop| {prop.id == update.prop_id});
+
+                    let Some(prop) = prop else {
+                        continue;
+                    };
+
+                    
+                    area.space.collider_set
+                        .get_mut(prop.collider_handle)
+                        .unwrap()
+                        .set_shape(
+                            SharedShape::voxels(glamx::vec2(8., 8.), &update.new_voxels)
+                        );
+
+                    prop.removed_voxels = update.removed_voxels;
+
+                }
 
                 
                 NetworkPacket::MasterUpdate(update) => {

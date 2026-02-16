@@ -1,4 +1,4 @@
-use crate::{ClientId, area::{AreaId, AreaSave}, bullet_trail::SpawnBulletTrail, dropped_item::{DroppedItemVelocityUpdate, NewDroppedItemUpdate, RemoveDroppedItemUpdate}, enemy::{EnemyDespawnUpdate, EnemyHealthUpdate, EnemyPositionUpdate, EnemyVelocityUpdate, EnemyWeaponUpdate, NewEnemyUpdate}, player::{ActiveItemSlotUpdate, ItemSlotQuantityUpdate, ItemSlotUpdate, NewPlayer, PlayerCursorUpdate, PlayerFacingUpdate, PlayerHealthUpdate, PlayerId, PlayerPositionUpdate, PlayerVelocityUpdate}, prop::{DissolveProp, NewProp, PropPositionUpdate, PropUpdateOwner, PropVelocityUpdate, RemovePropUpdate, StupidDissolvedPixelVelocityUpdate}, uuid_u64};
+use crate::{ClientId, area::{AreaId, AreaSave}, bullet_trail::SpawnBulletTrail, dropped_item::{DroppedItemVelocityUpdate, NewDroppedItemUpdate, RemoveDroppedItemUpdate}, enemy::{EnemyDespawnUpdate, EnemyHealthUpdate, EnemyPositionUpdate, EnemyVelocityUpdate, EnemyWeaponUpdate, NewEnemyUpdate}, player::{ActiveItemSlotUpdate, ItemSlotQuantityUpdate, ItemSlotUpdate, NewPlayer, PlayerCursorUpdate, PlayerFacingUpdate, PlayerHealthUpdate, PlayerId, PlayerPositionUpdate, PlayerVelocityUpdate}, prop::{DissolveProp, NewProp, PropPositionUpdate, PropUpdateOwner, PropVelocityUpdate, RemovePropUpdate, SetPropVoxel, StupidDissolvedPixelVelocityUpdate, UpdatePropVoxels}, uuid_u64};
 use derive_more::From;
 use serde::{Deserialize, Serialize};
 
@@ -33,7 +33,9 @@ pub enum NetworkPacket {
     EnemyHealthUpdate(EnemyHealthUpdate),
     MasterUpdate(MasterUpdate),
     PlayerDespawnUpdate(PlayerDespawnUpdate),
-    StupidDissolvedPixelVelocityUpdate(StupidDissolvedPixelVelocityUpdate)
+    StupidDissolvedPixelVelocityUpdate(StupidDissolvedPixelVelocityUpdate),
+    UpdatePropVoxels(UpdatePropVoxels),
+    SetPropVoxel(SetPropVoxel)
 }
 
 
