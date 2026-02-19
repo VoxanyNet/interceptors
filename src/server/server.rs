@@ -1,6 +1,7 @@
 use std::{fs::read_to_string, process::exit};
 
 use interceptors_lib::{ClientId, Owner, Prefabs, ServerAssets, ServerIO, ServerTickContext, TickContext, area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, load_assets_server, load_prefabs, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket, PlayerDespawnUpdate}, weapons::weapon_type::WeaponType, world::World};
+use rapier2d::prelude::SharedShape;
 use tungstenite::Message;
 
 pub struct Server {
@@ -161,7 +162,23 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
             match &network_packet {
 
                 NetworkPacket::UpdatePropVoxels(update) => {
-                    // just forward it for now
+                    
+                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+                    let prop = area.props.iter_mut().find(|prop| {prop.id == update.prop_id});
+
+                    let Some(prop) = prop else {
+                        continue;
+                    };
+
+                    area.space.collider_set
+                        .get_mut(prop.collider_handle)
+                        .unwrap()
+                        .set_shape(
+                            SharedShape::voxels(glamx::vec2(8., 8.), &update.new_voxels)
+                        );
+
+                    prop.removed_voxels = update.removed_voxels.clone();
+                    
                     self.network_io.send_all_except(
                         network_packet, 
                         client_id

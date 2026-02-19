@@ -72,6 +72,7 @@ pub struct Prop {
     last_sound_play: web_time::Instant,
     pub despawn: bool,
     last_pos_update: web_time::Instant,
+    last_velocity_update: web_time::Instant,
     name: String,
     context_menu_data: Option<EditorContextMenuData>,
     layer: u32,
@@ -312,9 +313,9 @@ impl Prop {
         }
 
         // only break apart props on client side FOR NOW
-        let TickContext::Client(_) = ctx else {
-            return;
-        };
+        // let TickContext::Client(_) = ctx else {
+        //     return;
+        // };
 
         let mut impacted_voxels = self.get_impacted_voxels(space, impact);
 
@@ -530,7 +531,8 @@ impl Prop {
         let current_position = space.rigid_body_set.get(self.rigid_body_handle).unwrap().position();
 
         if self.last_pos_update.elapsed().as_secs() > 3 {
-
+            
+            log::debug!("Sending prop pos update!");
             let packet = NetworkPacket::PropPositionUpdate(
                 PropPositionUpdate {
                     area_id,
@@ -548,12 +550,14 @@ impl Prop {
                 },
             }
 
+            self.last_pos_update = web_time::Instant::now();
+
 
         }
         
 
         // need to add a cooldown?
-        if current_velocity != self.previous_velocity {
+        if (self.last_velocity_update.elapsed().as_secs() > 3) && (current_velocity != self.previous_velocity) {
 
             let packet = NetworkPacket::PropVelocityUpdate(
                 PropVelocityUpdate {
@@ -571,6 +575,10 @@ impl Prop {
                     ctx.network_io.send_all_clients(packet);
                 },
             };
+
+            log::debug!("Sending velocity update!");
+
+            self.last_velocity_update = web_time::Instant::now();
         }
     }   
 
@@ -665,10 +673,11 @@ impl Prop {
             previous_velocity: other.previous_velocity,
             material: other.material,
             id: PropId::new(),
-            owner: None,
+            owner: other.owner,
             last_sound_play: other.last_sound_play,
             despawn: false,
             last_pos_update: web_time::Instant::now(),
+            last_velocity_update: web_time::Instant::now(),
             name: other.name.clone(),
             context_menu_data: None,
             layer: other.layer,
@@ -785,18 +794,76 @@ impl Prop {
             TextureLoader::Server(server_texture_loader) =>  {
                 let image = server_texture_loader.get(&save.sprite_path);
 
+                let max_voxel_y = ((image.height() * save.scale as u32) as i32 / 8) - 1;
+
                 match &save.voxels {
                     Some(voxels) => voxels.clone(),
                     None => {
 
                         let mut voxels: Vec<IVec2> = Vec::new();
 
-                        for x in (0..image.width() as u32).step_by(4)  {
-                            for y in (0..image.height() as u32).step_by(4)  {
-                                let color = image.get_pixel(x, y);
+                        for scaled_x in (0..(image.width() * save.scale as u32) as u32).step_by(8)  {
+                            for scaled_y in (0..(image.height() * save.scale as u32) as u32).step_by(8)  {
+                                // create an average of the 8x8 neighborhood
+                                // start with bottom left
+                                
+                                let mut pixel_count = 1;
 
-                                if color.alpha() != 0 {
-                                    voxels.push(IVec2::new(x as i32 / 4, y as i32 / 4));
+                                let mut color = BLACK;
+                                color.a = 0.;
+
+                                for x_offset in 0..8 {
+                                    for y_offset in 0..8 {
+
+                                        if scaled_x + x_offset >= (image.width() * save.scale as u32) as u32 {
+                                            log::debug!("Skipping pixel {} as it was too far to the right", scaled_x + x_offset);
+                                            continue;
+                                        } 
+
+                                        if scaled_y + y_offset >= (image.height() * save.scale as u32) as u32 {
+                                            log::debug!("Skipping pixel {} as it was too down", scaled_x + x_offset);
+                                            continue;
+                                        }  
+                                        
+                                        
+                                        // we need to divide by the scale to get the closest ACTUAL pixel. 
+                                        let pixel = image.get_pixel((scaled_x + x_offset) / save.scale as u32, (scaled_y + y_offset) / save.scale as u32);
+                                        
+
+                                        color.r += pixel[0] as f32 / 255.;
+                                        color.g += pixel[1] as f32 / 255.;
+                                        color.b += pixel[2] as f32 / 255.;
+                                        color.a += pixel[3] as f32 / 255.;
+
+                                        pixel_count += 1;
+
+                                    }
+                                }
+                            
+
+                                color.r /= pixel_count as f32;
+                                color.g /= pixel_count as f32;
+                                color.b /= pixel_count as f32;
+                                //color.a /= pixel_count as f32;
+                                
+
+                                if color.a > 0. {
+                                    
+                                    let voxel_x = scaled_x as i32 / 8;
+                                    let current_voxel_y = scaled_y as i32 / 8;
+
+                                    let flipped_y = max_voxel_y - current_voxel_y;
+
+                                    log::debug!("Adding voxel: {:?}, {:?}", voxel_x, flipped_y);
+                                    voxels.push(
+
+                                        
+                                        IVec2::new(voxel_x, flipped_y)
+
+                                        
+                                    );
+                                } else {
+                                    
                                 }
                             }
                         }
@@ -842,7 +909,8 @@ impl Prop {
             scale: save.scale,
             mask: None,
             shader_material: None,
-            removed_voxels: save.removed_voxels
+            removed_voxels: save.removed_voxels,
+            last_velocity_update: web_time::Instant::now()
 
         }
     }
