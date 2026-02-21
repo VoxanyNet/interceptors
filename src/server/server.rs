@@ -68,6 +68,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
         if self.network_io.clients.len() == 1 {
             for area in &mut self.world.areas {
                 for prop in &mut area.props {
+                    prop.owner = Some(Owner::ClientId(new_client));
                     self.network_io.send_all_clients(NetworkPacket::PropUpdateOwner(PropUpdateOwner{ owner: Some(Owner::ClientId(new_client)), id: prop.id, area_id: area.id }));
                 }
             }
@@ -87,6 +88,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
     pub fn handle_disconnected_client(&mut self, client_id: ClientId) {
 
+        log::debug!("handling disconnect for client: {:?}", client_id);
         for area in &mut self.world.areas {
             let disconnected_player = area.players.iter_mut().find(
                 |player| 
@@ -105,6 +107,31 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                     }.into()
                 );
             }
+
+            let new_owner = area.players
+                .iter()
+                .find(|player| player.owner != Owner::ClientId(client_id))
+                .map(|player| {player.owner});
+
+            log::debug!("New owner: {:?}", new_owner);
+
+            area.props.iter().for_each(|x|log::debug!("{:?}", x.owner));
+            area.props
+                .iter_mut()
+                .filter(|prop| prop.owner == Some(Owner::ClientId(client_id)))
+                .for_each(|prop| {
+                    prop.owner = new_owner;
+                    log::debug!("Updating prop owner for prop: {:?}", prop.id);
+                    self.network_io.send_all_except(
+                        PropUpdateOwner {
+                            owner: prop.owner,
+                            id: prop.id,
+                            area_id: area.id,
+                        }.into(), 
+                        client_id
+                    );
+                }
+            );
 
             
         }

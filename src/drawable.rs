@@ -1,7 +1,7 @@
 use macroquad::{camera::Camera2D, math::Rect};
 use async_trait::async_trait;
 
-use crate::{Prefabs, font_loader::FontLoader, material_loader::MaterialLoader, space::Space, texture_loader::ClientTextureLoader, tile::Tile};
+use crate::{ClientId, Prefabs, font_loader::FontLoader, material_loader::MaterialLoader, space::Space, texture_loader::ClientTextureLoader, tile::Tile};
 
 pub struct DrawContext<'a> {
     pub space: &'a Space,
@@ -13,7 +13,8 @@ pub struct DrawContext<'a> {
     pub tiles: &'a Vec<Vec<Option<Tile>>>,
     pub elapsed_time: &'a web_time::Duration,
     pub default_camera: &'a Camera2D,
-    pub editor: bool
+    pub editor: bool,
+    pub id: ClientId
 }
 #[async_trait]
 pub trait Drawable {

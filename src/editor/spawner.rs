@@ -293,7 +293,8 @@ impl Spawner {
                     elapsed_time: draw_context.elapsed_time,
                     default_camera: draw_context.default_camera,
                     editor: true,
-                    materials: draw_context.materials
+                    materials: draw_context.materials,
+                    id: draw_context.id
                 };
 
                 generic_physics_prop.draw(&draw_context).await;

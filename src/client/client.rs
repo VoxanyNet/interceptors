@@ -710,7 +710,8 @@ impl Client {
             &self.prefab_data, 
             &self.camera, 
             &self.fonts, 
-            self.start.elapsed()
+            self.start.elapsed(),
+            self.client_id
         ).await;
 
         //self.phone.draw(&self.textures, &self.camera_rect);

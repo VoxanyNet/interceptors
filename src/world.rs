@@ -1,7 +1,7 @@
 
 use macroquad::{camera::Camera2D, math::Rect};
 
-use crate::{Prefabs, ServerIO, TickContext, area::Area, font_loader::FontLoader, material_loader::MaterialLoader, texture_loader::ClientTextureLoader};
+use crate::{ClientId, Prefabs, ServerIO, TickContext, area::Area, font_loader::FontLoader, material_loader::MaterialLoader, texture_loader::ClientTextureLoader};
 
 pub struct World {
     pub areas: Vec<Area>
@@ -41,7 +41,8 @@ impl World {
         prefabs: &Prefabs, 
         camera: &Camera2D, 
         fonts: &FontLoader, 
-        elapsed: web_time::Duration
+        elapsed: web_time::Duration,
+        id: ClientId
     ) {
 
         for area in &mut self.areas {
@@ -54,7 +55,8 @@ impl World {
                 materials,
                 elapsed, 
                 vec![], 
-                false
+                false,
+                id
             ).await
         }
     } 

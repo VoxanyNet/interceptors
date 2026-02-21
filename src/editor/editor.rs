@@ -1,7 +1,7 @@
 use std::{fs::{self, read_to_string}, path::PathBuf, process::exit, time::Duration};
 
 use glamx::{Pose2, Vec2, vec2};
-use interceptors_lib::{Prefabs, area::{Area, AreaSave}, clip::Clip, decoration::Decoration, drawable::{DrawContext, Drawable}, editor_context_menu::EditorContextMenu, font_loader::FontLoader, load_assets, macroquad_to_rapier, material_loader::MaterialLoader, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, texture_loader::ClientTextureLoader};
+use interceptors_lib::{ClientId, Prefabs, area::{Area, AreaSave}, clip::Clip, decoration::Decoration, drawable::{DrawContext, Drawable}, editor_context_menu::EditorContextMenu, font_loader::FontLoader, load_assets, macroquad_to_rapier, material_loader::MaterialLoader, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, texture_loader::ClientTextureLoader};
 use log::info;
 use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, RED, WHITE}, input::{KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel}, math::{Rect}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, time::draw_fps, window::{next_frame, screen_height, screen_width}};
 use rapier2d::{prelude::{ColliderBuilder, PointQuery, RigidBodyBuilder, RigidBodyVelocity}};
@@ -648,7 +648,8 @@ impl AreaEditor {
             &self.material_loader,
             self.start.elapsed(), 
             self.layer_toggle_ui.get_invisible_layers(),
-            true
+            true,
+            ClientId::new()
         ).await;
 
         
@@ -664,6 +665,7 @@ impl AreaEditor {
             default_camera: &camera,
             editor: true,
             materials: &self.material_loader,
+            id: ClientId::new()
         };
 
         if self.current_mode() == EditorMode::PrefabPlacement {

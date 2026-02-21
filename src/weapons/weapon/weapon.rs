@@ -563,9 +563,7 @@ impl WeaponBase {
         let bullet_vectors = self.get_bullet_vectors(bullet_count, innaccuracy_factor, weapon_fire_context);
         self.send_stupid_updates(&bullet_vectors, ctx, weapon_fire_context);
         let bullet_impacts = self.get_bullet_impacts(ctx, bullet_vectors, weapon_fire_context);
-        for impact in &bullet_impacts {
-            weapon_fire_context.impact_points.push(impact.intersection_point.clone());
-        }
+        
         self.handle_entity_impacts(ctx, weapon_fire_context, bullet_impacts);
 
     }

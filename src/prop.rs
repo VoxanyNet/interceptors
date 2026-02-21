@@ -4,11 +4,11 @@ use std::{collections::HashSet, fs::read_to_string, path::PathBuf};
 use async_trait::async_trait;
 use glamx::{IVec2, Pose2, vec2};
 use image::{GenericImageView, Pixel};
-use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, BLUE, Color, GREEN, RED, VIOLET, WHITE}, math::{Rect, Vec2}, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{draw_circle, draw_rectangle}, text::draw_text, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex, render_target}, window::clear_background};
+use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, BLUE, Color, GREEN, RED, VIOLET, WHITE}, math::{Rect, Vec2}, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{draw_circle, draw_rectangle}, text::{TextParams, draw_text, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex, render_target}, window::clear_background};
 use rapier2d::prelude::{AxisMask, ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyType, RigidBodyVelocity, SharedShape, VoxelData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
-use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::{Area, AreaId}, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
+use crate::{ClientId, ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::{Area, AreaId}, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
 
 
@@ -178,7 +178,7 @@ impl Prop {
 
         for island in &new_islands {
             let voxels: Vec<glamx::IVec2> = island.iter().cloned().collect();
-            let new_prop = Self::fragment_from_existing(&self, voxels, space, impacted_voxels);
+            let new_prop = Self::fragment_from_existing(&self, ctx, voxels, space, impacted_voxels);
             
             ctx.send_network_packet(
                 NewProp {
@@ -285,7 +285,7 @@ impl Prop {
 
         // OPTIMIZATION IDEA
         // dont recreate the shape twice. i dont wanna type the rest out but you'll figure it out
-
+        
         if self.despawn {return}
 
         let rigid_body = space
@@ -498,7 +498,7 @@ impl Prop {
 
                     
                     
-                    play_sound_once(ctx.sounds.get(PathBuf::from("assets\\sounds\\crate\\tap.wav")));
+                    //play_sound_once(ctx.sounds.get(PathBuf::from("assets\\sounds\\crate\\tap.wav")));
 
                     self.last_sound_play = web_time::Instant::now();
                 }
@@ -627,6 +627,7 @@ impl Prop {
 
     pub fn fragment_from_existing(
         other: &Self, 
+        ctx: &TickContext,
         fragment_voxels: Vec<glamx::IVec2>,
         space: &mut Space,
         impacted_voxels: &Vec<glamx::IVec2> // this is for a dumb fix
@@ -666,6 +667,7 @@ impl Prop {
 
         log::debug!("{:?}", other.shader_material.is_some());
 
+
         Self {
             rigid_body_handle: body,
             collider_handle: collider_handle,
@@ -673,7 +675,7 @@ impl Prop {
             previous_velocity: other.previous_velocity,
             material: other.material,
             id: PropId::new(),
-            owner: other.owner,
+            owner: Some(ctx.id()), // for some reason other does not have an owner when testing
             last_sound_play: other.last_sound_play,
             despawn: false,
             last_pos_update: web_time::Instant::now(),
@@ -1121,6 +1123,29 @@ impl Drawable for Prop {
             }
         
         );
+
+        if let Some(owner) = self.owner {
+            if let Owner::ClientId(owner) = owner {
+                if owner == draw_context.id {
+                    draw_texture_ex(
+                        texture, 
+                        macroquad_pos.x, 
+                        macroquad_pos.y - pivot.y,
+                        RED,
+                        DrawTextureParams { 
+                            dest_size: Some(size), 
+                            rotation: body.rotation().angle() * -1., 
+                            pivot: Some(macroquad_pos),
+                            ..Default::default()
+                        }
+                    
+                    );
+                }
+            }
+        }
+
+        
+
         gl_use_default_material();
 
         let mut color = WHITE;
@@ -1149,7 +1174,11 @@ impl Drawable for Prop {
             
         // }
 
-        //draw_text(&format!("{:?}",self.id), macroquad_pos.x, macroquad_pos.y, 12., WHITE);
+        
+
+        
+
+        
         
     }
 

@@ -108,6 +108,19 @@ HTML=$(
     <div id="canvas-container">
         <canvas id="glcanvas" tabindex="1" hidden></canvas>
     </div>
+
+
+    <script>
+    window.onbeforeunload = function (e) {
+        e = e || window.event;
+
+        if (e) {
+            e.returnValue = '';
+        }
+
+        return '';
+    };
+    </script>
     <script src="macroquad_bundle.js"></script>
     <script type="module">
         import init, { set_wasm } from "./${PROJECT_NAME}.js";

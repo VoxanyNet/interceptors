@@ -127,7 +127,8 @@ impl Area {
         materials: &MaterialLoader,
         elapsed: web_time::Duration,
         exclude_layers: Vec<u32>,
-        editor: bool
+        editor: bool,
+        id: ClientId
     ) {
 
 
@@ -155,7 +156,9 @@ impl Area {
             elapsed_time: &elapsed,
             default_camera: camera,
             editor,
-            materials
+            materials,
+            id,
+            
         };
 
         // backgrounds are handled seperately because they are always drawn below everything and dont have a layer
