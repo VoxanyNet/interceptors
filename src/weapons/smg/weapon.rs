@@ -3,7 +3,7 @@ use std::{path::PathBuf, str::FromStr};
 use macroquad::{color::Color, math::Vec2};
 use rapier2d::prelude::{ImpulseJointHandle, RigidBodyHandle};
 
-use crate::{ClientId, TickContext, player::Facing, space::Space, texture_loader::ClientTextureLoader, weapons::{smg::weapon_save::SMGSave, weapon::weapon::WeaponBase, weapon_fire_context::WeaponFireContext}};
+use crate::{ClientId, TickContext, area::AreaContext, player::{Facing, PlayerContext}, space::Space, texture_loader::ClientTextureLoader, weapons::{smg::weapon_save::SMGSave, weapon::weapon::{WeaponBase, WeaponOwner}, weapon_fire_context::WeaponFireContext, weapon_type::ShooterContext}};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct SMG {
@@ -47,13 +47,19 @@ impl SMG {
         }
     }
 
-    pub fn fire(&mut self, ctx: &mut TickContext, weapon_fire_context: &mut WeaponFireContext) {
+    pub fn fire(
+        &mut self, 
+        ctx: &mut TickContext, 
+        area_context: &mut AreaContext,
+        shooter_context: &mut ShooterContext 
+    ) {
         
         //let bullet_inaccurary = Some(0.1);
         let bullet_inaccuracy = None;
         self.weapon_base.fire(
             ctx, 
-            weapon_fire_context, 
+            area_context,
+            shooter_context, 
             bullet_inaccuracy, 
             Some(1)
         );
@@ -72,7 +78,11 @@ impl SMG {
     }
 
 
-    pub fn new(owner: ClientId, player_rigid_body_handle: Option<RigidBodyHandle>, facing: Facing) -> Self {
+    pub fn new(
+        owner: WeaponOwner, 
+        player_rigid_body_handle: Option<RigidBodyHandle>, 
+        facing: Facing
+    ) -> Self {
 
         Self {
             weapon_base: WeaponBase::new(

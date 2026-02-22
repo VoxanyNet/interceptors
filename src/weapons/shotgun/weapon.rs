@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use macroquad::{color::Color, math::Vec2};
 use rapier2d::prelude::{ImpulseJointHandle, RigidBodyHandle};
 
-use crate::{ClientId, TickContext, player::Facing, space::Space, texture_loader::ClientTextureLoader, weapons::{shotgun::weapon_save::ShotgunSave, weapon::weapon::WeaponBase, weapon_fire_context::WeaponFireContext}};
+use crate::{ClientId, TickContext, area::AreaContext, player::{Facing, PlayerContext}, space::Space, texture_loader::ClientTextureLoader, weapons::{shotgun::weapon_save::ShotgunSave, weapon::weapon::{WeaponBase, WeaponOwner}, weapon_fire_context::WeaponFireContext, weapon_type::ShooterContext}};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct Shotgun {
@@ -41,8 +41,19 @@ impl Shotgun {
             weapon: WeaponBase::from_save(save.weapon, space, player_rigid_body_handle),
         }
     }
-    pub fn fire(&mut self, ctx: &mut TickContext, weapon_fire_context: &mut WeaponFireContext) {
-        self.weapon.fire(ctx, weapon_fire_context, Some(0.2), Some(3));
+    pub fn fire(
+        &mut self, 
+        ctx: &mut TickContext, 
+        area_context: &mut AreaContext,
+        shooter_context: &mut ShooterContext
+    ) {
+        self.weapon.fire(
+            ctx, 
+            area_context, 
+            shooter_context,
+            Some(0.2), 
+            Some(3)
+        );
     }
 
     pub fn player_joint_handle(&self) -> Option<ImpulseJointHandle> {
@@ -58,7 +69,11 @@ impl Shotgun {
         self.weapon.rigid_body
     }
 
-    pub fn new(owner: ClientId, player_rigid_body_handle: Option<RigidBodyHandle>, facing: Facing) -> Self {
+    pub fn new(
+        owner: WeaponOwner, 
+        player_rigid_body_handle: Option<RigidBodyHandle>, 
+        facing: Facing
+    ) -> Self {
 
         Self {
             weapon: WeaponBase::new(

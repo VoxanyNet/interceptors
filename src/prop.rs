@@ -8,7 +8,7 @@ use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{
 use rapier2d::prelude::{AxisMask, ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyType, RigidBodyVelocity, SharedShape, VoxelData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
-use crate::{ClientId, ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::{Area, AreaId}, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
+use crate::{ClientId, ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::{Area, AreaContext, AreaId}, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
 
 
@@ -276,11 +276,8 @@ impl Prop {
     pub fn handle_bullet_impact(
         &mut self, 
         ctx: &mut TickContext, 
+        area_context: &mut AreaContext,
         impact: &BulletImpactData, 
-        space: &mut Space, 
-        area_id: AreaId,
-        props: &mut Vec<Prop>,
-        _dissolved_pixels: &mut Vec<DissolvedPixel>
     ) {
 
         // OPTIMIZATION IDEA
@@ -288,7 +285,7 @@ impl Prop {
         
         if self.despawn {return}
 
-        let rigid_body = space
+        let rigid_body = area_context.space
             .rigid_body_set
             .get_mut(self.rigid_body_handle)
             .unwrap();
@@ -307,7 +304,7 @@ impl Prop {
                 PropVelocityUpdate {
                     velocity: *rigid_body.vels(),
                     id: self.id,
-                    area_id,
+                    area_id: *area_context.id,
                 }.into()
             );
         }
@@ -317,14 +314,14 @@ impl Prop {
         //     return;
         // };
 
-        let mut impacted_voxels = self.get_impacted_voxels(space, impact);
+        let mut impacted_voxels = self.get_impacted_voxels(area_context.space, impact);
 
         // this will probably never be zero
         if impacted_voxels.len() != 0 {
             self.voxels_modified = true;
         }
 
-        let collider_voxels = space.collider_set
+        let collider_voxels = area_context.space.collider_set
             .get_mut(self.collider_handle)
             .unwrap()
             .shape_mut()
@@ -337,7 +334,7 @@ impl Prop {
             .map(|voxel| voxel.grid_coords)
             .collect();
         
-        space.collider_set
+        area_context.space.collider_set
             .get_mut(self.collider_handle)
             .unwrap()
             .set_shape(
@@ -346,12 +343,12 @@ impl Prop {
 
 
         // COPY THIS ABOVE??
-        if self.check_if_no_voxels(space) == true {
+        if self.check_if_no_voxels(area_context.space) == true {
             self.mark_despawn();
             return;
         }
 
-        if let Some(break_apart_new_voxels) = self.break_apart(area_id, ctx, space, &impacted_voxels, props) {
+        if let Some(break_apart_new_voxels) = self.break_apart(*area_context.id, ctx, area_context.space, &impacted_voxels, area_context.props) {
             log::debug!("break apart new voxels with length: {} impacted voxels len: {}", break_apart_new_voxels.len(), impacted_voxels.len());
             new_voxels = break_apart_new_voxels;
         }
@@ -362,7 +359,7 @@ impl Prop {
         ctx.send_network_packet(
             UpdatePropVoxels {
                 prop_id: self.id,
-                area_id: area_id,
+                area_id: *area_context.id,
                 new_voxels: new_voxels,
                 removed_voxels: self.removed_voxels.clone(),
             }.into()

@@ -5,7 +5,7 @@ use macroquad::{color::{BLACK, GREEN}, math::Vec2, shapes::{draw_rectangle, draw
 use rapier2d::{parry::query::Ray, prelude::{ColliderHandle, Group, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientTickContext, Owner, TickContext, angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, get_angle_between_rapier_points, player::{Facing, Player, PlayerId}, prop::Prop, rapier_to_macroquad, space::Space, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
+use crate::{ClientTickContext, Owner, TickContext, angle_weapon_to_mouse, area::{self, AreaContext, AreaId}, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, get_angle_between_rapier_points, player::{Facing, Player, PlayerId}, prop::Prop, rapier_to_macroquad, space::Space, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct EnemyId {
@@ -174,15 +174,8 @@ impl Enemy {
     }
     pub fn break_obstacles(
         &mut self, 
-        props: &mut Vec<Prop>, 
-        space: &mut Space, 
-        ctx: &mut TickContext, 
-        players: &mut Vec<Player>, 
-        bullet_trails: &mut Vec<BulletTrail>,
-        area_id: AreaId,
-        dissolved_pixels: &mut Vec<DissolvedPixel>,
-        enemies: &mut Vec<Enemy>,
-        impact_points: &mut Vec<glamx::Vec2>
+        ctx: &mut TickContext,
+        area_context: &mut AreaContext 
     ) {
 
         if let Some(weapon) = &mut self.weapon {
@@ -206,7 +199,10 @@ impl Enemy {
         };
 
     
-        let blocking_colliders = self.get_colliders_between_enemy_and_target(space, players);
+        let blocking_colliders = self.get_colliders_between_enemy_and_target(
+            area_context.space, 
+            area_context.players
+        );
         
 
         let _weapon = if let Some(weapon) = &mut self.weapon {
@@ -218,7 +214,7 @@ impl Enemy {
         // identify the prop that is blocking our way
         let mut blocking_prop_collider = None;
 
-        for prop in &mut *props {
+        for prop in &mut *area_context.props {
             if blocking_colliders.contains(&prop.collider_handle) {
                 blocking_prop_collider = Some(prop.collider_handle);
 
@@ -232,7 +228,7 @@ impl Enemy {
 
         // we could maybe make it so that the enemy explicity points at the prop it wants to destroy but for now we just blindly fire the weapon if we know a prop is in the way
 
-        self.fire_weapon(props, space, ctx, players, bullet_trails, area_id, dissolved_pixels, enemies, impact_points);    
+        self.fire_weapon(ctx, area_context);    
 
 
 
@@ -392,14 +388,12 @@ impl Enemy {
     #[inline]
     pub fn handle_bullet_impact(
         &mut self, 
-        area_id: AreaId, 
-        ctx: &mut TickContext, 
-        space: &mut Space, 
+        ctx: &mut TickContext,
+        area_context: &mut AreaContext, 
         bullet_impact: BulletImpactData, 
-        weapon_owner: WeaponOwner
     ) {
 
-        match weapon_owner {
+        match bullet_impact.weapon_owner {
             WeaponOwner::Enemy(_enemy_id) => return,
             WeaponOwner::Player(_player_id) => {},
         }
@@ -409,7 +403,7 @@ impl Enemy {
 
             self.health -= (bullet_impact.damage * 0.5) as i32;
 
-            space.rigid_body_set.get_mut(self.body.body_handle).unwrap().apply_impulse(bullet_impact.bullet_vector.normalize() * 100000., true);
+            area_context.space.rigid_body_set.get_mut(self.body.body_handle).unwrap().apply_impulse(bullet_impact.bullet_vector.normalize() * 100000., true);
 
         }
         // head shot
@@ -419,14 +413,14 @@ impl Enemy {
 
             self.health -= damage;
 
-            space.rigid_body_set.get_mut(self.head.body_handle).unwrap().apply_impulse(bullet_impact.bullet_vector.normalize() * 100000., true);
+            area_context.space.rigid_body_set.get_mut(self.head.body_handle).unwrap().apply_impulse(bullet_impact.bullet_vector.normalize() * 100000., true);
 
         }
 
         ctx.send_network_packet(
             NetworkPacket::EnemyHealthUpdate(
                 EnemyHealthUpdate {
-                    area_id,
+                    area_id: *area_context.id,
                     enemy_id: self.id,
                     health: self.health,
                 }
@@ -436,9 +430,9 @@ impl Enemy {
         ctx.send_network_packet(
             NetworkPacket::EnemyVelocityUpdate(
                 EnemyVelocityUpdate {
-                    area_id,
+                    area_id: *area_context.id,
                     enemy_id: self.id,
-                    velocity: *space.rigid_body_set.get(self.body.body_handle).unwrap().vels(),
+                    velocity: *area_context.space.rigid_body_set.get(self.body.body_handle).unwrap().vels(),
                 }
             )
         );
@@ -505,32 +499,37 @@ impl Enemy {
     }
 
     pub fn fire_weapon(
-        &mut self, 
-        props: &mut Vec<Prop>, 
-        space: &mut Space, 
-        ctx: &mut TickContext, 
-        players: &mut Vec<Player>, 
-        bullet_trails: &mut Vec<BulletTrail>, 
-        area_id: AreaId, 
-        dissolved_pixels: &mut Vec<DissolvedPixel>, 
-        enemies: &mut Vec<Enemy>,
-        impact_points: &mut Vec<glamx::Vec2>
+        &mut self,
+        ctx: &mut TickContext,
+        area_context: &mut AreaContext 
     ) {
 
         if let Some(weapon) = &mut self.weapon {
 
-            weapon.fire(ctx, &mut WeaponFireContext {
-                space,
-                players,
-                props,
-                bullet_trails,
-                facing: self.facing,
-                area_id,
-                dissolved_pixels,
-                enemies,
-                weapon_owner: WeaponOwner::Enemy(self.id),
-                impact_points
-            });
+            let enemy_context = EnemyContext {
+                head: &mut self.head,
+                body: &mut self.body,
+                health: &mut self.health,
+                facing: &mut self.facing,
+                owner: &mut self.owner,
+                head_body_joint: &mut self.head_body_joint,
+                last_jump: &mut self.last_jump,
+                player_target: &mut self.player_target,
+                id: &mut self.id,
+                despawn: &mut self.despawn,
+                weapon: &mut None, // this seems indicative of future problems
+                task: &mut self.task,
+                last_fired_weapon: &mut self.last_fired_weapon,
+                last_task_change: &mut self.last_task_change,
+                previous_velocity: &mut self.previous_velocity,
+                previous_position: &mut self.previous_position,
+                last_position_update: &mut self.last_position_update,
+                last_velocity_update: &mut self.last_velocity_update,
+                last_health_update: &mut self.last_health_update,
+                death_time: &mut self.death_time,
+            };
+
+            weapon.fire(ctx, area_context, &mut enemy_context.into());
 
             self.last_fired_weapon = web_time::Instant::now();
         }
@@ -540,20 +539,12 @@ impl Enemy {
 
     pub fn owner_tick(
         &mut self, 
-        props: &mut Vec<Prop>, 
-        space: &mut Space, 
-        ctx: &mut TickContext, 
-        players: &mut Vec<Player>, 
-        bullet_trails: &mut Vec<BulletTrail>, 
-        area_id: AreaId, 
-        dissolved_pixels: &mut Vec<DissolvedPixel>, 
-        enemies: &mut Vec<Enemy>,
-        despawn_y: f32,
-        impact_points: &mut Vec<glamx::Vec2>
+        ctx: &mut TickContext,
+        area_context: &mut AreaContext 
     ) {
         
 
-        self.set_task(space, players, props);
+        self.set_task(area_context.space, area_context.players, area_context.props);
 
         if self.health <= 0 {
             if self.death_time.is_none() {
@@ -562,7 +553,7 @@ impl Enemy {
         }
 
 
-        let body = space.rigid_body_set.get(self.body.body_handle).unwrap();
+        let body = area_context.space.rigid_body_set.get(self.body.body_handle).unwrap();
         let velocity = body.vels();
         let pos = body.position();
 
@@ -570,7 +561,7 @@ impl Enemy {
 
             let packet = NetworkPacket::EnemyVelocityUpdate(
                 EnemyVelocityUpdate {
-                    area_id,
+                    area_id: *area_context.id,
                     enemy_id: self.id,
                     velocity: *velocity,
                 }
@@ -591,7 +582,7 @@ impl Enemy {
 
             let packet = NetworkPacket::EnemyPositionUpdate(
                 EnemyPositionUpdate {
-                    area_id,
+                    area_id: *area_context.id,
                     enemy_id: self.id,
                     position: *pos,
                 }
@@ -607,23 +598,23 @@ impl Enemy {
         if self.health > 0 {
             match self.task {
             Task::BreakingProps => {
-                self.break_obstacles(props, space, ctx, players, bullet_trails, area_id, dissolved_pixels, enemies, impact_points);
+                self.break_obstacles(ctx, area_context);
             },
             Task::ChasePlayer => {
-                self.follow_target(space, players);
+                self.follow_target(area_context.space, area_context.players);
             },
             Task::AttackPlayer => {
 
-                self.fire_weapon(props, space, ctx, players, bullet_trails, area_id, dissolved_pixels, enemies, impact_points);
+                self.fire_weapon(ctx, area_context);
 
-                self.follow_target(space, players);
+                self.follow_target(area_context.space, area_context.players);
 
             
             }
         }
         }
 
-        self.despawn_if_dead(ctx, space, area_id);
+        self.despawn_if_dead(ctx, area_context.space, *area_context.id);
         
 
         if self.despawn {
@@ -632,7 +623,7 @@ impl Enemy {
 
 
 
-        self.despawn_if_below_level(area_id, ctx, space, despawn_y);
+        self.despawn_if_below_level(*area_context.id, ctx, area_context.space, *area_context.despawn_y);
 
     }
 
@@ -662,16 +653,8 @@ impl Enemy {
 
     pub fn tick(
         &mut self, 
-        space: &mut Space, 
-        ctx: &mut TickContext, 
-        players: &mut Vec<Player>, 
-        despawn_y: f32,
-        props: &mut Vec<Prop>,
-        bullet_trails: &mut Vec<BulletTrail>,
-        area_id: AreaId,
-        dissolved_pixels: &mut Vec<DissolvedPixel>, 
-        enemies: &mut Vec<Enemy>,
-        impact_points: &mut Vec<glamx::Vec2>
+        ctx: &mut TickContext,
+        area_context: &mut AreaContext 
     ) {
 
         let then = web_time::Instant::now();
@@ -682,21 +665,21 @@ impl Enemy {
             return;
         }
 
-        self.detach_head_if_dead(space);
+        self.detach_head_if_dead(area_context.space);
 
         
 
         if self.health > 0 {
-            self.upright(space);
+            self.upright(area_context.space);
 
-            self.target_player(players, space);
+            self.target_player(area_context.players, area_context.space);
 
-            self.angle_weapon_to_mouse(space, players);
-            self.change_facing_direction(space);
+            self.angle_weapon_to_mouse(area_context.space, area_context.players);
+            self.change_facing_direction(area_context.space);
 
-            self.angle_head_to_target(space, players);
+            self.angle_head_to_target(area_context.space, area_context.players);
 
-            self.face_target(space, players);
+            self.face_target(area_context.space, area_context.players);
 
             
         }
@@ -704,7 +687,7 @@ impl Enemy {
         
 
         if ctx.id() == self.owner {
-            self.owner_tick(props, space, ctx, players, bullet_trails, area_id, dissolved_pixels, enemies, despawn_y, impact_points);
+            self.owner_tick(ctx, area_context);
         }
 
         
@@ -927,6 +910,29 @@ impl Drawable for Enemy {
     fn draw_layer(&self) -> u32 {
         3
     }
+}
+
+pub struct EnemyContext<'a> {
+    pub head: &'a mut BodyPart,
+    pub body: &'a mut BodyPart,
+    pub health: &'a mut i32,
+    pub facing: &'a mut Facing,
+    pub owner: &'a mut Owner,
+    pub head_body_joint: &'a mut Option<ImpulseJointHandle>,
+    pub last_jump: &'a mut web_time::Instant,
+    pub player_target: &'a mut Option<PlayerId>,
+    pub id: &'a mut EnemyId,
+    pub despawn: &'a mut bool,
+    pub weapon: &'a mut Option<WeaponType>,
+    pub task: &'a mut Task,
+    pub last_fired_weapon: &'a mut web_time::Instant,
+    pub last_task_change: &'a mut web_time::Instant,
+    pub previous_velocity: &'a mut RigidBodyVelocity<f32>,
+    pub previous_position: &'a mut Pose2,
+    pub last_position_update: &'a mut web_time::Instant,
+    pub last_velocity_update: &'a mut web_time::Instant,
+    pub last_health_update: &'a mut web_time::Instant,
+    pub death_time: &'a mut Option<web_time::Instant>
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

@@ -2,7 +2,7 @@ use derive_more::From;
 use macroquad::{color::Color, math::Vec2};
 use rapier2d::prelude::{ColliderHandle, ImpulseJointHandle, RigidBodyHandle};
 
-use crate::{TickContext, player::Facing, space::Space, texture_loader::ClientTextureLoader, weapons::{lmg::weapon::LMG, shotgun::weapon::Shotgun, smg::weapon::SMG, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
+use crate::{TickContext, area::AreaContext, enemy::EnemyContext, player::{Facing, Player, PlayerContext}, space::Space, texture_loader::ClientTextureLoader, weapons::{lmg::weapon::LMG, shotgun::weapon::Shotgun, smg::weapon::SMG, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
 
 // in order to be an equipable weapon your weapon must be part of this enum 
 #[derive(PartialEq, Clone, Debug, From)]
@@ -126,11 +126,16 @@ impl WeaponType {
             WeaponType::SMG(smg) => smg.rigid_body_handle()
         }
     }
-    pub fn fire(&mut self, ctx: &mut TickContext, weapon_fire_context: &mut WeaponFireContext) {
+    pub fn fire(
+        &mut self, 
+        ctx: &mut TickContext, 
+        area_context: &mut AreaContext,
+        player_context: &mut ShooterContext
+    ) {
         match self {
-            WeaponType::Shotgun(shotgun) => shotgun.fire(ctx, weapon_fire_context),
-            WeaponType::LMG(lmg) => lmg.fire(ctx, weapon_fire_context),
-            WeaponType::SMG(smg) => smg.fire(ctx, weapon_fire_context),
+            WeaponType::Shotgun(shotgun) => shotgun.fire(ctx, area_context, player_context),
+            WeaponType::LMG(lmg) => lmg.fire(ctx, area_context, player_context),
+            WeaponType::SMG(smg) => smg.fire(ctx, area_context, player_context),
         }
     }
 
@@ -150,5 +155,12 @@ impl WeaponType {
         }
     }
 
+}
+
+
+#[derive(From)]
+pub enum ShooterContext<'a> {
+    PlayerContext(PlayerContext<'a>),
+    EnemyContext(EnemyContext<'a>)
 }
 

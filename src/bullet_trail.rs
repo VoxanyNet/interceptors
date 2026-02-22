@@ -2,7 +2,7 @@ use glamx::Vec2;
 use macroquad::{color::{Color, WHITE}, shapes::draw_line};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, TickContext, area::AreaId, drawable::Drawable, rapier_to_macroquad, uuid_u64};
+use crate::{ClientId, Owner, TickContext, area::AreaId, drawable::Drawable, rapier_to_macroquad, uuid_u64};
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct BulletTrailId {
@@ -21,7 +21,7 @@ pub struct BulletTrail {
     start: glamx::Vec2,
     end: glamx::Vec2,
     color: Color,
-    pub owner: ClientId,
+    pub owner: Owner,
     id: BulletTrailId
 }
 
@@ -48,7 +48,7 @@ impl BulletTrail {
         start: glamx::Vec2,
         end: glamx::Vec2,
         color: Option<Color>,
-        owner: ClientId
+        owner: Owner
     ) -> Self {
 
         let color = match color {
@@ -89,7 +89,7 @@ impl Drawable for BulletTrail {
 pub struct BulletTrailSave {
     start: Vec2,
     end: Vec2,
-    pub owner: ClientId,
+    pub owner: Owner,
     id: BulletTrailId
 }
 

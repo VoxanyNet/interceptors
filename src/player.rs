@@ -6,7 +6,7 @@ use macroquad::{color::{BLACK, WHITE}, input::{KeyCode, is_key_down, is_mouse_bu
 use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, angle_weapon_to_mouse, area::AreaId, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, prop::Prop, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
+use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, angle_weapon_to_mouse, area::{AreaContext, AreaId}, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, prop::Prop, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -358,9 +358,13 @@ impl Player {
     } 
 
 
-    pub fn move_camera(&mut self, space: &Space, _max_camera_y: f32, ctx: &mut ClientTickContext, _minimum_camera_width: f32, _minimum_camera_height: f32) {
+    pub fn move_camera(
+        &mut self, 
+        ctx: &mut ClientTickContext, 
+        area_context: &mut AreaContext
+    ) {
 
-        let player_position = space.rigid_body_set.get(self.body.body_handle).unwrap().translation();
+        let player_position = area_context.space.rigid_body_set.get(self.body.body_handle).unwrap().translation();
         let macroquad_player_position = rapier_to_macroquad(player_position);
 
         let mouse_pos: Vec2 = mouse_position().into();
@@ -473,7 +477,11 @@ impl Player {
         }
     }
 
-    pub fn change_active_inventory_slot(&mut self, ctx: &mut ClientTickContext, area_id: AreaId, _space: &mut Space) {
+    pub fn change_active_inventory_slot(
+        &mut self, 
+        ctx: &mut ClientTickContext, 
+        area_context: &mut AreaContext
+    ) {
 
         if mouse_wheel().1 == 0. {
             return;
@@ -492,7 +500,7 @@ impl Player {
             ctx.network_io.send_network_packet(
                 NetworkPacket::ActiveItemSlotUpdate(
                     ActiveItemSlotUpdate {
-                        area_id,
+                        area_id: *area_context.id,
                         player_id: self.id,
                         active_item_slot: self.selected_item as u32,
                     }
@@ -513,7 +521,7 @@ impl Player {
             ctx.network_io.send_network_packet(
                 NetworkPacket::ActiveItemSlotUpdate(
                     ActiveItemSlotUpdate {
-                        area_id,
+                        area_id: *area_context.id,
                         player_id: self.id,
                         active_item_slot: self.selected_item as u32,
                     }
@@ -529,16 +537,7 @@ impl Player {
     pub fn use_item(
         &mut self, 
         ctx: &mut TickContext, 
-        space: &mut Space, 
-        props: &mut Vec<Prop>, 
-        players: &mut Vec<Player>, 
-        bullet_trails: &mut Vec<BulletTrail>,
-        facing: Facing,
-        area_id: AreaId,
-        enemies: &mut Vec<Enemy>,
-        dissolved_pixels: &mut Vec<DissolvedPixel>,
-        impact_points: &mut Vec<glamx::Vec2>,
-        _dropped_items: &mut Vec<DroppedItem>,
+        area_context: &mut AreaContext
     ) {
 
         if !(is_mouse_button_released(macroquad::input::MouseButton::Left) || is_mouse_button_down(macroquad::input::MouseButton::Left))  {
@@ -566,20 +565,34 @@ impl Player {
             },
             Item::Weapon(weapon_type) => {
 
-                let weapon_fire_context = &mut WeaponFireContext {
-                    space,
-                    players,
-                    props,
-                    bullet_trails,
-                    facing,
-                    area_id,
-                    dissolved_pixels,
-                    enemies,
-                    weapon_owner: WeaponOwner::Player(self.id),
-                    impact_points
+                let mut player_context = PlayerContext {
+                    id: &mut self.id,
+                    health: &mut self.health,
+                    head: &mut self.head,
+                    body: &mut self.body,
+                    max_speed: &mut self.max_speed,
+                    owner: &mut self.owner,
+                    previous_velocity: &mut self.previous_velocity,
+                    head_joint_handle: &mut self.head_joint_handle,
+                    facing: &mut self.facing,
+                    cursor_pos_rapier: &mut self.cursor_pos_rapier,
+                    previous_cursor_pos: &mut self.previous_cursor_pos,
+                    selected_item: &mut self.selected_item,
+                    inventory: &mut self.inventory,
+                    junk: &mut self.junk,
+                    last_changed_inventory_slot: &mut self.last_changed_inventory_slot,
+                    previous_selected_item: &mut self.previous_selected_item,
+                    last_dash: &mut self.last_dash,
+                    previous_pos: &mut self.previous_pos,
+                    last_position_update: &mut self.last_position_update,
+                    last_autofire: &mut self.last_autofire,
+                    flying: &mut self.flying,
+                    despawn: &mut self.despawn,
+                    move_right_toggle: &mut self.move_right_toggle,
+                    move_left_toggle: &mut self.move_left_toggle,
                 };
     
-                weapon_type.fire(ctx, weapon_fire_context);
+                weapon_type.fire(ctx, area_context, &mut player_context.into());
             }
         };
 
@@ -593,13 +606,17 @@ impl Player {
         
     }
 
-    pub fn update_cursor_pos(&mut self, ctx: &mut ClientTickContext, area_id: AreaId) {
+    pub fn update_cursor_pos(
+        &mut self, 
+        ctx: &mut ClientTickContext, 
+        area_context: &mut AreaContext
+    ) {
         self.cursor_pos_rapier = rapier_mouse_world_pos(ctx.camera_rect);
 
         if self.cursor_pos_rapier != self.previous_cursor_pos {
             ctx.network_io.send_network_packet(
                 NetworkPacket::PlayerCursorUpdate(
-                    PlayerCursorUpdate { area_id: area_id , id: self.id, pos: self.cursor_pos_rapier }
+                    PlayerCursorUpdate { area_id: *area_context.id , id: self.id, pos: self.cursor_pos_rapier }
                 )
             );
         }
@@ -607,7 +624,11 @@ impl Player {
         self.previous_cursor_pos = self.cursor_pos_rapier;
     }
 
-    pub fn control_controller(&mut self, _space: &mut Space, _ctx: &mut ClientTickContext) {
+    pub fn control_controller(
+        &mut self, 
+        ctx: &mut ClientTickContext, 
+        area_context: &mut AreaContext
+    ) {
 
         // let body = space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
 
@@ -702,8 +723,12 @@ impl Player {
         );
     }
 
-    pub fn control_mkb(&mut self, space: &mut Space, ctx: &mut ClientTickContext) {
-        let body = space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
+    pub fn control_mkb(
+        &mut self, 
+        ctx: &mut ClientTickContext,
+        area_context: &mut AreaContext
+    ) {
+        let body = area_context.space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
         //self.fly(body);
 
         if is_key_down(KeyCode::Space) {
@@ -736,62 +761,44 @@ impl Player {
     pub fn client_tick(
         &mut self, 
         ctx: &mut TickContext, 
-        space: &mut Space, 
-        area_id: AreaId,
-        players: &mut Vec<Player>,
-        enemies: &mut Vec<Enemy>,
-        props: &mut Vec<Prop>,
-        bullet_trails: &mut Vec<BulletTrail>,
-        dissolved_pixels: &mut Vec<DissolvedPixel>,
-        dropped_items: &mut Vec<DroppedItem>,
-        max_camera_y: f32,
-        minimum_camera_width: f32,
-        minimum_camera_height: f32,
-        tiles: &mut Vec<Vec<Option<Tile>>>,
-        impact_points: &mut Vec<glamx::Vec2>
+        area_context: &mut AreaContext
 
     ) {
 
-        let current_velocity = space.rigid_body_set.get(self.body.body_handle).unwrap().vels().clone();
+        let current_velocity = area_context.space.rigid_body_set.get(self.body.body_handle).unwrap().vels().clone();
 
-        self.angle_weapon_to_mouse(space);
-        self.angle_head_to_mouse(space);
+        self.angle_weapon_to_mouse(area_context.space);
+        self.angle_head_to_mouse(area_context.space);
         
-        self.materialize_tiles(space, tiles);
+        self.materialize_tiles(area_context.space, area_context.tiles);
 
         if self.owner == ctx.id() {
             self.owner_tick(
-                space, 
                 ctx, 
-                area_id, 
-                players, 
-                enemies, 
-                props, 
-                bullet_trails, 
-                dissolved_pixels, 
-                dropped_items, 
-                max_camera_y, 
-                minimum_camera_width, 
-                minimum_camera_height,
-                impact_points
+                area_context
             );
         }   
 
-        self.unequip_previous_weapon(space);
-        self.equip_selected_item(space);
+        self.unequip_previous_weapon(area_context.space);
+        self.equip_selected_item(area_context.space);
 
         self.previous_selected_item = self.selected_item;
         self.previous_velocity = current_velocity;
         
     }
 
-    pub fn face_towards_mouse(&mut self, space: &mut Space, ctx: &mut ClientTickContext, area_id: AreaId) {
-        let head_body = space.rigid_body_set.get_mut(self.head.body_handle).unwrap();
+    pub fn face_towards_mouse(
+        &mut self,  
+        ctx: &mut ClientTickContext, 
+        area_context: &mut AreaContext
+        
+    ) {
+        let head_body = area_context.space.rigid_body_set.get_mut(self.head.body_handle).unwrap();
         let angle_to_mouse = get_angle_between_rapier_points(head_body.position().translation, self.cursor_pos_rapier);
 
         match angle_to_mouse.is_sign_positive() {
-            true => self.set_facing(Facing::Right, area_id, ctx),
-            false => self.set_facing(Facing::Left, area_id, ctx),
+            true => self.set_facing(Facing::Right, *area_context.id, ctx),
+            false => self.set_facing(Facing::Left, *area_context.id, ctx),
         }
     }
     pub fn angle_head_to_mouse(&mut self, space: &mut Space) {
@@ -869,8 +876,12 @@ impl Player {
         }
     }
 
-    pub fn change_facing_direction(&mut self, space: &Space, ctx: &mut ClientTickContext, area_id: AreaId) {
-        let velocity = space.rigid_body_set.get(self.body.body_handle).unwrap().linvel();
+    pub fn change_facing_direction(
+        &mut self, 
+        ctx: &mut ClientTickContext, 
+        area_context: &mut AreaContext
+    ) {
+        let velocity = area_context.space.rigid_body_set.get(self.body.body_handle).unwrap().linvel();
 
 
         if velocity.x > 100. {
@@ -880,7 +891,7 @@ impl Player {
             }
 
             if self.facing != Facing::Right {
-                self.set_facing(Facing::Right, area_id, ctx);
+                self.set_facing(Facing::Right, *area_context.id, ctx);
                 
             }
 
@@ -893,7 +904,7 @@ impl Player {
             }
 
             if self.facing != Facing::Left {
-                self.set_facing(Facing::Left, area_id, ctx);
+                self.set_facing(Facing::Left, *area_context.id, ctx);
 
             }
         }
@@ -1020,37 +1031,25 @@ impl Player {
 
     pub fn owner_tick(
         &mut self, 
-        space: &mut Space, 
         ctx: &mut TickContext, 
-        area_id: AreaId,
-        players: &mut Vec<Player>,
-        enemies: &mut Vec<Enemy>,
-        props: &mut Vec<Prop>,
-        bullet_trails: &mut Vec<BulletTrail>,
-        dissolved_pixels: &mut Vec<DissolvedPixel>,
-        dropped_items: &mut Vec<DroppedItem>,
-        max_camera_y: f32,
-        minimum_camera_width: f32,
-        minimum_camera_height: f32,
-        impact_points: &mut Vec<glamx::Vec2>
+        area_context: &mut AreaContext
     ) {
 
-
         if let TickContext::Client(ctx) = ctx {
-            self.update_cursor_pos(ctx, area_id);
-            self.change_active_inventory_slot(ctx, area_id, space);
-            self.change_facing_direction(space, ctx, area_id);
-            self.control_controller(space, ctx);
-            self.control_mkb(space, ctx);
-            self.move_camera(space, max_camera_y, ctx, minimum_camera_width, minimum_camera_height);
-            self.face_towards_mouse(space, ctx, area_id);
+            self.update_cursor_pos(ctx, area_context);
+            self.change_active_inventory_slot(ctx, area_context);
+            self.change_facing_direction(ctx, area_context);
+            self.control_controller(ctx, area_context);
+            self.control_mkb(ctx, area_context);
+            self.move_camera(ctx, area_context);
+            self.face_towards_mouse(ctx, area_context);
         }
 
-        self.use_item(ctx, space, props, players, bullet_trails, self.facing, area_id, enemies, dissolved_pixels,impact_points,  dropped_items);
-        self.send_position_network_update(ctx, space, area_id);
-        self.dash(space);
-        self.pickup_item(dropped_items, space, ctx, area_id);
-        self.send_velocity_network_update(ctx, area_id, space);
+        self.use_item(ctx, area_context);
+        self.send_position_network_update(ctx, area_context.space, *area_context.id);
+        self.dash(area_context.space);
+        self.pickup_item(area_context.dropped_items, area_context.space, ctx, *area_context.id);
+        self.send_velocity_network_update(ctx, *area_context.id, area_context.space);
         
         
     }
@@ -1123,6 +1122,32 @@ impl Drawable for Player {
     }
 }
 
+pub struct PlayerContext<'a> {
+    pub id: &'a mut PlayerId,
+    pub health: &'a mut i32,
+    pub head: &'a mut BodyPart,
+    pub body: &'a mut BodyPart,
+    max_speed: &'a mut Vec2,
+    pub owner: &'a mut Owner,
+    previous_velocity: &'a mut RigidBodyVelocity<f32>,
+    head_joint_handle: &'a mut Option<ImpulseJointHandle>,
+    pub facing: &'a mut Facing,
+    cursor_pos_rapier: &'a mut glamx::Vec2,
+    previous_cursor_pos: &'a mut glamx::Vec2,
+    pub selected_item: &'a mut usize,
+    pub inventory: &'a mut Inventory,
+    junk: &'a mut Vec<ItemSlot>, // you can hold unlimited junk
+    last_changed_inventory_slot: &'a mut web_time::Instant,
+    pub previous_selected_item: &'a mut usize,
+    last_dash: &'a mut web_time::Instant,
+    previous_pos: &'a mut Pose2,
+    last_position_update: &'a mut web_time::Instant,
+    last_autofire: &'a mut web_time::Instant,
+    flying: &'a mut bool,
+    pub despawn: &'a mut bool,
+    pub move_right_toggle: &'a mut bool,
+    pub move_left_toggle: &'a mut bool,
+}
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct PlayerSave {
     pos: Pose2,

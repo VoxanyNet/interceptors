@@ -1,13 +1,15 @@
 use std::path::PathBuf;
 
+use derive_more::From;
 use glamx::Pose2;
 use macroquad::{audio::{PlaySoundParams, play_sound}, color::Color, input::{is_mouse_button_down, is_mouse_button_released}, math::Vec2, rand::RandomRange};
 use rapier2d::{math::Vector, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
+use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, ClientTickContext, SwapIter, TickContext, area::AreaId, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, enemy::EnemyId, get_intersections, get_preview_resolution, player::{Facing, PlayerId}, prop::StupidDissolvedPixelVelocityUpdate, space::Space, texture_loader::ClientTextureLoader, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon_save::WeaponSave, weapon_fire_context::WeaponFireContext}};
+use crate::{ClientId, ClientTickContext, Owner, SwapIter, TickContext, area::{self, AreaContext, AreaId}, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, enemy::EnemyId, get_intersections, get_preview_resolution, player::{Facing, PlayerContext, PlayerId}, prop::StupidDissolvedPixelVelocityUpdate, space::Space, texture_loader::ClientTextureLoader, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon_save::WeaponSave, weapon_fire_context::WeaponFireContext, weapon_type::ShooterContext}};
 
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, From)]
 pub enum WeaponOwner {
     Enemy(EnemyId),
     Player(PlayerId)
@@ -21,7 +23,7 @@ pub struct WeaponBase {
     pub collider: Option<ColliderHandle>,
     pub rigid_body: Option<RigidBodyHandle>,
     pub sprite: PathBuf,
-    pub owner: ClientId,
+    pub owner: WeaponOwner,
     pub scale: f32,
     pub aim_angle_offset: f32,
     pub fire_sound_path: PathBuf,
@@ -187,7 +189,7 @@ impl WeaponBase {
             mass: self.mass,
             texture_size: self.texture_size,
             sprite: self.sprite.clone(),
-            owner: self.owner,
+            owner: self.owner.clone(),
             scale: self.scale,
             fire_sound_path: self.fire_sound_path.clone(),
             x_screen_shake_frequency: self.x_screen_shake_frequency,
@@ -207,7 +209,7 @@ impl WeaponBase {
         }
     }
     pub fn new(
-        owner: ClientId, 
+        owner: WeaponOwner, 
         player_rigid_body_handle: Option<RigidBodyHandle>,
         sprite_path: PathBuf,
         scale: f32,
@@ -311,69 +313,11 @@ impl WeaponBase {
     pub fn handle_entity_impacts(
         &mut self, 
         ctx: &mut TickContext,
-        weapon_fire_context: &mut WeaponFireContext, 
+        area_context: &mut AreaContext,
+        player_context: &mut PlayerContext,
         impacts: Vec<BulletImpactData>,
     ) {
-        // PLAYERS
-        for player in &mut *weapon_fire_context.players {
-
-            let body_collider = player.body.collider_handle;
-            let head_collider = player.head.collider_handle;
-
-            for impact in  impacts.iter().filter(|intersection| {intersection.impacted_collider == body_collider || intersection.impacted_collider == head_collider}) {
-                player.handle_bullet_impact(&weapon_fire_context.space, impact.clone());
-            };
-            
-            
-        }
-
-        for enemy in &mut *weapon_fire_context.enemies {
-
-            let body_collider = enemy.body.collider_handle;
-            let head_collider = enemy.head.collider_handle;
-
-            for impact in  impacts.iter().filter(|intersection| {intersection.impacted_collider == body_collider || intersection.impacted_collider == head_collider}) {
-                enemy.handle_bullet_impact(weapon_fire_context.area_id, ctx, &mut weapon_fire_context.space, impact.clone(), weapon_fire_context.weapon_owner.clone());
-
-                break;
-            };
-        }
-
-        let mut prop_iter = SwapIter::new(&mut weapon_fire_context.props);
-
-        while prop_iter.not_done() {
-            let (props, mut prop) = prop_iter.next();
-
-            let collider = prop.collider_handle;
-
-            for impact in impacts.iter().filter(|impact| {impact.impacted_collider == collider}) {
-                prop.handle_bullet_impact(
-                    ctx, 
-                    &impact, 
-                    weapon_fire_context.space, 
-                    weapon_fire_context.area_id,
-                    props, 
-                    weapon_fire_context.dissolved_pixels
-                );
-            };
-
-            prop_iter.restore(prop);
-
-        }
-     
-
-        for dissolved_pixel in &mut *weapon_fire_context.dissolved_pixels {
-
-            let collider = dissolved_pixel.collider;
-
-            for impact in impacts.iter().filter(|impact| {impact.impacted_collider == collider}) {
-                let body = weapon_fire_context.space.rigid_body_set.get_mut(dissolved_pixel.body).unwrap();
-                body.apply_impulse(
-                    Vector::new(impact.bullet_vector.x * 5000., impact.bullet_vector.y * 5000.), 
-                    true
-                );
-            }
-        };
+        
     }
 
     pub fn reload_on_zero_bullets(&mut self, ctx: &mut TickContext){
@@ -414,7 +358,8 @@ impl WeaponBase {
         &mut self, 
         bullet_count: u32, 
         innaccuracy: f32,
-        weapon_fire_context: &WeaponFireContext
+        space: &Space,
+        facing: Facing
     ) -> Vec<glamx::Vec2> {
         let mut bullet_vectors = Vec::new();
 
@@ -422,8 +367,8 @@ impl WeaponBase {
             
 
             let bullet_vector = self.get_bullet_vector_rapier(
-                &weapon_fire_context.space, 
-                weapon_fire_context.facing,
+                space, 
+                facing,
                 innaccuracy
             );
 
@@ -436,20 +381,20 @@ impl WeaponBase {
     fn get_bullet_impacts(
         &mut self, 
         ctx: &mut TickContext,
+        area_context: &mut AreaContext,
+        shooter_context: &mut ShooterContext,
         bullet_vectors: Vec<glamx::Vec2>,
-        weapon_fire_context: &mut WeaponFireContext
     ) -> Vec<BulletImpactData> {
         let mut impacts = Vec::new();
         
         for bullet_vector in bullet_vectors {
 
-            impacts.append(&mut self.get_impacts(weapon_fire_context.space, bullet_vector));
+            impacts.append(&mut self.get_impacts(area_context.space, bullet_vector));
             self.create_bullet_trail(
                 ctx, 
+                area_context,
+                shooter_context,
                 bullet_vector.clone(), 
-                weapon_fire_context.space, 
-                weapon_fire_context.area_id, 
-                weapon_fire_context.bullet_trails
             );
         };
 
@@ -507,14 +452,14 @@ impl WeaponBase {
         &mut self, 
         bullet_vectors: &Vec<glamx::Vec2>, 
         ctx: &mut TickContext,
-        weapon_fire_context: &WeaponFireContext
+        area_context: &mut AreaContext
     ) {
         for bullet_vector in bullet_vectors {
             ctx.send_network_packet(
                 StupidDissolvedPixelVelocityUpdate {
-                    area_id: weapon_fire_context.area_id,
+                    area_id: *area_context.id,
                     bullet_vector: bullet_vector.clone(),
-                    weapon_pos: weapon_fire_context
+                    weapon_pos: area_context
                         .space.rigid_body_set.get(self.rigid_body.unwrap()).unwrap()
                         .position()
                         .translation
@@ -525,8 +470,9 @@ impl WeaponBase {
     
     pub fn fire(
         &mut self, 
-        ctx: &mut TickContext,
-        weapon_fire_context: &mut WeaponFireContext,
+        ctx: &mut TickContext, 
+        area_context: &mut AreaContext,
+        shooter_context: &mut ShooterContext,
         innaccuracy_factor: Option<f32>,
         bullet_count: Option<u32>
         
@@ -560,24 +506,47 @@ impl WeaponBase {
         };
         self.last_fire = web_time::Instant::now();
         
-        let bullet_vectors = self.get_bullet_vectors(bullet_count, innaccuracy_factor, weapon_fire_context);
-        self.send_stupid_updates(&bullet_vectors, ctx, weapon_fire_context);
-        let bullet_impacts = self.get_bullet_impacts(ctx, bullet_vectors, weapon_fire_context);
+        let facing = match shooter_context {
+            ShooterContext::PlayerContext(player_context) => *player_context.facing,
+            ShooterContext::EnemyContext(enemy_context) => *enemy_context.facing
+        };
+        let bullet_vectors = self.get_bullet_vectors(
+            bullet_count, 
+            innaccuracy_factor, 
+            area_context.space,
+            facing
+        );
+        self.send_stupid_updates(&bullet_vectors, ctx, area_context);
+
+        let bullet_impacts = self.get_bullet_impacts(
+            ctx, 
+            area_context, 
+            shooter_context,
+            bullet_vectors
+        );
         
-        self.handle_entity_impacts(ctx, weapon_fire_context, bullet_impacts);
+        // optimize this
+        area_context.bullet_impact_queue.extend(bullet_impacts.iter().cloned());
+        
+        //self.handle_entity_impacts(ctx, area_context, player_context, bullet_impacts);
 
     }
     
     pub fn create_bullet_trail(
         &mut self, 
         ctx: &mut TickContext, 
+        area_context: &mut AreaContext,
+        shooter_context: &mut ShooterContext,
         bullet_vector: glamx::Vec2, 
-        space: &Space, 
-        area_id: AreaId, 
-        bullet_trails: &mut Vec<BulletTrail>
+        
     ) {
 
-        let weapon_pos = space.rigid_body_set.get(self.rigid_body.unwrap()).unwrap().position();
+        let weapon_pos = area_context.space.rigid_body_set.get(self.rigid_body.unwrap()).unwrap().position();
+
+        let owner = match shooter_context {
+            ShooterContext::PlayerContext(player_context) => &player_context.owner,
+            ShooterContext::EnemyContext(enemy_context) => &enemy_context.owner,
+        };
 
         let bullet_trail = BulletTrail::new(
             glamx::Vec2::new(
@@ -589,12 +558,12 @@ impl WeaponBase {
                 weapon_pos.translation.y - ((bullet_vector.y * 10000.) * -1.),
             ),
             None,
-            self.owner.clone()
+            **owner
         ); 
 
         let packet = crate::updates::NetworkPacket::SpawnBulletTrail(
             SpawnBulletTrail {
-                area_id: area_id,
+                area_id: *area_context.id,
                 save: bullet_trail.save()
             }
         );
@@ -607,7 +576,7 @@ impl WeaponBase {
             },
         }
 
-        bullet_trails.push(
+        area_context.bullet_trails.push(
             bullet_trail
         );
 
@@ -678,7 +647,9 @@ impl WeaponBase {
                     bullet_vector: intersection.intersection_vector,
                     damage: self.base_damage,
                     knockback: self.knockback,
-                    intersection_point: intersection.intersection_point
+                    intersection_point: intersection.intersection_point,
+                    weapon_owner: self.owner.clone(),
+                    
 
                 }
             }

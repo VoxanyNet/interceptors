@@ -3,7 +3,7 @@ use std::{path::PathBuf, time::Duration};
 use macroquad::math::Vec2;
 use rapier2d::prelude::RigidBodyHandle;
 
-use crate::{ClientId, TickContext, player::Facing, space::Space, texture_loader::ClientTextureLoader, weapons::{lmg::weapon_save::LMGSave, weapon::weapon::WeaponBase, weapon_fire_context::WeaponFireContext}};
+use crate::{ClientId, TickContext, area::AreaContext, player::{Facing, PlayerContext}, space::Space, texture_loader::ClientTextureLoader, weapons::{lmg::weapon_save::LMGSave, weapon::weapon::{WeaponBase, WeaponOwner}, weapon_fire_context::WeaponFireContext, weapon_type::ShooterContext}};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct LMG {
@@ -27,8 +27,18 @@ impl LMG {
         self.weapon.despawn_callback(space);
     }
 
-    pub fn fire(&mut self, ctx: &mut TickContext, weapon_fire_context: &mut WeaponFireContext) {
-        self.weapon.fire(ctx, weapon_fire_context, None, Some(1));
+    pub fn fire(&mut self, 
+        ctx: &mut TickContext, 
+        area_context: &mut AreaContext,
+        shooter_context: &mut ShooterContext 
+    ) {
+        self.weapon.fire(
+            ctx, 
+            area_context, 
+            shooter_context, 
+            None,
+            Some(1)
+        );
     }
 
     pub async fn draw(&self, space: &Space, textures: &ClientTextureLoader, facing: Facing) {
@@ -50,7 +60,7 @@ impl LMG {
     }
     
 
-    pub fn new(_space: &mut Space, _pos: Vec2, owner: ClientId, player_rigid_body_handle: Option<RigidBodyHandle>, _facing: Facing) -> Self {
+    pub fn new(_space: &mut Space, _pos: Vec2, owner: WeaponOwner, player_rigid_body_handle: Option<RigidBodyHandle>, _facing: Facing) -> Self {
         Self {
             weapon: WeaponBase::new(
                 owner,

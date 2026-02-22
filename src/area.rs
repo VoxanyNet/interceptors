@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{collections::VecDeque, path::PathBuf, str::FromStr};
 
 use glamx::{Pose2, Vec2, vec2};
 use macroquad::{camera::Camera2D, color::{RED, WHITE}, input::{KeyCode, is_key_released}, math::Rect, prelude::{gl_use_default_material, gl_use_material}, shapes::{draw_circle, draw_rectangle}, time::get_time, window::{clear_background, screen_height, screen_width}};
@@ -6,7 +6,8 @@ use noise::{NoiseFn, Perlin};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TextureLoader, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, material_loader::MaterialLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}, updates::NetworkPacket, uuid_u64, weapons::smg::weapon::SMG};
+    ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TextureLoader, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, material_loader::MaterialLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, smg::weapon::SMG, weapon::weapon::WeaponOwner}};
+
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct AreaId {
@@ -43,7 +44,8 @@ pub struct Area {
     pub wave_data: WaveData,
     pub compound_test: Vec<CompoundTest>,
     pub tiles: Vec<Vec<Option<Tile>>>,
-    pub impact_points: Vec<glamx::Vec2>
+    pub impact_points: Vec<glamx::Vec2>,
+    pub bullet_impact_queue: Vec<BulletImpactData>
 }
 
 pub struct WaveData {
@@ -76,7 +78,7 @@ impl WaveData {
 }
 
 impl Area { 
-
+    
     pub fn tick(&mut self, ctx: &mut TickContext) {
         self.space.step(ctx.last_tick_duration());
 
@@ -86,7 +88,8 @@ impl Area {
             self.debug_spawn_prop(ctx);
             self.debug_spawn_enemy(ctx);
         };
-        
+
+        self.handle_bullet_impacts(ctx);
         self.tick_entities(ctx);
         self.despawn_entities();
     }
@@ -212,23 +215,41 @@ impl Area {
         while enemy_iter.not_done() {
             // let then = Instant::now();
             let (enemies, mut enemy) = enemy_iter.next();
-            //wasted_time += then.elapsed();
-            enemy.tick(
-                &mut self.space, 
-                ctx, 
-                &mut self.players, 
-                self.despawn_y,
-                &mut self.props,
-                &mut self.bullet_trails,
-                self.id,
-                &mut self.dissolved_pixels,
+
+            let mut area_context = AreaContext {
+                backgrounds: &mut self.backgrounds,
+                spawn_point: &mut self.spawn_point,
+                space: &mut self.space,
+                decorations: &mut self.decorations,
+                clips: &mut self.clips,
+                players: &mut self.players,
+                props: &mut self.props,
+                id: &mut self.id,
+                bullet_trails: &mut self.bullet_trails,
+                dissolved_pixels: &mut self.dissolved_pixels,
                 enemies,
-                &mut self.impact_points
+                computer: &mut self.computer,
+                dropped_items: &mut self.dropped_items,
+                max_camera_y: &mut self.max_camera_y,
+                minimum_camera_width: &mut self.minimum_camera_width,
+                minimum_camera_height: &mut self.minimum_camera_height,
+                despawn_y: &mut self.despawn_y,
+                master: &mut self.master,
+                ambiance: &mut self.ambiance,
+                wave_data: &mut self.wave_data,
+                compound_test: &mut self.compound_test,
+                tiles: &mut self.tiles,
+                impact_points: &mut self.impact_points,
+                bullet_impact_queue: &mut self.bullet_impact_queue,
+            };
+
+            enemy.tick(
+                ctx,
+                &mut area_context
             );
 
-            //let then = Instant::now();
             enemy_iter.restore(enemy);
-            //wasted_time += then.elapsed();
+
         }
 
     }
@@ -258,21 +279,36 @@ impl Area {
         while players_iter.not_done() {
             let (players, mut player) = players_iter.next();
 
+
+            let mut area_context = AreaContext {
+                backgrounds: &mut self.backgrounds,
+                spawn_point: &mut self.spawn_point,
+                space: &mut self.space,
+                decorations: &mut self.decorations,
+                clips: &mut self.clips,
+                players: players,
+                props: &mut self.props,
+                id: &mut self.id,
+                bullet_trails: &mut self.bullet_trails,
+                dissolved_pixels: &mut self.dissolved_pixels,
+                enemies: &mut self.enemies,
+                computer: &mut self.computer,
+                dropped_items: &mut self.dropped_items,
+                max_camera_y: &mut self.max_camera_y,
+                minimum_camera_width: &mut self.minimum_camera_width,
+                minimum_camera_height: &mut self.minimum_camera_height,
+                despawn_y: &mut self.despawn_y,
+                master: &mut self.master,
+                ambiance: &mut self.ambiance,
+                wave_data: &mut self.wave_data,
+                compound_test: &mut self.compound_test,
+                tiles: &mut self.tiles,
+                impact_points: &mut self.impact_points,
+                bullet_impact_queue: &mut self.bullet_impact_queue
+            };
             player.client_tick(
                 ctx, 
-                &mut self.space, 
-                self.id, 
-                players, 
-                &mut self.enemies,
-                &mut self.props, 
-                &mut self.bullet_trails,
-                &mut self.dissolved_pixels, 
-                &mut self.dropped_items,
-                self.max_camera_y,
-                self.minimum_camera_width, 
-                self.minimum_camera_height,
-                &mut self.tiles,
-                &mut self.impact_points
+                &mut area_context
             );
 
             players_iter.restore(player);
@@ -406,6 +442,7 @@ impl Area {
             compound_test: Vec::new(),
             tiles: vec![vec![None; world_height]; world_width],
             impact_points: vec![],
+            bullet_impact_queue: Vec::new()
         }
     }
 
@@ -621,7 +658,9 @@ impl Area {
     }
 
     // the player should be spawned by the server - this is temporary
-    pub fn spawn_player_if_not_in_game(&mut self, ctx: &mut ClientTickContext) {
+    pub fn spawn_player_if_not_in_game(
+        &mut self, ctx: &mut ClientTickContext
+    ) {
 
         match self.players.iter().find(|player| player.owner == Owner::ClientId(*ctx.client_id)) {
             Some(_) => return,
@@ -648,7 +687,7 @@ impl Area {
                 player.inventory.try_insert_into_inventory(
                     Item::Weapon(
                         SMG::new(
-                            *ctx.client_id, 
+                            WeaponOwner::Player(player.id), 
                             Some(player.body.body_handle), 
                             Facing::Left
                         ).into()
@@ -829,6 +868,136 @@ impl Area {
         );
     }
 
+    pub fn handle_bullet_impacts(
+        &mut self,
+        ctx: &mut TickContext
+    ) {
+
+        // i'm doing this because i'm lazy but it shouldnt have any effects
+        // basically i can't borrow bullet impact queue for the context while iterating over it
+        // could use a swapiter but i dont feel like it
+        // this gets the job done and callbacks can still add bullet impacts 
+        // i like writing comments because rust analyzer cant yell at me here
+        let bullet_impact_queue = self.bullet_impact_queue.clone();
+        self.bullet_impact_queue.clear();
+
+        // PLAYERS
+        for player in &mut self.players {
+
+            let body_collider = player.body.collider_handle;
+            let head_collider = player.head.collider_handle;
+
+            for impact in self.bullet_impact_queue.iter().filter(|intersection| {intersection.impacted_collider == body_collider || intersection.impacted_collider == head_collider}) {
+                player.handle_bullet_impact(&self.space, impact.clone());
+            };
+            
+            
+        }
+
+        let mut enemy_iter = SwapIter::new(
+            &mut self.enemies
+        );
+
+        while enemy_iter.not_done() {
+
+            let (enemies, mut enemy) = enemy_iter.next();
+
+            let mut area_context = AreaContext {
+                backgrounds: &mut self.backgrounds,
+                spawn_point: &mut self.spawn_point,
+                space: &mut self.space,
+                decorations: &mut self.decorations,
+                clips: &mut self.clips,
+                players: &mut self.players,
+                props: &mut self.props,
+                id: &mut self.id,
+                bullet_trails: &mut self.bullet_trails,
+                dissolved_pixels: &mut self.dissolved_pixels,
+                enemies: enemies,
+                computer: &mut self.computer,
+                dropped_items: &mut self.dropped_items,
+                max_camera_y: &mut self.max_camera_y,
+                minimum_camera_width: &mut self.minimum_camera_width,
+                minimum_camera_height: &mut self.minimum_camera_height,
+                despawn_y: &mut self.despawn_y,
+                master: &mut self.master,
+                ambiance: &mut self.ambiance,
+                wave_data: &mut self.wave_data,
+                compound_test: &mut self.compound_test,
+                tiles: &mut self.tiles,
+                impact_points: &mut self.impact_points,
+                bullet_impact_queue: &mut self.bullet_impact_queue,
+            };
+
+            let body_collider = enemy.body.collider_handle;
+            let head_collider = enemy.head.collider_handle;
+
+            for impact in bullet_impact_queue.clone()
+                .iter()
+                .filter(
+                    |intersection| 
+                    {intersection.impacted_collider == body_collider || intersection.impacted_collider == head_collider}
+                ) {
+                enemy.handle_bullet_impact(
+                    ctx,
+                    &mut area_context,
+                    impact.clone()
+                );
+
+                break;
+            };
+        }
+
+        let mut prop_iter = SwapIter::new(
+            &mut self.props
+        );
+
+        while prop_iter.not_done() {
+            let (props, mut prop) = prop_iter.next();
+
+            let collider = prop.collider_handle;
+
+            let mut area_context = AreaContext {
+                backgrounds: &mut self.backgrounds,
+                spawn_point: &mut self.spawn_point,
+                space: &mut self.space,
+                decorations: &mut self.decorations,
+                clips: &mut self.clips,
+                players: &mut self.players,
+                props: props,
+                id: &mut self.id,
+                bullet_trails: &mut self.bullet_trails,
+                dissolved_pixels: &mut self.dissolved_pixels,
+                enemies: &mut self.enemies,
+                computer: &mut self.computer,
+                dropped_items: &mut self.dropped_items,
+                max_camera_y: &mut self.max_camera_y,
+                minimum_camera_width: &mut self.minimum_camera_width,
+                minimum_camera_height: &mut self.minimum_camera_height,
+                despawn_y: &mut self.despawn_y,
+                master: &mut self.master,
+                ambiance: &mut self.ambiance,
+                wave_data: &mut self.wave_data,
+                compound_test: &mut self.compound_test,
+                tiles: &mut self.tiles,
+                impact_points: &mut self.impact_points,
+                bullet_impact_queue: &mut self.bullet_impact_queue,
+            };
+            for impact in bullet_impact_queue.iter().filter(|impact| {impact.impacted_collider == collider}) {
+                prop.handle_bullet_impact(
+                    ctx, 
+                    &mut area_context,
+                    impact
+                );
+            };
+
+            prop_iter.restore(prop);
+
+        }
+     
+
+    }
+
     pub fn find_prop_mut(&mut self, id: PropId) -> Option<&mut Prop> {
         if let Some(p) = self.props.iter_mut().find(|p| p.id == id) {
             return Some(p);
@@ -953,7 +1122,8 @@ impl Area {
             wave_data: WaveData::default(),
             compound_test: Vec::new(),
             tiles,
-            impact_points: Vec::new()
+            impact_points: Vec::new(),
+            bullet_impact_queue: vec![]
 
         }
     }
@@ -1047,6 +1217,33 @@ impl Area {
         }
     }
 
+}
+
+pub struct AreaContext<'a> {
+    pub backgrounds: &'a mut Vec<Background>,
+    pub spawn_point: &'a mut Vec2,
+    pub space: &'a mut Space,
+    pub decorations: &'a mut Vec<Decoration>,
+    pub clips: &'a mut Vec<Clip>,
+    pub players: &'a mut Vec<Player>,
+    pub props: &'a mut Vec<Prop>,
+    pub id: &'a mut AreaId,
+    pub bullet_trails: &'a mut Vec<BulletTrail>,
+    pub dissolved_pixels: &'a mut Vec<DissolvedPixel>,
+    pub enemies: &'a mut Vec<Enemy>,
+    pub computer: &'a mut Option<Computer>,
+    pub dropped_items: &'a mut Vec<DroppedItem>,
+    pub max_camera_y: &'a mut f32,
+    pub minimum_camera_width: &'a mut f32,
+    pub minimum_camera_height: &'a mut f32,
+    pub despawn_y: &'a mut f32,
+    pub master: &'a mut Option<ClientId>,
+    pub ambiance: &'a mut Vec<Ambiance>,
+    pub wave_data: &'a mut WaveData,
+    pub compound_test: &'a mut Vec<CompoundTest>,
+    pub tiles: &'a mut Vec<Vec<Option<Tile>>>,
+    pub impact_points: &'a mut Vec<glamx::Vec2>,
+    pub bullet_impact_queue: &'a mut Vec<BulletImpactData>
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
