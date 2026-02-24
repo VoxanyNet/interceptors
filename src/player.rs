@@ -1,9 +1,10 @@
+use core::f32;
 use std::{f32::consts::PI, mem::take, path::PathBuf, str::FromStr, usize};
 
 use cs_utils::drain_filter;
 use glamx::{Pose2, Vec2, vec2};
-use macroquad::{color::{BLACK, WHITE}, input::{KeyCode, is_key_down, is_mouse_button_down, is_mouse_button_released, mouse_position, mouse_wheel}, shapes::draw_rectangle, text::{TextParams, draw_text, draw_text_ex}, window::{screen_height, screen_width}};
-use rapier2d::prelude::{ImpulseJointHandle, RevoluteJointBuilder, RigidBody, RigidBodyVelocity};
+use macroquad::{color::{BLACK, WHITE}, input::{KeyCode, is_key_down, is_key_pressed, is_mouse_button_down, is_mouse_button_released, mouse_position, mouse_wheel}, shapes::draw_rectangle, text::{TextParams, draw_text, draw_text_ex}, window::{screen_height, screen_width}};
+use rapier2d::{parry::query::Ray, prelude::{ImpulseJointHandle, QueryFilter, RevoluteJointBuilder, RigidBody, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 
 use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, angle_weapon_to_mouse, area::{AreaContext, AreaId}, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, prop::Prop, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
@@ -687,7 +688,14 @@ impl Player {
         // }
     }
 
-    pub fn move_left(&mut self, body: &mut RigidBody) {
+    pub fn move_left(
+        &mut self,
+        ctx: &mut ClientTickContext,
+        area_context: &mut AreaContext
+        
+    ) {
+        let body = area_context.space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
+
         if body.linvel().x < -self.max_speed.x {
             return;
         }
@@ -705,7 +713,15 @@ impl Player {
         );
     }
 
-    pub fn move_right(&mut self, body: &mut RigidBody) {
+    pub fn move_right(
+        &mut self,
+        ctx: &mut ClientTickContext,
+        area_context: &mut AreaContext
+        
+    ) {
+
+        let body = area_context.space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
+
         if body.linvel().x > self.max_speed.x {
             return;
         }
@@ -728,18 +744,17 @@ impl Player {
         ctx: &mut ClientTickContext,
         area_context: &mut AreaContext
     ) {
-        let body = area_context.space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
-        //self.fly(body);
+        
 
         if is_key_down(KeyCode::Space) {
-            self.jump(body, ctx);
+            self.jump(ctx, area_context);
         }
 
         if is_key_down(KeyCode::A) {
-            self.move_left(body);
+            self.move_left(ctx, area_context);
         }
         if is_key_down(KeyCode::D) {
-            self.move_right(body);
+            self.move_right(ctx, area_context);
         }
     }
 
@@ -933,12 +948,68 @@ impl Player {
         }
     }
 
-    pub fn jump(&mut self, body: &mut RigidBody, _ctx: &mut ClientTickContext) {
+    pub fn jump(
+        &mut self,
+        ctx: &mut ClientTickContext,
+        area_context: &mut AreaContext
+        
+    ) {
 
-        // dont allow if moving, falling or jumping
-        if body.linvel().y.abs() > 0.5 {
+        let body_pos = area_context.space.rigid_body_set.get_mut(self.body.body_handle).unwrap().translation().clone();
+        let body_size = area_context.space.collider_set.get_mut(self.body.collider_handle).unwrap().shape().as_cuboid().unwrap().half_extents.clone();
+
+        let query_pipeline = area_context.space.broad_phase.as_query_pipeline(
+            area_context.space.narrow_phase.query_dispatcher(),
+            &area_context.space.rigid_body_set,
+            &area_context.space.collider_set,
+            QueryFilter::default()
+        );
+
+        
+
+        let line = glamx::Vec2::new(0., -1. * (body_size.y * 2.));
+        let ray = Ray::new(body_pos, line);
+
+        let mut can_jump = false;
+        for (collider_handle, collider, ray_intersection) in query_pipeline.intersect_ray(
+            ray.clone(), 
+            f32::MAX, 
+            true
+        ) {
+
+            
+            let distance = body_pos - ray.point_at(ray_intersection.time_of_impact);
+            
+            if distance.y > 20. {
+                continue;
+            }
+            if (collider_handle == self.body.collider_handle) {
+                
+                continue;
+                
+            }
+
+            if (collider_handle == self.head.collider_handle) {
+                continue;
+            }
+
+            log::debug!("Distance: {}", distance);
+
+            can_jump = true;
+
+
+
+            break;
+
+        };
+
+        if !can_jump {
             return;
         }
+
+
+        let body = area_context.space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
+        
 
         if body.linvel().y.is_sign_negative() {
             body.set_linvel(

@@ -1,6 +1,5 @@
 use std::{collections::VecDeque, path::PathBuf, str::FromStr};
 
-use from_fields_mut_derive::area_context;
 use glamx::{Pose2, Vec2, vec2};
 use macroquad::{camera::Camera2D, color::{RED, WHITE}, input::{KeyCode, is_key_released}, math::Rect, prelude::{gl_use_default_material, gl_use_material}, shapes::{draw_circle, draw_rectangle}, time::get_time, window::{clear_background, screen_height, screen_width}};
 use noise::{NoiseFn, Perlin};
@@ -222,33 +221,32 @@ impl Area {
             // let then = Instant::now();
             let (enemies, mut enemy) = enemy_iter.next();
 
-            let mut area_context = area_context!(self, enemies: enemies);
-            // let mut area_context = AreaContext {
-            //     backgrounds: &mut self.backgrounds,
-            //     spawn_point: &mut self.spawn_point,
-            //     space: &mut self.space,
-            //     decorations: &mut self.decorations,
-            //     clips: &mut self.clips,
-            //     players: &mut self.players,
-            //     props: &mut self.props,
-            //     id: &mut self.id,
-            //     bullet_trails: &mut self.bullet_trails,
-            //     dissolved_pixels: &mut self.dissolved_pixels,
-            //     enemies,
-            //     computer: &mut self.computer,
-            //     dropped_items: &mut self.dropped_items,
-            //     max_camera_y: &mut self.max_camera_y,
-            //     minimum_camera_width: &mut self.minimum_camera_width,
-            //     minimum_camera_height: &mut self.minimum_camera_height,
-            //     despawn_y: &mut self.despawn_y,
-            //     master: &mut self.master,
-            //     ambiance: &mut self.ambiance,
-            //     wave_data: &mut self.wave_data,
-            //     compound_test: &mut self.compound_test,
-            //     tiles: &mut self.tiles,
-            //     impact_points: &mut self.impact_points,
-            //     bullet_impact_queue: &mut self.bullet_impact_queue,
-            // };
+            let mut area_context = AreaContext {
+                backgrounds: &mut self.backgrounds,
+                spawn_point: &mut self.spawn_point,
+                space: &mut self.space,
+                decorations: &mut self.decorations,
+                clips: &mut self.clips,
+                players: &mut self.players,
+                props: &mut self.props,
+                id: &mut self.id,
+                bullet_trails: &mut self.bullet_trails,
+                dissolved_pixels: &mut self.dissolved_pixels,
+                enemies,
+                computer: &mut self.computer,
+                dropped_items: &mut self.dropped_items,
+                max_camera_y: &mut self.max_camera_y,
+                minimum_camera_width: &mut self.minimum_camera_width,
+                minimum_camera_height: &mut self.minimum_camera_height,
+                despawn_y: &mut self.despawn_y,
+                master: &mut self.master,
+                ambiance: &mut self.ambiance,
+                wave_data: &mut self.wave_data,
+                compound_test: &mut self.compound_test,
+                tiles: &mut self.tiles,
+                impact_points: &mut self.impact_points,
+                bullet_impact_queue: &mut self.bullet_impact_queue,
+            };
 
             enemy.tick(
                 ctx,
@@ -286,33 +284,32 @@ impl Area {
         while players_iter.not_done() {
             let (players, mut player) = players_iter.next();
 
-            let mut area_context = area_context!(self, players: players);
-            // let mut area_context = AreaContext {
-            //     backgrounds: &mut self.backgrounds,
-            //     spawn_point: &mut self.spawn_point,
-            //     space: &mut self.space,
-            //     decorations: &mut self.decorations,
-            //     clips: &mut self.clips,
-            //     players: players,
-            //     props: &mut self.props,
-            //     id: &mut self.id,
-            //     bullet_trails: &mut self.bullet_trails,
-            //     dissolved_pixels: &mut self.dissolved_pixels,
-            //     enemies: &mut self.enemies,
-            //     computer: &mut self.computer,
-            //     dropped_items: &mut self.dropped_items,
-            //     max_camera_y: &mut self.max_camera_y,
-            //     minimum_camera_width: &mut self.minimum_camera_width,
-            //     minimum_camera_height: &mut self.minimum_camera_height,
-            //     despawn_y: &mut self.despawn_y,
-            //     master: &mut self.master,
-            //     ambiance: &mut self.ambiance,
-            //     wave_data: &mut self.wave_data,
-            //     compound_test: &mut self.compound_test,
-            //     tiles: &mut self.tiles,
-            //     impact_points: &mut self.impact_points,
-            //     bullet_impact_queue: &mut self.bullet_impact_queue
-            // };
+            let mut area_context = AreaContext {
+                backgrounds: &mut self.backgrounds,
+                spawn_point: &mut self.spawn_point,
+                space: &mut self.space,
+                decorations: &mut self.decorations,
+                clips: &mut self.clips,
+                players: players,
+                props: &mut self.props,
+                id: &mut self.id,
+                bullet_trails: &mut self.bullet_trails,
+                dissolved_pixels: &mut self.dissolved_pixels,
+                enemies: &mut self.enemies,
+                computer: &mut self.computer,
+                dropped_items: &mut self.dropped_items,
+                max_camera_y: &mut self.max_camera_y,
+                minimum_camera_width: &mut self.minimum_camera_width,
+                minimum_camera_height: &mut self.minimum_camera_height,
+                despawn_y: &mut self.despawn_y,
+                master: &mut self.master,
+                ambiance: &mut self.ambiance,
+                wave_data: &mut self.wave_data,
+                compound_test: &mut self.compound_test,
+                tiles: &mut self.tiles,
+                impact_points: &mut self.impact_points,
+                bullet_impact_queue: &mut self.bullet_impact_queue
+            };
             player.client_tick(
                 ctx, 
                 &mut area_context
