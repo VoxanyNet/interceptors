@@ -121,7 +121,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                 .filter(|prop| prop.owner == Some(Owner::ClientId(client_id)))
                 .for_each(|prop| {
                     prop.owner = new_owner;
-                    log::debug!("Updating prop owner for prop: {:?}", prop.id);
+    
                     self.network_io.send_all_except(
                         PropUpdateOwner {
                             owner: prop.owner,
@@ -136,12 +136,12 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
             
         }
         
-        if self.network_io.clients.keys().len() == 0 {
+        // if self.network_io.clients.keys().len() == 0 {
 
-            let lobby: AreaSave = serde_json::from_str(&read_to_string("areas/newoffice.json").unwrap()).unwrap();
-            self.world.areas[0] = Area::from_save(lobby, Some(AreaId::new()), &self.prefabs, (&self.assets.textures).into());
-            self.world.areas[0].generate_terrain(0);
-        }
+        //     let lobby: AreaSave = serde_json::from_str(&read_to_string("areas/newoffice.json").unwrap()).unwrap();
+        //     self.world.areas[0] = Area::from_save(lobby, Some(AreaId::new()), &self.prefabs, (&self.assets.textures).into());
+        //     self.world.areas[0].generate_terrain(0);
+        // }
     }
 
 
@@ -194,6 +194,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                     let prop = area.props.iter_mut().find(|prop| {prop.id == update.prop_id});
 
                     let Some(prop) = prop else {
+                        
                         continue;
                     };
 
@@ -205,6 +206,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                         );
 
                     prop.removed_voxels = update.removed_voxels.clone();
+                    prop.voxels_modified = true;
                     
                     self.network_io.send_all_except(
                         network_packet, 
@@ -212,6 +214,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                     );
                 }
                 NetworkPacket::SetPropVoxel(update) => {
+                    panic!();
                     // just forward it for now
                     self.network_io.send_all_except(
                         network_packet, 
@@ -434,6 +437,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
                     if let Some(prop) = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}) {
+                        log::debug!("removing prop!");
                         prop.mark_despawn();
                     }
 

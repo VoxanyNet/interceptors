@@ -3,11 +3,11 @@ use std::{f32::consts::PI, mem::take, path::PathBuf, str::FromStr, usize};
 
 use cs_utils::drain_filter;
 use glamx::{Pose2, Vec2, vec2};
-use macroquad::{color::{BLACK, WHITE}, input::{KeyCode, is_key_down, is_key_pressed, is_mouse_button_down, is_mouse_button_released, mouse_position, mouse_wheel}, shapes::draw_rectangle, text::{TextParams, draw_text, draw_text_ex}, window::{screen_height, screen_width}};
+use macroquad::{camera::Camera2D, color::{BLACK, WHITE}, input::{KeyCode, is_key_down, is_key_pressed, is_mouse_button_down, is_mouse_button_released, mouse_position, mouse_wheel}, shapes::draw_rectangle, text::{TextParams, draw_text, draw_text_ex}, window::{screen_height, screen_width}};
 use rapier2d::{parry::query::Ray, prelude::{ImpulseJointHandle, QueryFilter, RevoluteJointBuilder, RigidBody, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, angle_weapon_to_mouse, area::{AreaContext, AreaId}, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, prop::Prop, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
+use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, angle_weapon_to_mouse, area::{AreaContext, AreaId}, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, mouse_world_pos, prop::Prop, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct PlayerId {
@@ -58,6 +58,8 @@ pub struct ItemSlotSave {
 }
 
 pub struct Player {
+    pub desired_camera_width: f32,
+    pub current_camera_width: f32,
     pub id: PlayerId,
     pub health: i32,
     pub head: BodyPart,
@@ -368,17 +370,38 @@ impl Player {
         let player_position = area_context.space.rigid_body_set.get(self.body.body_handle).unwrap().translation();
         let macroquad_player_position = rapier_to_macroquad(player_position);
 
-        let mouse_pos: Vec2 = mouse_position().into();
+        let camera_to_screen_ratio = Vec2 {
+            x: screen_width() / ctx.camera_rect.w,
+            y: screen_height() / ctx.camera_rect.h,
+        };
+
+        let mouse_pos = mouse_world_pos(&ctx.camera_rect);
+
 
         let distance_from_center = Vec2::new(
-            mouse_pos.x - (ctx.camera_rect.w / 2.), 
-            mouse_pos.y - (ctx.camera_rect.h / 2.)
+            mouse_pos.x - (ctx.camera_rect.right() / 2.), 
+            mouse_pos.y - (ctx.camera_rect.bottom() / 2.)
         );
 
         let target_camera_pos = Vec2 {
-            x: (macroquad_player_position.x - ctx.camera_rect.w / 2.) + distance_from_center.x,
-            y: (macroquad_player_position.y - ctx.camera_rect.h / 2.) + distance_from_center.y,
+            x: (macroquad_player_position.x - (ctx.camera_rect.right() / 2.)) + distance_from_center.x,
+            y: (macroquad_player_position.y - (ctx.camera_rect.bottom() / 2.)) + distance_from_center.y,
         };
+        
+        
+        if is_key_down(KeyCode::LeftControl) {
+            if mouse_wheel().1 < 0. {
+                self.desired_camera_width += 30.;
+            }
+
+            if mouse_wheel().1 > 0. {
+                self.desired_camera_width -= 30.;
+            }
+        }
+        
+        let camera_width_delta = self.desired_camera_width - self.current_camera_width;
+
+        self.current_camera_width += camera_width_delta / 10.;
 
         let delta = Vec2::new(
             target_camera_pos.x - ctx.camera_rect.x,
@@ -386,11 +409,12 @@ impl Player {
         );
 
 
+        
         ctx.camera_rect.x += delta.x / 10.;
         ctx.camera_rect.y += delta.y / 10.;
 
         let ratio = screen_height() / screen_width();
-        ctx.camera_rect.w = 1280.;
+        ctx.camera_rect.w = self.current_camera_width;
         ctx.camera_rect.h = ctx.camera_rect.w * ratio;    
 
         // camera cannot go below (above) this value
@@ -474,7 +498,9 @@ impl Player {
             flying: true,
             despawn: false,
             move_left_toggle: false,
-            move_right_toggle: false
+            move_right_toggle: false,
+            desired_camera_width: 1280.,
+            current_camera_width: 1280.,
         }
     }
 
@@ -484,6 +510,11 @@ impl Player {
         area_context: &mut AreaContext
     ) {
 
+        // don't interfere with camera zoom
+        // this isnt the best way to do this
+        if is_key_down(KeyCode::LeftControl) {
+            return;
+        }
         if mouse_wheel().1 == 0. {
             return;
         }
@@ -591,6 +622,9 @@ impl Player {
                     despawn: &mut self.despawn,
                     move_right_toggle: &mut self.move_right_toggle,
                     move_left_toggle: &mut self.move_left_toggle,
+                    current_camera_width: &mut self.current_camera_width,
+                    desired_camera_width: &mut self.desired_camera_width,
+                    
                 };
     
                 weapon_type.fire(ctx, area_context, &mut player_context.into());
@@ -980,7 +1014,7 @@ impl Player {
             
             let distance = body_pos - ray.point_at(ray_intersection.time_of_impact);
             
-            if distance.y > 20. {
+            if distance.y > 5. {
                 continue;
             }
             if (collider_handle == self.body.collider_handle) {
@@ -1218,6 +1252,8 @@ pub struct PlayerContext<'a> {
     pub despawn: &'a mut bool,
     pub move_right_toggle: &'a mut bool,
     pub move_left_toggle: &'a mut bool,
+    pub current_camera_width: &'a mut f32,
+    pub desired_camera_width: &'a mut f32
 }
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct PlayerSave {

@@ -76,7 +76,7 @@ pub struct Prop {
     name: String,
     context_menu_data: Option<EditorContextMenuData>,
     layer: u32,
-    voxels_modified: bool,
+    pub voxels_modified: bool,
     pub scale: f32,
     pub shader_material: Option<macroquad::material::Material>,
     pub mask: Option<RenderTarget>,
@@ -714,8 +714,16 @@ impl Prop {
                 let max_voxel_y = ((image.height() * save.scale as usize) as i32 / 8) - 1;
 
                 match &save.voxels {
-                    Some(voxels) => voxels.clone(),
+                    Some(voxels) => {
+
+                        log::debug!("not building this is good! prop id: {:?}", save.id);        
+                        voxels.clone()
+
+                
+                    },
                     None => {
+
+                        log::debug!("building!!!!!!!!! this is bad! prop id: {:?}", save.id);
 
                         let mut voxels: Vec<IVec2> = Vec::new();
 
@@ -772,7 +780,6 @@ impl Prop {
 
                                     let flipped_y = max_voxel_y - current_voxel_y;
 
-                                    log::debug!("Adding voxel: {:?}, {:?}", voxel_x, flipped_y);
                                     voxels.push(
 
                                         
@@ -853,7 +860,7 @@ impl Prop {
 
                                     let flipped_y = max_voxel_y - current_voxel_y;
 
-                                    log::debug!("Adding voxel: {:?}, {:?}", voxel_x, flipped_y);
+                                    
                                     voxels.push(
 
                                         
@@ -882,6 +889,9 @@ impl Prop {
             &mut space.rigid_body_set
         );
 
+        if save.id.is_none() {
+            log::debug!("prop doesnt have id????");
+        }
         let id = match save.id {
             Some(id) => id,
             None => PropId::new(),
@@ -922,11 +932,13 @@ impl Prop {
         let collider = space.collider_set.get(self.collider_handle).unwrap();
         let mass = collider.mass();
 
+        log::debug!("Voxels modified {:?}", self.voxels_modified);
         let voxels = if self.voxels_modified {
             let coords: Vec<IVec2> = collider
                 .shape()
                 .as_voxels().unwrap()
                 .voxels()
+                .filter(|v| !v.state.is_empty())
                 .map(|v| v.grid_coords)
                 .collect();
             

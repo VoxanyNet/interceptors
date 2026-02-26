@@ -247,6 +247,7 @@ impl Client {
                     };
 
                     
+                    
                     area.space.collider_set
                         .get_mut(prop.collider_handle)
                         .unwrap()
@@ -254,7 +255,9 @@ impl Client {
                             SharedShape::voxels(glamx::vec2(8., 8.), &update.new_voxels)
                         );
 
+
                     prop.removed_voxels = update.removed_voxels;
+                    prop.voxels_modified = true;
 
                 }
 
@@ -613,6 +616,8 @@ impl Client {
 
     pub fn tick(&mut self) {
 
+
+        
         self.phone();
         self.measure_latency();
         self.ping();

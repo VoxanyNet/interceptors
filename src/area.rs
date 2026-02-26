@@ -85,6 +85,7 @@ impl WaveData {
 impl Area { 
     
     pub fn tick(&mut self, ctx: &mut TickContext) {
+
         self.space.step(ctx.last_tick_duration());
 
         if let TickContext::Client(ctx) = ctx {
