@@ -660,7 +660,7 @@ impl Enemy {
         let then = web_time::Instant::now();
         let copy = self.clone();
         *self = copy;
-        log::debug!("{:?}", then.elapsed());
+        
         if self.despawn {
             return;
         }

@@ -113,9 +113,9 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                 .find(|player| player.owner != Owner::ClientId(client_id))
                 .map(|player| {player.owner});
 
-            log::debug!("New owner: {:?}", new_owner);
+            
 
-            area.props.iter().for_each(|x|log::debug!("{:?}", x.owner));
+        
             area.props
                 .iter_mut()
                 .filter(|prop| prop.owner == Some(Owner::ClientId(client_id)))
@@ -652,8 +652,8 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                                 }
                             },
                             
-                            tungstenite::Error::Protocol(_error) => {
-                                log::info!("Client {:?} disconnected due to protocol error", client_id);
+                            tungstenite::Error::Protocol(error) => {
+                                log::info!("Client {:?} disconnected due to a protocol error: {:?}", client_id, error);
                                 disconnected_clients.push(*client_id);
                                 continue 'client_loop;
                             },

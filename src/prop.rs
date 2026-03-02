@@ -529,7 +529,7 @@ impl Prop {
 
         if self.last_pos_update.elapsed().as_secs() > 3 {
             
-            log::debug!("Sending prop pos update!");
+            
             let packet = NetworkPacket::PropPositionUpdate(
                 PropPositionUpdate {
                     area_id,
@@ -573,7 +573,7 @@ impl Prop {
                 },
             };
 
-            log::debug!("Sending velocity update!");
+            
 
             self.last_velocity_update = web_time::Instant::now();
         }
@@ -700,7 +700,7 @@ impl Prop {
         let body = space.rigid_body_set.insert(
             body_builder
                 .pose(save.pos)
-                .ccd_enabled(true)
+                //.ccd_enabled(true)
                 // .soft_ccd_prediction(20.)
         );
         
@@ -716,15 +716,14 @@ impl Prop {
                 match &save.voxels {
                     Some(voxels) => {
 
-                        log::debug!("not building this is good! prop id: {:?}", save.id);        
+            
                         voxels.clone()
 
                 
                     },
                     None => {
 
-                        log::debug!("building!!!!!!!!! this is bad! prop id: {:?}", save.id);
-
+                        
                         let mut voxels: Vec<IVec2> = Vec::new();
 
                         

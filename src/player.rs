@@ -1014,7 +1014,7 @@ impl Player {
             
             let distance = body_pos - ray.point_at(ray_intersection.time_of_impact);
             
-            if distance.y > 5. {
+            if distance.y > 20. {
                 continue;
             }
             if (collider_handle == self.body.collider_handle) {
@@ -1027,7 +1027,7 @@ impl Player {
                 continue;
             }
 
-            log::debug!("Distance: {}", distance);
+            
 
             can_jump = true;
 
