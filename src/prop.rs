@@ -81,6 +81,11 @@ pub struct Prop {
     pub shader_material: Option<macroquad::material::Material>,
     pub mask: Option<RenderTarget>,
     pub removed_voxels: Vec<glamx::IVec2>, 
+    pub spawned: web_time::Instant,
+    // how long this prop should live before being automatically despawned
+    pub lifespan: Option<web_time::Duration>,
+    // should we send network updates to the server
+    pub sync_physics: bool
 
 }
 
@@ -178,7 +183,16 @@ impl Prop {
 
         for island in &new_islands {
             let voxels: Vec<glamx::IVec2> = island.iter().cloned().collect();
-            let new_prop = Self::fragment_from_existing(&self, ctx, voxels, space, impacted_voxels);
+            let new_prop = Self::fragment_from_existing(
+                &self, 
+                ctx, 
+                voxels, 
+                space, 
+                impacted_voxels,
+                Some(web_time::Duration::from_secs(10)),
+                false,
+                false
+            );
             
             ctx.send_network_packet(
                 NewProp {
@@ -527,7 +541,8 @@ impl Prop {
         let current_velocity = *space.rigid_body_set.get(self.rigid_body_handle).unwrap().vels();
         let current_position = space.rigid_body_set.get(self.rigid_body_handle).unwrap().position();
 
-        if self.last_pos_update.elapsed().as_secs() > 3 {
+        if self.last_pos_update.elapsed().as_secs() > 3 
+        && self.sync_physics {
             
             
             let packet = NetworkPacket::PropPositionUpdate(
@@ -576,6 +591,19 @@ impl Prop {
             
 
             self.last_velocity_update = web_time::Instant::now();
+        }
+
+        if let Some(lifespan) = self.lifespan {
+            if self.spawned.elapsed() > lifespan {
+                self.mark_despawn();
+
+                ctx.send_network_packet(
+                    RemovePropUpdate {
+                        prop_id: self.id,
+                        area_id,
+                    }.into()
+                );
+            }
         }
     }   
 
@@ -627,7 +655,10 @@ impl Prop {
         ctx: &TickContext,
         fragment_voxels: Vec<glamx::IVec2>,
         space: &mut Space,
-        impacted_voxels: &Vec<glamx::IVec2> // this is for a dumb fix
+        impacted_voxels: &Vec<glamx::IVec2>, // this is for a dumb fix
+        lifespan: Option<web_time::Duration>,
+        collide_with_players: bool,
+        sync_physics: bool
     ) -> Self {
 
         let other_body = space.rigid_body_set.get(other.rigid_body_handle).unwrap();
@@ -666,6 +697,7 @@ impl Prop {
 
 
         Self {
+            
             rigid_body_handle: body,
             collider_handle: collider_handle,
             sprite_path: other.sprite_path.clone(),
@@ -685,6 +717,10 @@ impl Prop {
             shader_material: other.shader_material.clone(),
             mask: None,
             removed_voxels,
+            spawned: web_time::Instant::now(),
+            lifespan: lifespan,
+            sync_physics,
+            
         }
     }
 
@@ -918,7 +954,11 @@ impl Prop {
             mask: None,
             shader_material: None,
             removed_voxels: save.removed_voxels,
-            last_velocity_update: web_time::Instant::now()
+            last_velocity_update: web_time::Instant::now(),
+            spawned: web_time::Instant::now(), // this could be an issue
+            lifespan: save.lifespan,
+            sync_physics: save.sync_physics,
+            
 
         }
     }
@@ -958,7 +998,10 @@ impl Prop {
             voxels,
             scale: self.scale,
             rigid_body_type: body.body_type(),
-            removed_voxels: self.removed_voxels.clone()
+            removed_voxels: self.removed_voxels.clone(),
+            lifespan: self.lifespan,
+            sync_physics: self.sync_physics,
+            
         }
     }
 
@@ -1117,12 +1160,22 @@ impl Drawable for Prop {
 
         let pivot = Vec2::new(size.x , size.y);
 
+        let mut color = WHITE;
+        if let Some(lifespan) = self.lifespan {
+            if (lifespan - self.spawned.elapsed()).as_secs() <= 5 {
+
+                color.a = (lifespan.as_secs_f32() - self.spawned.elapsed().as_secs_f32()) / 5.
+            }
+        }
+
+        
+
         gl_use_material(material);
         draw_texture_ex(
             texture, 
             macroquad_pos.x, 
             macroquad_pos.y - pivot.y,
-            WHITE,
+            color,
             DrawTextureParams { 
                 dest_size: Some(size), 
                 rotation: body.rotation().angle() * -1., 
@@ -1132,25 +1185,25 @@ impl Drawable for Prop {
         
         );
 
-        if let Some(owner) = self.owner {
-            if let Owner::ClientId(owner) = owner {
-                if owner == draw_context.id {
-                    draw_texture_ex(
-                        texture, 
-                        macroquad_pos.x, 
-                        macroquad_pos.y - pivot.y,
-                        RED,
-                        DrawTextureParams { 
-                            dest_size: Some(size), 
-                            rotation: body.rotation().angle() * -1., 
-                            pivot: Some(macroquad_pos),
-                            ..Default::default()
-                        }
+        // if let Some(owner) = self.owner {
+        //     if let Owner::ClientId(owner) = owner {
+        //         if owner == draw_context.id {
+        //             draw_texture_ex(
+        //                 texture, 
+        //                 macroquad_pos.x, 
+        //                 macroquad_pos.y - pivot.y,
+        //                 RED,
+        //                 DrawTextureParams { 
+        //                     dest_size: Some(size), 
+        //                     rotation: body.rotation().angle() * -1., 
+        //                     pivot: Some(macroquad_pos),
+        //                     ..Default::default()
+        //                 }
                     
-                    );
-                }
-            }
-        }
+        //             );
+        //         }
+        //     }
+        // }
 
         
 
@@ -1221,7 +1274,15 @@ pub struct PropSave {
     #[serde(default="default_body_type")]
     pub rigid_body_type: RigidBodyType,
     #[serde(default)]
-    pub removed_voxels: Vec<glamx::IVec2>
+    pub removed_voxels: Vec<glamx::IVec2>,
+    #[serde(default)]
+    pub lifespan: Option<web_time::Duration>,
+    #[serde(default = "default_sync_physics")] 
+    pub sync_physics: bool
+}
+
+fn default_sync_physics() -> bool {
+    true
 }
 
 fn default_body_type() -> RigidBodyType {

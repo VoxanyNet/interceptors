@@ -11,7 +11,7 @@ mod shaders;
 
 
 fn window_conf() -> Conf {
-    let conf = Conf {
+    let mut conf = Conf {
         window_title: "Interceptors".to_owned(),
         window_width: 1280,
         window_height: 720,
@@ -20,7 +20,7 @@ fn window_conf() -> Conf {
         platform: Platform::default(),
         ..Default::default()
     };
-    //conf.platform.swap_interval = Some(0); // disable vsync
+    conf.platform.swap_interval = Some(0); // disable vsync
     conf
 }
 #[macroquad::main(window_conf)]
@@ -39,6 +39,12 @@ async fn main() {
     let mut main_menu = MainMenu::new(assets.clone()).await;
 
     show_mouse(false);
+
+    let mut client = Client::connect(assets, client_id).await;
+
+    client.run().await;
+
+    return;
 
     match main_menu.run().await {
         MainMenuResult::Quit => {

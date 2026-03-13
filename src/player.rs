@@ -468,9 +468,6 @@ impl Player {
             true
         );
 
-
-        let _body_handle = body.body_handle.clone();
-
         let inventory = Inventory::new();
 // OTIS DEC 2025
 // pooooooooooooooooo0l0ppppppppppppppp-

@@ -347,6 +347,15 @@ fn normalize_path(path: &PathBuf) -> PathBuf {
     PathBuf::from(s)
 }
 
+#[cfg(target_os = "macos")]
+fn normalize_path(path: &PathBuf) -> PathBuf {
+    let s = path
+        .to_string_lossy()
+        .replace("\\", "/");
+
+    PathBuf::from(s)
+}
+
 
 pub async fn draw_texture_onto_physics_body(
     rigid_body_handle: RigidBodyHandle,

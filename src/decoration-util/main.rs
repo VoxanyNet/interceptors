@@ -327,7 +327,10 @@ fn asset_to_prop(relative_path: &PathBuf, scale: Option<f32>) -> Result<String, 
         layer: 0,
         voxels: None,
         rigid_body_type: *body_type,
-        removed_voxels: vec![]
+        removed_voxels: vec![],
+        lifespan: None,
+        sync_physics: true,
+        
     };
 
     return serde_json::to_string_pretty(&prop_save)
