@@ -1,0 +1,4 @@
+- set unowned objects to kinematic
+- lerp unowned objects: just takes prev and next pos and time right??? and just in rendering
+- server controls who owns objects 
+- clients that do not own objects are not allowed to send physics updates

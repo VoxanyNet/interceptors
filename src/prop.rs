@@ -76,6 +76,7 @@ pub struct Prop {
     name: String,
     context_menu_data: Option<EditorContextMenuData>,
     layer: u32,
+    pub rigid_body_type: RigidBodyType, // we store this here as well so we can revert back to it when we regain ownership
     pub voxels_modified: bool,
     pub scale: f32,
     pub shader_material: Option<macroquad::material::Material>,
@@ -99,7 +100,27 @@ impl PartialEq for Prop {
 
 impl Prop {
 
+    pub fn update_owner(
+        &mut self, 
+        space: &mut Space,
+        new_owner: Owner,
+        ticker_id: Owner // the client id of this client
+    ) {
+        self.owner = Some(new_owner);
+
+        let body = space.rigid_body_set.get_mut(self.rigid_body_handle).unwrap();
+        if ticker_id != new_owner {
+            body
+                .set_body_type(RigidBodyType::KinematicPosi tionBased, true);
+        } else {
+            body
+                .set_body_type(self.rigid_body_type, true);
+        }
+    }
+
     pub fn name(&self) -> String {
+
+        let new_string = String::default::<>();
         self.name.clone()
     }
 
@@ -697,7 +718,7 @@ impl Prop {
 
 
         Self {
-            
+            rigid_body_type: RigidBodyType::Dynamic, // prop fragmnets are always dynamic
             rigid_body_handle: body,
             collider_handle: collider_handle,
             sprite_path: other.sprite_path.clone(),
@@ -724,7 +745,11 @@ impl Prop {
         }
     }
 
-    pub fn from_save(save: PropSave, space: &mut Space, textures: TextureLoader) -> Self {
+    pub fn from_save(
+        save: PropSave, 
+        space: &mut Space, 
+        textures: TextureLoader,
+    ) -> Self {
 
         let body_builder = match save.rigid_body_type {
             RigidBodyType::Dynamic => RigidBodyBuilder::dynamic(),
@@ -936,6 +961,7 @@ impl Prop {
 
 
         Self {
+            rigid_body_type: save.rigid_body_type,
             rigid_body_handle: body,
             collider_handle,
             sprite_path: save.sprite_path,
