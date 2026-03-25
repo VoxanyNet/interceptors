@@ -33,7 +33,7 @@ void main() {
 
     gl_FragColor = res * color;
 }
-"#; 
+"#;
 
 pub const DESTRUCTION_MASK_VERTEXT_SHADER: &'static str = "#version 100
 attribute vec3 position;
@@ -82,7 +82,7 @@ pub struct Prop {
     pub scale: f32,
     pub shader_material: Option<macroquad::material::Material>,
     pub mask: Option<RenderTarget>,
-    pub removed_voxels: Vec<glamx::IVec2>, 
+    pub removed_voxels: Vec<glamx::IVec2>,
     pub spawned: web_time::Instant,
     // how long this prop should live before being automatically despawned
     pub lifespan: Option<web_time::Duration>,
@@ -96,7 +96,7 @@ pub struct Prop {
 // need to skip the mask render target in partialeq
 impl PartialEq for Prop {
     fn eq(&self, other: &Self) -> bool {
-        self.rigid_body_handle == other.rigid_body_handle && self.collider_handle == other.collider_handle && self.sprite_path == other.sprite_path && self.previous_velocity == other.previous_velocity && self.material == other.material && self.id == other.id && self.owner == other.owner && self.last_sound_play == other.last_sound_play && self.despawn == other.despawn && self.last_pos_update == other.last_pos_update && self.name == other.name && self.context_menu_data == other.context_menu_data && self.layer == other.layer && self.voxels_modified == other.voxels_modified && self.scale == other.scale && self.shader_material == other.shader_material 
+        self.rigid_body_handle == other.rigid_body_handle && self.collider_handle == other.collider_handle && self.sprite_path == other.sprite_path && self.previous_velocity == other.previous_velocity && self.material == other.material && self.id == other.id && self.owner == other.owner && self.last_sound_play == other.last_sound_play && self.despawn == other.despawn && self.last_pos_update == other.last_pos_update && self.name == other.name && self.context_menu_data == other.context_menu_data && self.layer == other.layer && self.voxels_modified == other.voxels_modified && self.scale == other.scale && self.shader_material == other.shader_material
     }
 }
 
@@ -106,7 +106,7 @@ impl Prop {
 
     pub fn name(&self) -> String {
 
-        
+
         self.name.clone()
     }
 
@@ -134,35 +134,39 @@ impl Prop {
 
         if let Some(owner) = self.owner {
             if owner != ctx.id() {
-    
+
 
                 if body.body_type() != RigidBodyType::KinematicPositionBased {
                     body.set_body_type(RigidBodyType::KinematicPositionBased, true);
                 }
-                
+
             } else {
-                
+
                 if body.body_type() != self.rigid_body_type {
 
-  
+
                     body.set_body_type(self.rigid_body_type, true);
                 }
             }
         } else {
             // also make kinematic if the prop doesnt have an owner
             // might want to change this in the future or maybe make it so that props must always have owners
-            body.set_body_type(RigidBodyType::KinematicPositionBased, true);
+
+            if body.body_type() != RigidBodyType::KinematicPositionBased {
+                body.set_body_type(RigidBodyType::KinematicPositionBased, true);
+            }
+
         }
     }
 
     pub fn break_apart(
-        &mut self, 
+        &mut self,
         area_id: AreaId,
         ctx: &mut TickContext,
         space: &mut Space,
         impacted_voxels: &Vec<glamx::IVec2>,
         props: &mut Vec<Prop>
-    ) -> Option<Vec<IVec2>> { 
+    ) -> Option<Vec<IVec2>> {
         let voxels = space.collider_set
             .get_mut(self.collider_handle)
             .unwrap()
@@ -172,7 +176,7 @@ impl Prop {
 
         let mut potential_island_seeds: HashSet<glamx::IVec2> = HashSet::new();
         let mut islands: Vec<HashSet<glamx::IVec2>> = Vec::new();
-        let mut global_visited_voxels: HashSet<glamx::IVec2> = HashSet::new(); 
+        let mut global_visited_voxels: HashSet<glamx::IVec2> = HashSet::new();
 
         for voxel in impacted_voxels {
             let neighbors = [
@@ -189,20 +193,20 @@ impl Prop {
                         potential_island_seeds.insert(neighbor);
                     }
                 }
-                
+
             }
         }
 
         for (idx, seed) in potential_island_seeds
             .iter()
             .enumerate() {
-            
+
             if global_visited_voxels.contains(&seed) {
                 continue;
-            } 
+            }
 
             let new_island = flood_fill(
-                *seed, 
+                *seed,
                 &voxels
             );
 
@@ -213,8 +217,8 @@ impl Prop {
             islands.push(new_island);
 
         }
-        
-        if islands.len() <= 1 {    
+
+        if islands.len() <= 1 {
             return None;
         }
 
@@ -223,25 +227,25 @@ impl Prop {
         for island in &new_islands {
             let voxels: Vec<glamx::IVec2> = island.iter().cloned().collect();
             let new_prop = Self::fragment_from_existing(
-                &self, 
-                ctx, 
-                voxels, 
-                space, 
+                &self,
+                ctx,
+                voxels,
+                space,
                 impacted_voxels,
                 None,
                 false,
                 true
             );
-            
+
             ctx.send_network_packet(
                 NewProp {
                     prop: new_prop.save(space),
                     area_id,
                 }.into()
             );
-            
+
             props.push(new_prop);
-        }   
+        }
 
 
         // Determine the new voxel state of this prop
@@ -267,41 +271,41 @@ impl Prop {
         for island in new_islands {
             for voxel_index in island {
 
-                // this makes sure we don't double remove an impacted voxel 
+                // this makes sure we don't double remove an impacted voxel
                 if impacted_voxels.contains(&voxel_index) {
                     continue;
                 }
                 new_voxels.remove(&voxel_index);
-                self.removed_voxels.push(voxel_index); 
+                self.removed_voxels.push(voxel_index);
             }
         }
 
         let new_voxels_vec: Vec<IVec2> = new_voxels.iter().cloned().collect();
 
         space.collider_set.remove(
-            self.collider_handle, 
-            &mut space.island_manager, 
-            &mut space.rigid_body_set, 
+            self.collider_handle,
+            &mut space.island_manager,
+            &mut space.rigid_body_set,
             true
         );
-        
-        
+
+
         let new_collider_handle = space.collider_set.insert_with_parent(
-            ColliderBuilder::voxels(vec2(8., 8.), &new_voxels_vec), 
-            self.rigid_body_handle, 
+            ColliderBuilder::voxels(vec2(8., 8.), &new_voxels_vec),
+            self.rigid_body_handle,
             &mut space.rigid_body_set
         );
 
-        
+
 
         self.collider_handle = new_collider_handle;
 
         return Some(new_voxels_vec)
-        
+
     }
 
     fn get_impacted_voxels(
-        &self, 
+        &self,
         space: &Space,
         impact: &BulletImpactData
     ) -> Vec<glamx::IVec2> {
@@ -313,29 +317,29 @@ impl Prop {
             .map(|(voxel, _)| voxel.grid_coords)
             .collect()
 
-        
+
     }
     fn check_if_no_voxels(&self, space: &Space) -> bool {
         let collider = space.collider_set.get(self.collider_handle).unwrap();
-        
+
         !collider
             .shape()
             .as_voxels()
             .unwrap()
             .voxels()
             .any(|voxel| !voxel.state.is_empty())
-    } 
+    }
 
     pub fn handle_bullet_impact(
-        &mut self, 
-        ctx: &mut TickContext, 
+        &mut self,
+        ctx: &mut TickContext,
         area_context: &mut AreaContext,
-        impact: &BulletImpactData, 
+        impact: &BulletImpactData,
     ) {
 
         // OPTIMIZATION IDEA
         // dont recreate the shape twice. i dont wanna type the rest out but you'll figure it out
-        
+
         if self.despawn {return}
 
         let rigid_body = area_context.space
@@ -345,9 +349,9 @@ impl Prop {
 
         rigid_body.apply_impulse(
             glamx::Vec2::new(
-                impact.bullet_vector.x * 5000., 
+                impact.bullet_vector.x * 5000.,
                 impact.bullet_vector.y * 5000.
-            ), 
+            ),
             true
         );
 
@@ -386,7 +390,7 @@ impl Prop {
             .filter(|voxel| !impacted_voxels.contains(&voxel.grid_coords))
             .map(|voxel| voxel.grid_coords)
             .collect();
-        
+
         area_context.space.collider_set
             .get_mut(self.collider_handle)
             .unwrap()
@@ -402,7 +406,7 @@ impl Prop {
         }
 
         if let Some(break_apart_new_voxels) = self.break_apart(*area_context.id, ctx, area_context.space, &impacted_voxels, area_context.props) {
-            log::debug!("break apart new voxels with length: {} impacted voxels len: {}", break_apart_new_voxels.len(), impacted_voxels.len());
+
             new_voxels = break_apart_new_voxels;
         }
 
@@ -416,15 +420,15 @@ impl Prop {
                 new_voxels: new_voxels,
                 removed_voxels: self.removed_voxels.clone(),
             }.into()
-        ); 
+        );
         if impacted_voxels.len() > 0 {
-            
-            
+
+
         }
-    
+
     }
 
-    
+
     pub fn despawn_callback(&mut self, space: &mut Space, _area_id: AreaId) {
         space.rigid_body_set.remove(self.rigid_body_handle, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
     }
@@ -441,11 +445,11 @@ impl Prop {
     }
 
     pub fn dissolve(
-        &mut self, 
-        textures: &ClientTextureLoader, 
-        space: &mut Space, 
-        dissolved_pixels: &mut Vec<DissolvedPixel>, 
-        ctx: Option<&mut ClientTickContext>, 
+        &mut self,
+        textures: &ClientTextureLoader,
+        space: &mut Space,
+        dissolved_pixels: &mut Vec<DissolvedPixel>,
+        ctx: Option<&mut ClientTickContext>,
         area_id: AreaId
     ) {
 
@@ -504,23 +508,23 @@ impl Prop {
                 color.b /= pixel_count as f32;
 
                 let translation = glamx::Vec2::new(
-                ((body_translation.x + (x as f32 * x_scale)) - half_extents.x) + 2., 
-                ((body_translation.y - (y as f32 * y_scale)) + half_extents.y) - 2.    
+                ((body_translation.x + (x as f32 * x_scale)) - half_extents.x) + 2.,
+                ((body_translation.y - (y as f32 * y_scale)) + half_extents.y) - 2.
                 );
 
                 let position = Pose2::new(
-                    translation, 
+                    translation,
                     body.rotation().angle()
                 );
 
-                
+
                 dissolved_pixels.push(
                     DissolvedPixel::new(
-                        position, 
-                        space, 
-                        color, 
-                        x_scale, 
-                        Some(collider.mass() / total_pixel_count), 
+                        position,
+                        space,
+                        color,
+                        x_scale,
+                        Some(collider.mass() / total_pixel_count),
                         Some(*body.vels()),
                     )
                 );
@@ -546,8 +550,8 @@ impl Prop {
 
                 if contact_pair.total_impulse_magnitude() > 25000. && self.last_sound_play.elapsed().as_secs() > 1 {
 
-                    
-                    
+
+
                     //play_sound_once(ctx.sounds.get(PathBuf::from("assets\\sounds\\crate\\tap.wav")));
 
                     self.last_sound_play = web_time::Instant::now();
@@ -557,32 +561,32 @@ impl Prop {
     }
 
     pub fn owner_tick(
-        &mut self, 
-        ctx: &mut TickContext, 
-        space: &mut Space, 
-        area_id: AreaId, 
+        &mut self,
+        ctx: &mut TickContext,
+        space: &mut Space,
+        area_id: AreaId,
         _dissolved_pixels: &mut Vec<DissolvedPixel>
     ) {
 
         let voxels = space.collider_set.get_mut(self.collider_handle).unwrap().shape_mut().as_voxels_mut().unwrap();
 
-        
+
         // for voxel in voxels.voxels() {
 
         // }
-        
+
 
         if let TickContext::Client(ctx) = ctx {
             self.play_impact_sound(space, ctx);
         }
-        
+
 
         let current_velocity = *space.rigid_body_set.get(self.rigid_body_handle).unwrap().vels();
         let current_position = space.rigid_body_set.get(self.rigid_body_handle).unwrap().position();
 
-        if self.last_pos_update.elapsed().as_millis() > 16 
+        if self.last_pos_update.elapsed().as_millis() > 16
         && self.sync_physics {
-            
+
 
             let packet = NetworkPacket::PropPositionUpdate(
                 PropPositionUpdate {
@@ -607,7 +611,7 @@ impl Prop {
 
 
         }
-        
+
 
         if let Some(lifespan) = self.lifespan {
             if self.spawned.elapsed() > lifespan {
@@ -621,13 +625,13 @@ impl Prop {
                 );
             }
         }
-    }   
+    }
 
     pub fn tick(
-        &mut self, 
-        space: &mut Space, 
-        area_id: AreaId, 
-        ctx: &mut TickContext, 
+        &mut self,
+        space: &mut Space,
+        area_id: AreaId,
+        ctx: &mut TickContext,
         dissolved_pixels: &mut Vec<DissolvedPixel>
     ) {
 
@@ -648,8 +652,8 @@ impl Prop {
         self.previous_velocity = current_velocity;
     }
     pub fn set_pos(
-        &mut self, 
-        position: glamx::Pose2, 
+        &mut self,
+        position: glamx::Pose2,
         space: &mut Space
     ) {
         space.rigid_body_set.get_mut(self.rigid_body_handle).unwrap()
@@ -664,12 +668,12 @@ impl Prop {
         if self.despawn {
             return;
         }
-        
+
         space.rigid_body_set.get_mut(self.rigid_body_handle).unwrap().set_vels(velocity, true);
     }
 
     pub fn fragment_from_existing(
-        other: &Self, 
+        other: &Self,
         ctx: &TickContext,
         fragment_voxels: Vec<glamx::IVec2>,
         space: &mut Space,
@@ -688,16 +692,16 @@ impl Prop {
                 .angvel(other_body.angvel())
         );
 
-  
+
         let collider_handle = space.collider_set.insert_with_parent(
-            ColliderBuilder::voxels(vec2(8., 8.), &fragment_voxels), 
-            body, 
+            ColliderBuilder::voxels(vec2(8., 8.), &fragment_voxels),
+            body,
             &mut space.rigid_body_set
         );
 
         let other_collider = space.collider_set.get(other.collider_handle).unwrap();
         let other_voxels = other_collider.shape().as_voxels().unwrap();
-        
+
         // we need to make sure that all explicitly deleted voxels get transferred over to the new prop but the voxels that were removed in the most recent fire don't get added to the list until after this function is run so we needed to pass in this tick's impacted voxels so we can add it. there is probably a better way to do this but im tired and its z and this will work
         let mut removed_voxels = other.removed_voxels.clone();
         removed_voxels.extend(impacted_voxels);
@@ -711,7 +715,7 @@ impl Prop {
 
         removed_voxels.extend(&other.removed_voxels);
 
-        log::debug!("{:?}", other.shader_material.is_some());
+
 
 
         Self {
@@ -741,14 +745,14 @@ impl Prop {
             lifespan: lifespan,
             sync_physics,
             last_sent_position_update: web_time::Instant::now(),
-            
-            
+
+
         }
     }
 
     pub fn from_save(
-        save: PropSave, 
-        space: &mut Space, 
+        save: PropSave,
+        space: &mut Space,
         textures: TextureLoader,
     ) -> Self {
 
@@ -765,7 +769,7 @@ impl Prop {
                 //.ccd_enabled(true)
                 // .soft_ccd_prediction(20.)
         );
-        
+
 
         // this is so amazingly horrible for such a stupid reason i must make it better
         let voxels = match textures {
@@ -778,22 +782,22 @@ impl Prop {
                 match &save.voxels {
                     Some(voxels) => {
 
-            
+
                         voxels.clone()
 
-                
+
                     },
                     None => {
 
-                        
+
                         let mut voxels: Vec<IVec2> = Vec::new();
 
-                        
+
                         for scaled_x in (0..(image.width() * save.scale as usize) as u32).step_by(8)  {
                             for scaled_y in (0..(image.height() * save.scale as usize) as u32).step_by(8)  {
                                 // create an average of the 8x8 neighborhood
                                 // start with bottom left
-                                
+
                                 let mut pixel_count = 1;
 
                                 let mut color = BLACK;
@@ -803,19 +807,19 @@ impl Prop {
                                     for y_offset in 0..8 {
 
                                         if scaled_x + x_offset >= (image.width() * save.scale as usize) as u32 {
-                                            log::debug!("Skipping pixel {} as it was too far to the right", scaled_x + x_offset);
+
                                             continue;
-                                        } 
+                                        }
 
                                         if scaled_y + y_offset >= (image.height() * save.scale as usize) as u32 {
-                                            log::debug!("Skipping pixel {} as it was too down", scaled_x + x_offset);
+
                                             continue;
-                                        }  
-                                        
-                                        
-                                        // we need to divide by the scale to get the closest ACTUAL pixel. 
+                                        }
+
+
+                                        // we need to divide by the scale to get the closest ACTUAL pixel.
                                         let pixel = image.get_pixel((scaled_x + x_offset) / save.scale as u32, (scaled_y + y_offset) / save.scale as u32);
-                                        
+
 
                                         color.r += pixel.r;
                                         color.g += pixel.g;
@@ -826,16 +830,16 @@ impl Prop {
 
                                     }
                                 }
-                            
+
 
                                 color.r /= pixel_count as f32;
                                 color.g /= pixel_count as f32;
                                 color.b /= pixel_count as f32;
                                 //color.a /= pixel_count as f32;
-                                
+
 
                                 if color.a > 0. {
-                                    
+
                                     let voxel_x = scaled_x as i32 / 8;
                                     let current_voxel_y = scaled_y as i32 / 8;
 
@@ -843,13 +847,13 @@ impl Prop {
 
                                     voxels.push(
 
-                                        
+
                                         IVec2::new(voxel_x, flipped_y)
 
-                                        
+
                                     );
                                 } else {
-                                    
+
                                 }
                             }
                         }
@@ -873,7 +877,7 @@ impl Prop {
                             for scaled_y in (0..(image.height() * save.scale as u32) as u32).step_by(8)  {
                                 // create an average of the 8x8 neighborhood
                                 // start with bottom left
-                                
+
                                 let mut pixel_count = 1;
 
                                 let mut color = BLACK;
@@ -883,19 +887,19 @@ impl Prop {
                                     for y_offset in 0..8 {
 
                                         if scaled_x + x_offset >= (image.width() * save.scale as u32) as u32 {
-                                            log::debug!("Skipping pixel {} as it was too far to the right", scaled_x + x_offset);
+
                                             continue;
-                                        } 
+                                        }
 
                                         if scaled_y + y_offset >= (image.height() * save.scale as u32) as u32 {
-                                            log::debug!("Skipping pixel {} as it was too down", scaled_x + x_offset);
+
                                             continue;
-                                        }  
-                                        
-                                        
-                                        // we need to divide by the scale to get the closest ACTUAL pixel. 
+                                        }
+
+
+                                        // we need to divide by the scale to get the closest ACTUAL pixel.
                                         let pixel = image.get_pixel((scaled_x + x_offset) / save.scale as u32, (scaled_y + y_offset) / save.scale as u32);
-                                        
+
 
                                         color.r += pixel[0] as f32 / 255.;
                                         color.g += pixel[1] as f32 / 255.;
@@ -906,31 +910,31 @@ impl Prop {
 
                                     }
                                 }
-                            
+
 
                                 color.r /= pixel_count as f32;
                                 color.g /= pixel_count as f32;
                                 color.b /= pixel_count as f32;
                                 //color.a /= pixel_count as f32;
-                                
+
 
                                 if color.a > 0. {
-                                    
+
                                     let voxel_x = scaled_x as i32 / 8;
                                     let current_voxel_y = scaled_y as i32 / 8;
 
                                     let flipped_y = max_voxel_y - current_voxel_y;
 
-                                    
+
                                     voxels.push(
 
-                                        
+
                                         IVec2::new(voxel_x, flipped_y)
 
-                                        
+
                                     );
                                 } else {
-                                    
+
                                 }
                             }
                         }
@@ -940,25 +944,23 @@ impl Prop {
                 }
             },
         };
-        
+
         let collider_handle = space.collider_set.insert_with_parent(
             ColliderBuilder::voxels(
                 glamx::Vec2::new(8., 8.,),
                 &voxels
-            ), 
-            body, 
+            ),
+            body,
             &mut space.rigid_body_set
         );
 
-        if save.id.is_none() {
-            panic!("prop doesnt have id????");
-        }
+
         let id = match save.id {
             Some(id) => id,
             None => PropId::new(),
         };
 
-        log::debug!("ID: {:?}", id);
+
 
 
         Self {
@@ -988,7 +990,7 @@ impl Prop {
             sync_physics: save.sync_physics,
             last_ownership_change: web_time::Instant::now(), // this could also be an issue
             last_sent_position_update: web_time::Instant::now()
-            
+
 
         }
     }
@@ -997,11 +999,11 @@ impl Prop {
 
         let body = space.rigid_body_set.get(self.rigid_body_handle).unwrap();
         let pos = body.position().clone();
-        
+
         let collider = space.collider_set.get(self.collider_handle).unwrap();
         let mass = collider.mass();
 
-        log::debug!("Voxels modified {:?}", self.voxels_modified);
+
         let voxels = if self.voxels_modified {
             let coords: Vec<IVec2> = collider
                 .shape()
@@ -1010,7 +1012,7 @@ impl Prop {
                 .filter(|v| !v.state.is_empty())
                 .map(|v| v.grid_coords)
                 .collect();
-            
+
             coords.into()
         } else {
             None
@@ -1031,28 +1033,28 @@ impl Prop {
             removed_voxels: self.removed_voxels.clone(),
             lifespan: self.lifespan,
             sync_physics: self.sync_physics,
-            
+
         }
     }
 
     fn draw_mask(
-        &mut self, 
+        &mut self,
         draw_context: &crate::drawable::DrawContext,
         texture: &Texture2D
     ) {
-        
+
         if self.mask.is_none() {
             self.mask = Some(
                 render_target(texture.width() as u32, texture.height() as u32)
-            )    
+            )
         }
 
         let mask = self.mask.as_mut().unwrap();
-        
+
         let _then = web_time::Instant::now();
         let mut camera = Camera2D::from_display_rect(
             Rect::new(0., 0., mask.texture.width(), mask.texture.height())
-        );  
+        );
 
         camera.render_target = Some(mask.clone());
         camera.zoom.y = -camera.zoom.y;
@@ -1062,7 +1064,7 @@ impl Prop {
 
         // clear the mask
         clear_background(WHITE);
-    
+
 
 
         for removed_voxel in &self.removed_voxels {
@@ -1070,20 +1072,20 @@ impl Prop {
             // THIS MASK TEXTURE IS SCALED ALONGSIDE THE REAL TEXTURE SO THE VOXEL SIZE NEEDS TO BE DIVIDED TO KEEP IT CONSTANT
             //log::debug!("drawing masked voxel at x: {}, y: {}", removed_voxel.x * 8, removed_voxel.y * 8);
             draw_rectangle(
-                (removed_voxel.x as f32 * (8. / self.scale)), 
+                (removed_voxel.x as f32 * (8. / self.scale)),
                 ((((removed_voxel.y as f32 * (8. / self.scale)) * -1.) + texture.height()) - (8. / self.scale)),
-                8. / self.scale, 
-                8. / self.scale, 
+                8. / self.scale,
+                8. / self.scale,
                 BLACK
             );
-            
+
         }
 
         set_camera(draw_context.default_camera);
-    } 
+    }
 
     fn get_voxel_world_positions(
-        &self, 
+        &self,
         space: &Space
     ) -> impl Iterator<Item = (VoxelData, glamx::Vec2)> {
 
@@ -1098,7 +1100,7 @@ impl Prop {
             .unwrap()
             .voxels()
             .map(
-                move |voxel| 
+                move |voxel|
                 {
                     let rotated_x = voxel.center.x * cos - voxel.center.y * sin;
                     let rotated_y = voxel.center.x * sin + voxel.center.y * cos;
@@ -1157,13 +1159,13 @@ impl EditorContextMenu for Prop {
 
 
 
-    
+
 }
 #[async_trait]
 impl Drawable for Prop {
     async fn draw(&mut self, draw_context: &crate::drawable::DrawContext) {
 
-        log::debug!("{:?}", self.owner);
+
         if self.despawn {
             return;
         }
@@ -1185,8 +1187,8 @@ impl Drawable for Prop {
 
         //let center_of_mass_macroquad_pos = rapier_to_macroquad(body.center_of_mass());
         let macroquad_pos = rapier_to_macroquad(body.translation());
-        
-        
+
+
 
         let size = Vec2::new(texture.width() * self.scale, texture.height() * self.scale);
 
@@ -1200,45 +1202,45 @@ impl Drawable for Prop {
             // }
         }
 
-        
+
 
         gl_use_material(material);
         draw_texture_ex(
-            texture, 
-            macroquad_pos.x, 
+            texture,
+            macroquad_pos.x,
             macroquad_pos.y - pivot.y,
             color,
-            DrawTextureParams { 
-                dest_size: Some(size), 
-                rotation: body.rotation().angle() * -1., 
+            DrawTextureParams {
+                dest_size: Some(size),
+                rotation: body.rotation().angle() * -1.,
                 pivot: Some(macroquad_pos),
                 ..Default::default()
             }
-        
+
         );
 
 
 
-        
+
         if let RigidBodyType::KinematicPositionBased = draw_context.space.rigid_body_set.get(self.rigid_body_handle).unwrap().body_type() {
-            
+
             let mut color = RED;
 
             color.a = 1. - (self.last_received_position_update.elapsed().as_secs_f32() / 1.);
 
-            
+
             draw_texture_ex(
-                texture, 
-                macroquad_pos.x, 
+                texture,
+                macroquad_pos.x,
                 macroquad_pos.y - pivot.y,
                 color,
-                DrawTextureParams { 
-                    dest_size: Some(size), 
-                    rotation: body.rotation().angle() * -1., 
+                DrawTextureParams {
+                    dest_size: Some(size),
+                    rotation: body.rotation().angle() * -1.,
                     pivot: Some(macroquad_pos),
                     ..Default::default()
                 }
-            
+
             );
         }
 
@@ -1246,35 +1248,35 @@ impl Drawable for Prop {
 
         color.a = 1. - (self.last_sent_position_update.elapsed().as_secs_f32() / 1.);
 
-        
+
         // draw_texture_ex(
-        //     texture, 
-        //     macroquad_pos.x, 
+        //     texture,
+        //     macroquad_pos.x,
         //     macroquad_pos.y - pivot.y,
         //     color,
-        //     DrawTextureParams { 
-        //         dest_size: Some(size), 
-        //         rotation: body.rotation().angle() * -1., 
+        //     DrawTextureParams {
+        //         dest_size: Some(size),
+        //         rotation: body.rotation().angle() * -1.,
         //         pivot: Some(macroquad_pos),
         //         ..Default::default()
         //     }
-        
+
         // );
         // if let Some(owner) = self.owner {
         //     if let Owner::ClientId(owner) = owner {
         //         if owner == draw_context.id {
         //             draw_texture_ex(
-        //                 texture, 
-        //                 macroquad_pos.x, 
+        //                 texture,
+        //                 macroquad_pos.x,
         //                 macroquad_pos.y - pivot.y,
         //                 RED,
-        //                 DrawTextureParams { 
-        //                     dest_size: Some(size), 
-        //                     rotation: body.rotation().angle() * -1., 
+        //                 DrawTextureParams {
+        //                     dest_size: Some(size),
+        //                     rotation: body.rotation().angle() * -1.,
         //                     pivot: Some(macroquad_pos),
         //                     ..Default::default()
         //                 }
-                    
+
         //             );
         //         }
         //     }
@@ -1282,16 +1284,16 @@ impl Drawable for Prop {
 
         //draw_text(&format!("{:?}", self.owner), macroquad_pos.x, macroquad_pos.y, 20., WHITE);
 
-        
+
 
         gl_use_default_material();
 
         let mut color = WHITE;
         color.a = 0.5;
-        
-        
+
+
         // for voxel in collider.shape().as_voxels().unwrap().voxels() {
-            
+
         //     let pos = collider.shape().as_voxels().unwrap().voxel_center(voxel.grid_coords);
         //     let macroquad_pos = rapier_to_macroquad(pos);
         //     draw_rectangle(macroquad_pos.x - (2. * self.scale), macroquad_pos.y - (2. * self.scale), 4. * self.scale, 4. * self.scale, color);
@@ -1309,18 +1311,18 @@ impl Drawable for Prop {
         //     color.a = 0.5;
         //     let macroquad_pos = rapier_to_macroquad(voxel.1);
         //     draw_rectangle(macroquad_pos.x - (4.), macroquad_pos.y - (4.), 8., 8., color);
-            
+
         // }
 
-        
 
-        
 
-        
-        
+
+
+
+
     }
 
-    
+
 
     fn draw_layer(&self) -> u32 {
         self.layer
@@ -1355,7 +1357,7 @@ pub struct PropSave {
     pub removed_voxels: Vec<glamx::IVec2>,
     #[serde(default)]
     pub lifespan: Option<web_time::Duration>,
-    #[serde(default = "default_sync_physics")] 
+    #[serde(default = "default_sync_physics")]
     pub sync_physics: bool,
 }
 
@@ -1449,5 +1451,3 @@ pub struct SetPropVoxel {
     pub voxel_index: glamx::IVec2,
     pub filled: bool
 }
-
-

@@ -48,7 +48,7 @@ impl ItemSlot {
             quantity: save.quantity,
             item: Item::from_save(save.item, space, textures),
         }
-    } 
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -157,29 +157,29 @@ impl Player {
     }
 
     pub fn pickup_item(
-        &mut self, 
-        dropped_items: &mut Vec<DroppedItem>, 
-        space: &mut Space, 
+        &mut self,
+        dropped_items: &mut Vec<DroppedItem>,
+        space: &mut Space,
         ctx: &mut TickContext,
         area_id: AreaId
     ) {
 
         let player_pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation.clone();
-        
+
         let mut picked_up_items = drain_filter(
-            dropped_items, 
+            dropped_items,
             |dropped_item| {
                 let item_pos = space.rigid_body_set.get(dropped_item.body).unwrap().position().translation;
 
                 let distance = item_pos - player_pos;
 
                 if distance.length() < 50. {
-                    
+
                     return true
                 }
 
                 false
-                
+
             }
         );
 
@@ -269,12 +269,12 @@ impl Player {
                 }
             }
         };
-        
+
 
 
     }
     pub fn draw_hud(&self, _textures: &ClientTextureLoader) {
-        
+
     }
 
     pub fn draw_inventory(&self, textures: &ClientTextureLoader, space: &Space, prefabs: &Prefabs, fonts: &FontLoader) {
@@ -303,16 +303,16 @@ impl Player {
                     (slot_color, item_color)
                 },
             };
-            
+
             let slot_pos = Vec2 {
                 x: (mpos.x + (index as f32 * 50.)) - ((50. * self.inventory.items.len() as f32) / 2. ),
                 y: mpos.y - 80.
             };
 
             draw_rectangle(
-                slot_pos.x, 
-                slot_pos.y, 
-                40., 
+                slot_pos.x,
+                slot_pos.y,
+                40.,
                 40.,
                 slot_color
             );
@@ -326,12 +326,12 @@ impl Player {
             match item {
                 Some(item_slot) => {
                     item_slot.item.draw_preview(textures, 30., item_preview_pos, prefabs, Some(item_color), 0.);
-                    
+
                     if item_slot.quantity > 1 {
                         draw_text_ex(
-                            &item_slot.quantity.to_string(), 
-                            item_preview_pos.x, 
-                            item_preview_pos.y + 24., 
+                            &item_slot.quantity.to_string(),
+                            item_preview_pos.x,
+                            item_preview_pos.y + 24.,
                             TextParams {
                                 font: Some(&fonts.get(PathBuf::from("assets/fonts/CutePixel.ttf"))),
                                 font_size: 24,
@@ -342,11 +342,11 @@ impl Player {
                     }
                 },
                 None => {
-                    
+
                 },
             }
 
-            
+
         }
     }
 
@@ -358,12 +358,12 @@ impl Player {
                 PlayerFacingUpdate { area_id: area_id, id: self.id, facing: facing }
             )
         );
-    } 
+    }
 
 
     pub fn move_camera(
-        &mut self, 
-        ctx: &mut ClientTickContext, 
+        &mut self,
+        ctx: &mut ClientTickContext,
         area_context: &mut AreaContext
     ) {
 
@@ -379,7 +379,7 @@ impl Player {
 
 
         let distance_from_center = Vec2::new(
-            mouse_pos.x - (ctx.camera_rect.right() / 2.), 
+            mouse_pos.x - (ctx.camera_rect.right() / 2.),
             mouse_pos.y - (ctx.camera_rect.bottom() / 2.)
         );
 
@@ -387,8 +387,8 @@ impl Player {
             x: (macroquad_player_position.x - (ctx.camera_rect.right() / 2.)) + distance_from_center.x,
             y: (macroquad_player_position.y - (ctx.camera_rect.bottom() / 2.)) + distance_from_center.y,
         };
-        
-        
+
+
         if is_key_down(KeyCode::LeftControl) {
             if mouse_wheel().1 < 0. {
                 self.desired_camera_width += 30.;
@@ -398,7 +398,7 @@ impl Player {
                 self.desired_camera_width -= 30.;
             }
         }
-        
+
         let camera_width_delta = self.desired_camera_width - self.current_camera_width;
 
         self.current_camera_width += camera_width_delta / 10.;
@@ -409,21 +409,21 @@ impl Player {
         );
 
 
-        
+
         ctx.camera_rect.x += delta.x / 10.;
         ctx.camera_rect.y += delta.y / 10.;
 
         let ratio = screen_height() / screen_width();
         ctx.camera_rect.w = self.current_camera_width;
-        ctx.camera_rect.h = ctx.camera_rect.w * ratio;    
+        ctx.camera_rect.h = ctx.camera_rect.w * ratio;
 
         // camera cannot go below (above) this value
         //ctx.camera_rect.y = ctx.camera_rect.y.min(360.)
-        
+
     }
 
     pub fn handle_bullet_impact(&mut self, _space: &Space, _bullet_impact: BulletImpactData) {
-        
+
 
     }
 
@@ -441,12 +441,12 @@ impl Player {
 
     pub fn new(pos: Pose2, space: &mut Space, owner: Owner) -> Self {
         let head = BodyPart::new(
-            PathBuf::from_str("assets/cat/head.png").unwrap(), 
-            2, 
-            100., 
-            pos, 
-            space, 
-            owner, 
+            PathBuf::from_str("assets/cat/head.png").unwrap(),
+            2,
+            100.,
+            pos,
+            space,
+            owner,
             macroquad::math::Vec2::new(30., 28.)
         );
 
@@ -457,14 +457,14 @@ impl Player {
 
         // joint the head to the body
         let joint = space.impulse_joint_set.insert(
-            body.body_handle, 
-            head.body_handle, 
+            body.body_handle,
+            head.body_handle,
             RevoluteJointBuilder::new()
                 .local_anchor1(vec2(0., 0.))
                 .local_anchor2(vec2(0., -30.))
                 .limits([-0.4, 0.4])
                 .contacts_enabled(false)
-            .build(), 
+            .build(),
             true
         );
 
@@ -502,8 +502,8 @@ impl Player {
     }
 
     pub fn change_active_inventory_slot(
-        &mut self, 
-        ctx: &mut ClientTickContext, 
+        &mut self,
+        ctx: &mut ClientTickContext,
         area_context: &mut AreaContext
     ) {
 
@@ -536,12 +536,12 @@ impl Player {
                 )
             );
 
-            
-            
+
+
         } else if mouse_wheel().1 > 0. {
             if self.selected_item == 0 {
                 self.selected_item = 5;
-                
+
                 return;
             }
 
@@ -564,8 +564,8 @@ impl Player {
     }
 
     pub fn use_item(
-        &mut self, 
-        ctx: &mut TickContext, 
+        &mut self,
+        ctx: &mut TickContext,
         area_context: &mut AreaContext
     ) {
 
@@ -590,7 +590,7 @@ impl Player {
             Item::Prop(_prop) => {
 
                 //prop.use_item(&mut item_slot.quantity, ctx, space, props);
-                
+
             },
             Item::Weapon(weapon_type) => {
 
@@ -621,9 +621,9 @@ impl Player {
                     move_left_toggle: &mut self.move_left_toggle,
                     current_camera_width: &mut self.current_camera_width,
                     desired_camera_width: &mut self.desired_camera_width,
-                    
+
                 };
-    
+
                 weapon_type.fire(ctx, area_context, &mut player_context.into());
             }
         };
@@ -634,13 +634,13 @@ impl Player {
             },
             false => self.inventory.items[self.selected_item] = Some(item_slot)
         }
-        
-        
+
+
     }
 
     pub fn update_cursor_pos(
-        &mut self, 
-        ctx: &mut ClientTickContext, 
+        &mut self,
+        ctx: &mut ClientTickContext,
         area_context: &mut AreaContext
     ) {
         self.cursor_pos_rapier = rapier_mouse_world_pos(ctx.camera_rect);
@@ -657,8 +657,8 @@ impl Player {
     }
 
     pub fn control_controller(
-        &mut self, 
-        ctx: &mut ClientTickContext, 
+        &mut self,
+        ctx: &mut ClientTickContext,
         area_context: &mut AreaContext
     ) {
 
@@ -689,11 +689,11 @@ impl Player {
         //                 gilrs::Axis::LeftStickY => {},
         //                 gilrs::Axis::LeftZ => {},
         //                 gilrs::Axis::RightStickX => {
-                           
-    
+
+
         //                 },
         //                 gilrs::Axis::RightStickY => {
-                            
+
         //                 },
         //                 gilrs::Axis::RightZ => {},
         //                 gilrs::Axis::DPadX => {},
@@ -723,7 +723,7 @@ impl Player {
         &mut self,
         ctx: &mut ClientTickContext,
         area_context: &mut AreaContext
-        
+
     ) {
         let body = area_context.space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
 
@@ -733,13 +733,13 @@ impl Player {
 
         if body.linvel().x.is_sign_positive() {
             body.set_linvel(
-                Vec2::new(body.linvel().x * 0.5, body.linvel().y), 
+                Vec2::new(body.linvel().x * 0.5, body.linvel().y),
                 true
             );
         }
 
         body.set_linvel(
-            Vec2::new(body.linvel().x - 50., body.linvel().y), 
+            Vec2::new(body.linvel().x - 50., body.linvel().y),
             true
         );
     }
@@ -748,7 +748,7 @@ impl Player {
         &mut self,
         ctx: &mut ClientTickContext,
         area_context: &mut AreaContext
-        
+
     ) {
 
         let body = area_context.space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
@@ -759,23 +759,23 @@ impl Player {
 
         if body.linvel().x.is_sign_negative() {
             body.set_linvel(
-                Vec2::new(body.linvel().x * 0.5,body.linvel().y), 
+                Vec2::new(body.linvel().x * 0.5,body.linvel().y),
                 true
             );
         }
 
         body.set_linvel(
-            Vec2::new(body.linvel().x + 50., body.linvel().y), 
+            Vec2::new(body.linvel().x + 50., body.linvel().y),
             true
         );
     }
 
     pub fn control_mkb(
-        &mut self, 
+        &mut self,
         ctx: &mut ClientTickContext,
         area_context: &mut AreaContext
     ) {
-        
+
 
         if is_key_down(KeyCode::Space) {
             self.jump(ctx, area_context);
@@ -805,8 +805,8 @@ impl Player {
     }
 
     pub fn client_tick(
-        &mut self, 
-        ctx: &mut TickContext, 
+        &mut self,
+        ctx: &mut TickContext,
         area_context: &mut AreaContext
 
     ) {
@@ -815,29 +815,29 @@ impl Player {
 
         self.angle_weapon_to_mouse(area_context.space);
         self.angle_head_to_mouse(area_context.space);
-        
+
         self.materialize_tiles(area_context.space, area_context.tiles);
 
         if self.owner == ctx.id() {
             self.owner_tick(
-                ctx, 
+                ctx,
                 area_context
             );
-        }   
+        }
 
         self.unequip_previous_weapon(area_context.space);
         self.equip_selected_item(area_context.space);
 
         self.previous_selected_item = self.selected_item;
         self.previous_velocity = current_velocity;
-        
+
     }
 
     pub fn face_towards_mouse(
-        &mut self,  
-        ctx: &mut ClientTickContext, 
+        &mut self,
+        ctx: &mut ClientTickContext,
         area_context: &mut AreaContext
-        
+
     ) {
         let head_body = area_context.space.rigid_body_set.get_mut(self.head.body_handle).unwrap();
         let angle_to_mouse = get_angle_between_rapier_points(head_body.position().translation, self.cursor_pos_rapier);
@@ -858,7 +858,7 @@ impl Player {
         head_body.wake_up(true);
 
         let angle_to_mouse = get_angle_between_rapier_points(head_body.position().translation, self.cursor_pos_rapier);
-        
+
         let head_joint = space.impulse_joint_set.get_mut(head_joint_handle, true).unwrap();
 
         let target_angle = match self.facing {
@@ -879,7 +879,7 @@ impl Player {
 
     }
 
-    
+
     pub fn materialize_tiles(&mut self, space: &mut Space, tiles: &mut Vec<Vec<Option<Tile>>>) {
 
         let player_pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation;
@@ -904,7 +904,7 @@ impl Player {
                     }
                 }
             }
-            
+
         }
 
     }
@@ -923,8 +923,8 @@ impl Player {
     }
 
     pub fn change_facing_direction(
-        &mut self, 
-        ctx: &mut ClientTickContext, 
+        &mut self,
+        ctx: &mut ClientTickContext,
         area_context: &mut AreaContext
     ) {
         let velocity = area_context.space.rigid_body_set.get(self.body.body_handle).unwrap().linvel();
@@ -938,7 +938,7 @@ impl Player {
 
             if self.facing != Facing::Right {
                 self.set_facing(Facing::Right, *area_context.id, ctx);
-                
+
             }
 
         }
@@ -973,7 +973,7 @@ impl Player {
 
         if is_key_down(KeyCode::Space) {
             body.set_linvel(
-                Vec2::new(body.linvel().x, 200.), 
+                Vec2::new(body.linvel().x, 200.),
                 true
             );
         }
@@ -983,7 +983,7 @@ impl Player {
         &mut self,
         ctx: &mut ClientTickContext,
         area_context: &mut AreaContext
-        
+
     ) {
 
         let body = area_context.space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
@@ -993,7 +993,7 @@ impl Player {
         }
 
         body.set_linvel(
-            Vec2::new(body.linvel().x, body.linvel().y + 700.), 
+            Vec2::new(body.linvel().x, body.linvel().y + 700.),
             true
         );
     }
@@ -1012,9 +1012,9 @@ impl Player {
     }
 
     pub fn send_position_network_update(
-        &mut self, 
-        ctx: &mut TickContext, 
-        space: &mut Space, 
+        &mut self,
+        ctx: &mut TickContext,
+        space: &mut Space,
         area_id: AreaId
     ) {
 
@@ -1038,15 +1038,15 @@ impl Player {
                     ctx.network_io.send_all_clients(packet);
                 },
             }
-    
+
             self.last_position_update = web_time::Instant::now();
         }
     }
 
     pub fn send_velocity_network_update(
-        &mut self, 
-        ctx: &mut TickContext, 
-        area_id: AreaId, 
+        &mut self,
+        ctx: &mut TickContext,
+        area_id: AreaId,
         space: &Space
     ) {
 
@@ -1055,11 +1055,11 @@ impl Player {
         if self.previous_velocity != *current_velocity {
 
             let packet = crate::updates::NetworkPacket::PlayerVelocityUpdate(
-                PlayerVelocityUpdate { 
-                    id: self.id.clone(), 
-                    area_id, 
+                PlayerVelocityUpdate {
+                    id: self.id.clone(),
+                    area_id,
                     velocity: *current_velocity
-                    
+
                 }
             );
 
@@ -1102,7 +1102,7 @@ impl Player {
                         *current_closest_player = player.id
                     }
                 }
-                
+
             }
         }
 
@@ -1119,9 +1119,9 @@ impl Player {
 
                     prop.owner = Some(ctx.id());
 
-                    log::debug!("sending prop owner update");
+
                     prop.last_ownership_change = web_time::Instant::now();
-                    
+
                     ctx.send_network_packet(
                         PropUpdateOwner {
                             owner: Some(self.owner),
@@ -1131,15 +1131,15 @@ impl Player {
                     );
                 }
 
-                
+
             }
         }
 
 
     }
     pub fn owner_tick(
-        &mut self, 
-        ctx: &mut TickContext, 
+        &mut self,
+        ctx: &mut TickContext,
         area_context: &mut AreaContext
     ) {
 
@@ -1159,8 +1159,8 @@ impl Player {
         self.dash(area_context.space);
         self.pickup_item(area_context.dropped_items, area_context.space, ctx, *area_context.id);
         self.send_velocity_network_update(ctx, *area_context.id, area_context.space);
-        
-        
+
+
     }
 
 

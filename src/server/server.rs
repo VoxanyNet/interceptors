@@ -26,8 +26,8 @@ impl Server {
         //let lobby_save: AreaSave = serde_json::from_str(&read_to_string("areas/ship.json").unwrap()).unwrap();
         let forest_save: AreaSave = serde_json::from_str(&read_to_string("areas/newoffice.json").unwrap()).unwrap();
 
-        
-        
+
+
         let prefabs = load_prefabs();
 
         let forest = Area::from_save(forest_save, None, &prefabs, (&assets.textures).into());
@@ -36,7 +36,7 @@ impl Server {
 
         world.areas.push(forest);
 
-        
+
 
 
         Self {
@@ -88,10 +88,10 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
     pub fn handle_disconnected_client(&mut self, client_id: ClientId) {
 
-        log::debug!("handling disconnect for client: {:?}", client_id);
+        log::info!("handling disconnect for client: {:?}", client_id);
         for area in &mut self.world.areas {
             let disconnected_player = area.players.iter_mut().find(
-                |player| 
+                |player|
                 {
                     player.owner == Owner::ClientId(client_id)
                 }
@@ -113,29 +113,29 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                 .find(|player| player.owner != Owner::ClientId(client_id))
                 .map(|player| {player.owner});
 
-            
 
-        
+
+
             area.props
                 .iter_mut()
                 .filter(|prop| prop.owner == Some(Owner::ClientId(client_id)))
                 .for_each(|prop| {
                     prop.owner = new_owner;
-    
+
                     self.network_io.send_all_except(
                         PropUpdateOwner {
                             owner: prop.owner,
                             id: prop.id,
                             area_id: area.id,
-                        }.into(), 
+                        }.into(),
                         client_id
                     );
                 }
             );
 
-            
+
         }
-        
+
         // if self.network_io.clients.keys().len() == 0 {
 
         //     let lobby: AreaSave = serde_json::from_str(&read_to_string("areas/newoffice.json").unwrap()).unwrap();
@@ -164,10 +164,9 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
             self.previous_tick_connected_clients = self.get_connected_clients_vector();
 
             // only tick every 8 ms
-            if self.last_tick.elapsed().as_micros() > 8 {
+            if self.last_tick.elapsed().as_millis() > 8 {
                 self.tick();
             }
-            
 
             let new_client = self.network_io.accept_new_client();
 
@@ -177,24 +176,27 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
             let packets = self.receive_packets();
             self.handle_packets(packets);
+
+            self.network_io.flush(&mut self.total_bits_sent);
+
         }
     }
 
     pub fn handle_packets(
-        &mut self, 
-        network_packets: Vec<(ClientId, NetworkPacket)>, 
+        &mut self,
+        network_packets: Vec<(ClientId, NetworkPacket)>,
     ) {
 
         for (client_id, network_packet) in network_packets {
             match &network_packet {
 
                 NetworkPacket::UpdatePropVoxels(update) => {
-                    
+
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
                     let prop = area.props.iter_mut().find(|prop| {prop.id == update.prop_id});
 
                     let Some(prop) = prop else {
-                        
+
                         continue;
                     };
 
@@ -207,9 +209,9 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
                     prop.removed_voxels = update.removed_voxels.clone();
                     prop.voxels_modified = true;
-                    
+
                     self.network_io.send_all_except(
-                        network_packet, 
+                        network_packet,
                         client_id
                     );
                 }
@@ -217,7 +219,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                     panic!();
                     // just forward it for now
                     self.network_io.send_all_except(
-                        network_packet, 
+                        network_packet,
                         client_id
                     );
                 }
@@ -234,7 +236,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                 },
                 NetworkPacket::PropVelocityUpdate(update) => {
 
-                    
+
                     let area = self.world.areas.iter_mut().find(
                         |area| {
                             area.id == update.area_id
@@ -256,7 +258,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
                         self.network_io.send_all_except(network_packet, client_id);
                     }
-                    
+
 
 
                 },
@@ -391,7 +393,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
                     self.network_io.send_all_except(network_packet, client_id);
 
-                
+
                 },
                 NetworkPacket::PropPositionUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
@@ -400,7 +402,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                         Some(prop) => prop,
                         None => {
                             log::warn!("Received bad prop position update");
-                            
+
                             continue;
                         },
                     };
@@ -420,7 +422,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                         log::warn!("client: {:?} sent an invalid prop update", client_id);
                         return;
                     };
-                    
+
                     prop.last_ownership_change = web_time::Instant::now();
 
                     prop.owner = update.owner;
@@ -429,7 +431,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                 },
 
                 NetworkPacket::DissolveProp(_update) => {
-                    
+
                     // we can just pass this along to the other clients because the server doesnt really care about the physics of the dissolved props :)))
 
                     self.network_io.send_all_except(network_packet, client_id);
@@ -438,13 +440,13 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
                     if let Some(prop) = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}) {
-                        log::debug!("removing prop!");
+
                         prop.mark_despawn();
                     }
 
-                    
+
                     self.network_io.send_all_except(network_packet, client_id);
-                    
+
                 },
                 NetworkPacket::ActiveItemSlotUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
@@ -562,7 +564,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                     if let Some(enemy) = area.enemies.iter_mut().find(|enemy| {enemy.id == update.enemy_id}) {
                         enemy.health = update.health;
                     }
-                    
+
                     self.network_io.send_all_except(network_packet, client_id);
                 },
                 NetworkPacket::EnemyDespawnUpdate(update) => {
@@ -590,18 +592,18 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                     self.network_io.send_all_except(network_packet, client_id);
                 },
                 NetworkPacket::StupidDissolvedPixelVelocityUpdate(_update) => {
-                    
+
                     // server doesnt care about this!
                     self.network_io.send_all_except(network_packet, client_id);
-                          
 
-                    
+
+
                 }
-                
-                
+
+
             }
         }
-        
+
     }
 
     pub fn receive_packets(&mut self) -> Vec<(ClientId, NetworkPacket)>{
@@ -638,7 +640,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                                 match io_error.kind() {
                                     std::io::ErrorKind::WouldBlock => {
                                         // this means that there was no update to read
-                                        
+
                                         continue 'client_loop // move to the next client
                                     },
                                     std::io::ErrorKind::ConnectionReset => {
@@ -652,13 +654,13 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                                     },
                                 }
                             },
-                            
+
                             tungstenite::Error::Protocol(error) => {
                                 log::info!("Client {:?} disconnected due to a protocol error: {:?}", client_id, error);
                                 disconnected_clients.push(*client_id);
                                 continue 'client_loop;
                             },
-                            
+
                             _ => {
 
                                 log::error!("Unhandled websocket message read error: {}", error.to_string());
@@ -674,7 +676,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                 for packet in client_packets {
                     packets.push((*client_id, packet));
                 }
-                
+
             }
         }
 
@@ -684,7 +686,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
         packets
     }
 
-    
+
 
     pub fn tick(&mut self) {
 
@@ -697,7 +699,6 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
         self.world.tick(&mut TickContext::Server(ctx));
 
-        self.network_io.flush(&mut self.total_bits_sent);
 
         self.last_tick_duration = self.last_tick.elapsed();
         self.last_tick = web_time::Instant::now();

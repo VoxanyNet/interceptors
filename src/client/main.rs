@@ -2,8 +2,10 @@
 
 use interceptors_lib::load_assets;
 use macroquad::{input::show_mouse, miniquad::{conf::Platform, window::request_quit}, window::Conf};
+use wasm_logger::Config;
 
 use crate::{client::{Client}, main_menu::{MainMenu, MainMenuResult}};
+
 
 mod client;
 mod main_menu;
@@ -16,7 +18,7 @@ fn window_conf() -> Conf {
         window_width: 900,
         window_height: 900,
         window_resizable: true,
-        fullscreen: false, 
+        fullscreen: false,
         platform: Platform::default(),
         ..Default::default()
     };
@@ -26,15 +28,21 @@ fn window_conf() -> Conf {
 #[macroquad::main(window_conf)]
 async fn main() {
 
-    pretty_env_logger::init();  
+    #[cfg(not(target_arch = "wasm32"))]
+    pretty_env_logger::init();
 
     let client_id: i64 = 1461559630462451868;
+
+
+
+    #[cfg(target_arch = "wasm32")]
+    wasm_logger::init(Config::default());
 
     #[cfg(feature = "discord")] {
         let sdk = DiscordSDK::new(&client_id.to_string()).unwrap();
         sdk.ready().await.unwrap();
     }
-    
+
     let assets = load_assets().await;
     let mut main_menu = MainMenu::new(assets.clone()).await;
 
@@ -56,11 +64,6 @@ async fn main() {
             client.run().await;
         },
     }
-    
-    
+
+
 }
-
-
-
-
-

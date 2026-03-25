@@ -13,7 +13,7 @@ pub struct Client {
     last_network_flush: web_time::Instant,
     network_io: ClientIO,
     pings: HashMap<u64, web_time::Instant>,
-    world: World, 
+    world: World,
     client_id: ClientId,
     camera_rect: Rect,
     textures: ClientTextureLoader,
@@ -39,7 +39,7 @@ impl Client {
 
 
         show_mouse(true);
-        
+
         let url = "ws://127.0.0.1:5560";
 
         #[cfg(target_arch = "wasm32")]
@@ -80,11 +80,11 @@ impl Client {
                             log::error!("Server closed when trying to connect");
                             exit(1);
                         }
-                        
+
                     }
                 },
                 None => {
-                    
+
                     macroquad::window::next_frame().await; // let js runtime main thread continue execution while we wait
 
                     continue;
@@ -133,7 +133,7 @@ impl Client {
 
         set_camera(
             &camera
-        );   
+        );
 
         let test_button = Button::new(Rect {
             x: 0.,
@@ -142,8 +142,9 @@ impl Client {
             h: 100.,
         }, None);
 
+        log::debug!("Connected to server!");
         Self {
-            
+
             packets_sent: 0,
             network_io: server,
             pings: HashMap::new(),
@@ -168,7 +169,7 @@ impl Client {
             material_loader: assets.material_loader,
             last_network_flush: web_time::Instant::now(),
         }
-        
+
 
     }
 }
@@ -177,7 +178,7 @@ impl Client {
 
     pub async fn run(&mut self) {
 
-        
+
         loop {
 
             let then = web_time::Instant::now();
@@ -189,8 +190,8 @@ impl Client {
 
             self.draw(then).await;
 
-            
-            
+
+
         }
     }
 
@@ -232,7 +233,7 @@ impl Client {
                         .filter(|voxel| voxel.grid_coords != update.voxel_index)
                         .map(|voxel| voxel.grid_coords)
                         .collect();
-                    
+
                     area.space.collider_set
                         .get_mut(prop.collider_handle)
                         .unwrap()
@@ -252,8 +253,8 @@ impl Client {
                         continue;
                     };
 
-                    
-                    
+
+
                     area.space.collider_set
                         .get_mut(prop.collider_handle)
                         .unwrap()
@@ -267,13 +268,13 @@ impl Client {
 
                 }
 
-                
+
                 NetworkPacket::MasterUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
                     area.master = Some(update.master.clone());
                 },
-                
+
                 NetworkPacket::Ping(ping) => {
                     self.latency = self.pings.remove(&ping.id).unwrap().elapsed();
 
@@ -297,7 +298,7 @@ impl Client {
                     let Some(prop) = area.props.iter_mut().find(|prop| {prop.id} == update.id) else {
                         return;
                     };
-                    
+
 
                     prop.last_ownership_change = web_time::Instant::now();
 
@@ -355,7 +356,7 @@ impl Client {
 
 
 
-                    
+
                 },
                 NetworkPacket::PropPositionUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
@@ -364,8 +365,8 @@ impl Client {
 
                     prop.set_pos(update.pos, &mut area.space);
                     prop.last_received_position_update = web_time::Instant::now();
-                    
-                    
+
+
                 },
                 NetworkPacket::DissolveProp(update) => {
 
@@ -402,7 +403,7 @@ impl Client {
                     ).unwrap();
 
                     let dropped_item = area.dropped_items.iter_mut().find(|dropped_item| {dropped_item.id == update.dropped_item_id}).unwrap();
-                    
+
                     dropped_item.mark_despawn();
                 }
                 NetworkPacket::DroppedItemVelocityUpdate(update) => {
@@ -544,7 +545,7 @@ impl Client {
                         enemy.last_health_update = web_time::Instant::now();
                         enemy.health = update.health
                     }
-                    
+
                 },
                 NetworkPacket::PlayerHealthUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
@@ -560,37 +561,37 @@ impl Client {
                     player.mark_despawn();
                 },
                 NetworkPacket::StupidDissolvedPixelVelocityUpdate(update) => {
-                    
+
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
                     let intersections = get_intersections(
-                        update.weapon_pos, 
-                        &mut area.space, 
-                        update.bullet_vector, 
+                        update.weapon_pos,
+                        &mut area.space,
+                        update.bullet_vector,
                         None
-                    ); 
+                    );
 
-    
+
 
                     for dissolved_pixel in &mut area.dissolved_pixels {
 
                         let collider = dissolved_pixel.collider;
-                        
+
                         for impact in intersections.iter().filter(|impact| {impact.intersected_collider == collider}) {
 
-                            
+
                             let body = area.space.rigid_body_set.get_mut(dissolved_pixel.body).unwrap();
                             body.apply_impulse(
-                                Vector::new(impact.intersection_vector.x * 5000., impact.intersection_vector.y * 5000.), 
+                                Vector::new(impact.intersection_vector.x * 5000., impact.intersection_vector.y * 5000.),
                                 true
                             );
                         }
-                    } 
+                    }
 
                 }
             }
         }
-        
+
     }
 
     pub fn ping(&mut self) {
@@ -611,7 +612,7 @@ impl Client {
         self.camera_rect.w = screen_width();
         self.camera_rect.h = screen_height();
     }
-    
+
 
     pub fn phone(&mut self) {
         // if is_key_released(KeyCode::L) {
@@ -622,7 +623,7 @@ impl Client {
     pub fn tick(&mut self) {
 
 
-        
+
         self.phone();
         self.measure_latency();
         self.ping();
@@ -637,7 +638,7 @@ impl Client {
             sounds: &mut self.sounds,
             textures: &self.textures,
             camera: &self.camera
-            
+
         };
 
         // if !self.spawned {
@@ -655,8 +656,8 @@ impl Client {
 
             self.last_network_flush = web_time::Instant::now();
         }
-        
-        
+
+
         self.last_tick_duration = self.last_tick.elapsed();
         self.last_tick = web_time::Instant::now();
     }
@@ -667,19 +668,19 @@ impl Client {
 
         let x_shake = {
             let frequency_modifier = self.screen_shake.x_frequency;
-            
+
             let magnitude_modifier = self.screen_shake.x_intensity;
 
             let offset = self.screen_shake.x_offset;
 
             magnitude_modifier * ((frequency_modifier * elapsed) + offset).sin()
 
-            
+
         };
 
         let y_shake = {
             let frequency_modifier = self.screen_shake.y_frequency;
-            
+
             let magnitude_modifier = self.screen_shake.y_intensity;
 
             let offset = self.screen_shake.y_offset;
@@ -687,7 +688,7 @@ impl Client {
             magnitude_modifier * ((frequency_modifier * elapsed) + offset).sin()
         };
 
-        
+
         // add shake
         Rect {
             x: self.camera_rect.x + x_shake as f32,
@@ -697,8 +698,8 @@ impl Client {
         }
     }
 
-    
-    pub async fn draw(&mut self, then: web_time::Instant) { 
+
+    pub async fn draw(&mut self, then: web_time::Instant) {
 
         let shaken_camera_rect = self.calculate_shaken_camera_rect();
 
@@ -706,8 +707,8 @@ impl Client {
         let mut camera = Camera2D::from_display_rect(shaken_camera_rect);
 
         self.apply_screen_shake_decays();
-            
-        
+
+
         camera.render_target = Some(self.render_target.clone());
 
         camera.zoom.y = -camera.zoom.y;
@@ -716,23 +717,23 @@ impl Client {
 
         set_camera(
             &self.camera
-        );   
+        );
 
         clear_background(BLACK);
 
         self.world.draw(
-            &mut self.textures, 
+            &mut self.textures,
             &self.material_loader,
-            &self.camera_rect, 
-            &self.prefab_data, 
-            &self.camera, 
-            &self.fonts, 
+            &self.camera_rect,
+            &self.prefab_data,
+            &self.camera,
+            &self.fonts,
             self.start.elapsed(),
             self.client_id
         ).await;
 
         //self.phone.draw(&self.textures, &self.camera_rect);
-                
+
         set_default_camera();
 
         //gl_use_material(&self.material);
@@ -745,17 +746,17 @@ impl Client {
         gl_use_default_material();
 
         draw_fps();
-        
+
 
         draw_text(&format!("Tick time: {:?}", then.elapsed()), 0., 60., 20., WHITE);
         draw_text(&format!("Ping: {:?}", self.latency), 0., 80., 20., WHITE);
 
         next_frame().await;
 
-       
 
 
-        
+
+
 
     }
 
@@ -774,4 +775,3 @@ impl Client {
         self.screen_shake.y_intensity = (self.screen_shake.y_intensity - y_intensity_decay).max(0.0);
     }
 }
-
