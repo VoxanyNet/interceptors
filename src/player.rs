@@ -1,5 +1,5 @@
 use core::f32;
-use std::{f32::consts::PI, mem::take, path::PathBuf, str::FromStr, usize};
+use std::{collections::HashMap, f32::consts::PI, mem::take, path::PathBuf, str::FromStr, usize};
 
 use cs_utils::drain_filter;
 use glamx::{Pose2, Vec2, vec2};
@@ -7,9 +7,9 @@ use macroquad::{camera::Camera2D, color::{BLACK, WHITE}, input::{KeyCode, is_key
 use rapier2d::{parry::query::Ray, prelude::{ImpulseJointHandle, QueryFilter, RevoluteJointBuilder, RigidBody, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, angle_weapon_to_mouse, area::{AreaContext, AreaId}, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, mouse_world_pos, prop::Prop, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
+use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, angle_weapon_to_mouse, area::{AreaContext, AreaId}, body_part::BodyPart, bullet_trail::BulletTrail, computer::{Item, ItemSave}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, mouse_world_pos, prop::{Prop, PropId, PropUpdateOwner}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy, Hash, Eq)]
 pub struct PlayerId {
     id: u64
 }
@@ -986,67 +986,10 @@ impl Player {
         
     ) {
 
-        let body_pos = area_context.space.rigid_body_set.get_mut(self.body.body_handle).unwrap().translation().clone();
-        let body_size = area_context.space.collider_set.get_mut(self.body.collider_handle).unwrap().shape().as_cuboid().unwrap().half_extents.clone();
-
-        let query_pipeline = area_context.space.broad_phase.as_query_pipeline(
-            area_context.space.narrow_phase.query_dispatcher(),
-            &area_context.space.rigid_body_set,
-            &area_context.space.collider_set,
-            QueryFilter::default()
-        );
-
-        
-
-        let line = glamx::Vec2::new(0., -1. * (body_size.y * 2.));
-        let ray = Ray::new(body_pos, line);
-
-        let mut can_jump = false;
-        for (collider_handle, collider, ray_intersection) in query_pipeline.intersect_ray(
-            ray.clone(), 
-            f32::MAX, 
-            true
-        ) {
-
-            
-            let distance = body_pos - ray.point_at(ray_intersection.time_of_impact);
-            
-            if distance.y > 20. {
-                continue;
-            }
-            if (collider_handle == self.body.collider_handle) {
-                
-                continue;
-                
-            }
-
-            if (collider_handle == self.head.collider_handle) {
-                continue;
-            }
-
-            
-
-            can_jump = true;
-
-
-
-            break;
-
-        };
-
-        if !can_jump {
-            return;
-        }
-
-
         let body = area_context.space.rigid_body_set.get_mut(self.body.body_handle).unwrap();
-        
 
-        if body.linvel().y.is_sign_negative() {
-            body.set_linvel(
-                Vec2::new(body.linvel().x, 0.), 
-                true
-            );
+        if body.linvel().y.abs() > 1. {
+            return
         }
 
         body.set_linvel(
@@ -1131,6 +1074,69 @@ impl Player {
         }
     }
 
+    pub fn own_nearby_props(
+        &self,
+        area_context: &mut AreaContext,
+        ctx: &mut TickContext
+    ) {
+
+        let mut distances: HashMap<PropId, (PlayerId, f32)> = HashMap::new();
+
+
+        for prop in &mut *area_context.props {
+            let prop_body = area_context.space.rigid_body_set.get(prop.rigid_body_handle).unwrap();
+
+            let our_player_body = area_context.space.rigid_body_set.get(self.body.body_handle).unwrap();
+            let distance = (prop_body.translation() - our_player_body.translation()).length();
+
+            distances.insert(prop.id, (self.id, distance));
+
+            for player in &mut *area_context.players {
+                let player_body = area_context.space.rigid_body_set.get(player.body.body_handle).unwrap();
+
+                let distance = (prop_body.translation() - player_body.translation()).length();
+
+                if let Some((current_closest_player, current_closest_distance)) = distances.get_mut(&prop.id) {
+                    if *current_closest_distance > distance {
+                        *current_closest_distance = distance;
+                        *current_closest_player = player.id
+                    }
+                }
+                
+            }
+        }
+
+        for (prop_id, (closest_player, _)) in distances {
+            if closest_player == self.id {
+
+                let prop = area_context.props.iter_mut().find(|prop| prop.id == prop_id).unwrap();
+
+                if prop.last_ownership_change.elapsed().as_secs() < 3 {
+                    continue;
+                }
+
+                if prop.owner.unwrap() != ctx.id() {
+
+                    prop.owner = Some(ctx.id());
+
+                    log::debug!("sending prop owner update");
+                    prop.last_ownership_change = web_time::Instant::now();
+                    
+                    ctx.send_network_packet(
+                        PropUpdateOwner {
+                            owner: Some(self.owner),
+                            id: prop_id,
+                            area_id: *area_context.id,
+                        }.into()
+                    );
+                }
+
+                
+            }
+        }
+
+
+    }
     pub fn owner_tick(
         &mut self, 
         ctx: &mut TickContext, 
@@ -1147,6 +1153,7 @@ impl Player {
             self.face_towards_mouse(ctx, area_context);
         }
 
+        self.own_nearby_props(area_context, ctx);
         self.use_item(ctx, area_context);
         self.send_position_network_update(ctx, area_context.space, *area_context.id);
         self.dash(area_context.space);

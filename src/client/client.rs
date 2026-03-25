@@ -1,5 +1,6 @@
 use std::{collections::HashMap, process::exit};
 
+use image::codecs::webp;
 use interceptors_lib::{Assets, ClientIO, ClientId, ClientTickContext, Prefabs, area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, material_loader::MaterialLoader, player::{ItemSlot, Player}, prop::Prop, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::ClientTextureLoader, updates::{NetworkPacket, Ping}, weapons::weapon_type::WeaponType, world::World};
 use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, WHITE}, input::{KeyCode, is_key_released, show_mouse}, math::{Rect, vec2}, prelude::{Material, ShaderSource, gl_use_default_material, load_material}, text::draw_text, texture::{DrawTextureParams, RenderTarget, draw_texture_ex, render_target}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
 use rapier2d::{math::Vector, prelude::{ColliderBuilder, SharedShape}};
@@ -8,6 +9,8 @@ use crate::{shaders::{CRT_FRAGMENT_SHADER, CRT_VERTEX_SHADER}};
 
 
 pub struct Client {
+    packets_sent: i32,
+    last_network_flush: web_time::Instant,
     network_io: ClientIO,
     pings: HashMap<u64, web_time::Instant>,
     world: World, 
@@ -140,6 +143,8 @@ impl Client {
         }, None);
 
         Self {
+            
+            packets_sent: 0,
             network_io: server,
             pings: HashMap::new(),
             world: World::empty(),
@@ -160,7 +165,8 @@ impl Client {
             camera,
             fonts: assets.fonts,
             test_button,
-            material_loader: assets.material_loader
+            material_loader: assets.material_loader,
+            last_network_flush: web_time::Instant::now(),
         }
         
 
@@ -287,7 +293,13 @@ impl Client {
                 NetworkPacket::PropUpdateOwner(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let prop = area.props.iter_mut().find(|prop| {prop.id} == update.id).unwrap();
+
+                    let Some(prop) = area.props.iter_mut().find(|prop| {prop.id} == update.id) else {
+                        return;
+                    };
+                    
+
+                    prop.last_ownership_change = web_time::Instant::now();
 
                     prop.owner = update.owner;
 
@@ -350,17 +362,10 @@ impl Client {
 
                     let prop = if let Some(prop) = area.props.iter_mut().find(|prop| {prop.id} == update.prop_id) {prop} else {continue};
 
-                    let current_pos = match area.space.rigid_body_set.get(prop.rigid_body_handle) {
-                        Some(body) => body.position(),
-                        None => {
-                            continue;
-                        },
-                    };
-
-                    if (update.pos.translation.x - current_pos.translation.x).abs() > 4. {
-                        prop.set_pos(update.pos, &mut area.space);
-                    }
-
+                    prop.set_pos(update.pos, &mut area.space);
+                    prop.last_received_position_update = web_time::Instant::now();
+                    
+                    
                 },
                 NetworkPacket::DissolveProp(update) => {
 
@@ -643,7 +648,14 @@ impl Client {
 
         self.world.tick(&mut interceptors_lib::TickContext::Client(ctx));
 
-        self.network_io.flush();
+        if self.last_network_flush.elapsed().as_millis() >= 33 {
+            self.packets_sent += 1;
+            self.network_io.flush();
+            //log::debug!("{} flushes per second", self.packets_sent as f32/ self.start.elapsed().as_secs_f32());
+
+            self.last_network_flush = web_time::Instant::now();
+        }
+        
         
         self.last_tick_duration = self.last_tick.elapsed();
         self.last_tick = web_time::Instant::now();
@@ -736,6 +748,7 @@ impl Client {
         
 
         draw_text(&format!("Tick time: {:?}", then.elapsed()), 0., 60., 20., WHITE);
+        draw_text(&format!("Ping: {:?}", self.latency), 0., 80., 20., WHITE);
 
         next_frame().await;
 

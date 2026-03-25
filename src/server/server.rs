@@ -164,7 +164,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
             self.previous_tick_connected_clients = self.get_connected_clients_vector();
 
             // only tick every 8 ms
-            if self.last_tick.elapsed().as_millis() > 8 {
+            if self.last_tick.elapsed().as_micros() > 8 {
                 self.tick();
             }
             
@@ -405,11 +405,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                         },
                     };
 
-                    let current_pos = area.space.rigid_body_set.get(prop.rigid_body_handle).unwrap().position();
-
-                    if (update.pos.translation.x - current_pos.translation.x).abs() > 20. {
-                        prop.set_pos(update.pos, &mut area.space);
-                    }
+                    prop.set_pos(update.pos, &mut area.space);
 
                     self.network_io.send_all_except(network_packet, client_id);
 
@@ -420,7 +416,12 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                 NetworkPacket::PropUpdateOwner(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let prop = area.props.iter_mut().find(|prop| {prop.id} == update.id).unwrap();
+                    let Some(prop) = area.props.iter_mut().find(|prop| {prop.id} == update.id) else {
+                        log::warn!("client: {:?} sent an invalid prop update", client_id);
+                        return;
+                    };
+                    
+                    prop.last_ownership_change = web_time::Instant::now();
 
                     prop.owner = update.owner;
 

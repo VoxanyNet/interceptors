@@ -62,6 +62,7 @@ pub enum Material {
 
 #[derive(Clone, Debug)]
 pub struct Prop {
+    pub last_ownership_change: web_time::Instant,
     pub rigid_body_handle: RigidBodyHandle,
     pub collider_handle: ColliderHandle,
     sprite_path: PathBuf,
@@ -86,7 +87,9 @@ pub struct Prop {
     // how long this prop should live before being automatically despawned
     pub lifespan: Option<web_time::Duration>,
     // should we send network updates to the server
-    pub sync_physics: bool
+    pub sync_physics: bool,
+    pub last_received_position_update: web_time::Instant,
+    pub last_sent_position_update: web_time::Instant
 
 }
 
@@ -100,27 +103,10 @@ impl PartialEq for Prop {
 
 impl Prop {
 
-    pub fn update_owner(
-        &mut self, 
-        space: &mut Space,
-        new_owner: Owner,
-        ticker_id: Owner // the client id of this client
-    ) {
-        self.owner = Some(new_owner);
-
-        let body = space.rigid_body_set.get_mut(self.rigid_body_handle).unwrap();
-        if ticker_id != new_owner {
-            body
-                .set_body_type(RigidBodyType::KinematicPosi tionBased, true);
-        } else {
-            body
-                .set_body_type(self.rigid_body_type, true);
-        }
-    }
 
     pub fn name(&self) -> String {
 
-        let new_string = String::default::<>();
+        
         self.name.clone()
     }
 
@@ -135,6 +121,38 @@ impl Prop {
     pub fn get_preview_resolution(&self, size: f32, _prefabs: &Prefabs, textures: &ClientTextureLoader) -> Vec2 {
 
         get_preview_resolution(size, textures, &self.sprite_path)
+    }
+
+    /// Set the prop to kinematic if we dont own it
+    pub fn update_kinematic_state(
+        &mut self,
+        ctx: &TickContext,
+        space: &mut Space
+    ) {
+
+        let body = space.rigid_body_set.get_mut(self.rigid_body_handle).unwrap();
+
+        if let Some(owner) = self.owner {
+            if owner != ctx.id() {
+    
+
+                if body.body_type() != RigidBodyType::KinematicPositionBased {
+                    body.set_body_type(RigidBodyType::KinematicPositionBased, true);
+                }
+                
+            } else {
+                
+                if body.body_type() != self.rigid_body_type {
+
+  
+                    body.set_body_type(self.rigid_body_type, true);
+                }
+            }
+        } else {
+            // also make kinematic if the prop doesnt have an owner
+            // might want to change this in the future or maybe make it so that props must always have owners
+            body.set_body_type(RigidBodyType::KinematicPositionBased, true);
+        }
     }
 
     pub fn break_apart(
@@ -210,9 +228,9 @@ impl Prop {
                 voxels, 
                 space, 
                 impacted_voxels,
-                Some(web_time::Duration::from_secs(10)),
+                None,
                 false,
-                false
+                true
             );
             
             ctx.send_network_packet(
@@ -562,10 +580,10 @@ impl Prop {
         let current_velocity = *space.rigid_body_set.get(self.rigid_body_handle).unwrap().vels();
         let current_position = space.rigid_body_set.get(self.rigid_body_handle).unwrap().position();
 
-        if self.last_pos_update.elapsed().as_secs() > 3 
+        if self.last_pos_update.elapsed().as_millis() > 16 
         && self.sync_physics {
             
-            
+
             let packet = NetworkPacket::PropPositionUpdate(
                 PropPositionUpdate {
                     area_id,
@@ -583,36 +601,13 @@ impl Prop {
                 },
             }
 
+            self.last_sent_position_update = web_time::Instant::now();
+
             self.last_pos_update = web_time::Instant::now();
 
 
         }
         
-
-        // need to add a cooldown?
-        if (self.last_velocity_update.elapsed().as_secs() > 3) && (current_velocity != self.previous_velocity) {
-
-            let packet = NetworkPacket::PropVelocityUpdate(
-                PropVelocityUpdate {
-                    velocity: current_velocity,
-                    id: self.id,
-                    area_id: area_id
-                }
-            );
-            
-            match ctx {
-                TickContext::Client(ctx) => {
-                    ctx.network_io.send_network_packet(packet);
-                },
-                TickContext::Server(ctx) => {
-                    ctx.network_io.send_all_clients(packet);
-                },
-            };
-
-            
-
-            self.last_velocity_update = web_time::Instant::now();
-        }
 
         if let Some(lifespan) = self.lifespan {
             if self.spawned.elapsed() > lifespan {
@@ -639,6 +634,8 @@ impl Prop {
         if self.despawn {
             return;
         }
+
+        self.update_kinematic_state(ctx, space);
 
         if let Some(owner) = self.owner {
             if owner == ctx.id() {
@@ -718,6 +715,8 @@ impl Prop {
 
 
         Self {
+            last_received_position_update: web_time::Instant::now(),
+            last_ownership_change: web_time::Instant::now(),
             rigid_body_type: RigidBodyType::Dynamic, // prop fragmnets are always dynamic
             rigid_body_handle: body,
             collider_handle: collider_handle,
@@ -741,6 +740,8 @@ impl Prop {
             spawned: web_time::Instant::now(),
             lifespan: lifespan,
             sync_physics,
+            last_sent_position_update: web_time::Instant::now(),
+            
             
         }
     }
@@ -950,7 +951,7 @@ impl Prop {
         );
 
         if save.id.is_none() {
-            log::debug!("prop doesnt have id????");
+            panic!("prop doesnt have id????");
         }
         let id = match save.id {
             Some(id) => id,
@@ -961,6 +962,7 @@ impl Prop {
 
 
         Self {
+            last_received_position_update: web_time::Instant::now(),
             rigid_body_type: save.rigid_body_type,
             rigid_body_handle: body,
             collider_handle,
@@ -984,6 +986,8 @@ impl Prop {
             spawned: web_time::Instant::now(), // this could be an issue
             lifespan: save.lifespan,
             sync_physics: save.sync_physics,
+            last_ownership_change: web_time::Instant::now(), // this could also be an issue
+            last_sent_position_update: web_time::Instant::now()
             
 
         }
@@ -1023,7 +1027,7 @@ impl Prop {
             layer: self.layer,
             voxels,
             scale: self.scale,
-            rigid_body_type: body.body_type(),
+            rigid_body_type: self.rigid_body_type,
             removed_voxels: self.removed_voxels.clone(),
             lifespan: self.lifespan,
             sync_physics: self.sync_physics,
@@ -1158,6 +1162,8 @@ impl EditorContextMenu for Prop {
 #[async_trait]
 impl Drawable for Prop {
     async fn draw(&mut self, draw_context: &crate::drawable::DrawContext) {
+
+        log::debug!("{:?}", self.owner);
         if self.despawn {
             return;
         }
@@ -1188,10 +1194,10 @@ impl Drawable for Prop {
 
         let mut color = WHITE;
         if let Some(lifespan) = self.lifespan {
-            if (lifespan - self.spawned.elapsed()).as_secs() <= 5 {
+            // if (lifespan - self.spawned.elapsed()).as_secs() <= 5 {
 
-                color.a = (lifespan.as_secs_f32() - self.spawned.elapsed().as_secs_f32()) / 5.
-            }
+            //     //color.a = (lifespan.as_secs_f32() - self.spawned.elapsed().as_secs_f32()) / 5.
+            // }
         }
 
         
@@ -1211,6 +1217,49 @@ impl Drawable for Prop {
         
         );
 
+
+
+        
+        if let RigidBodyType::KinematicPositionBased = draw_context.space.rigid_body_set.get(self.rigid_body_handle).unwrap().body_type() {
+            
+            let mut color = RED;
+
+            color.a = 1. - (self.last_received_position_update.elapsed().as_secs_f32() / 1.);
+
+            
+            draw_texture_ex(
+                texture, 
+                macroquad_pos.x, 
+                macroquad_pos.y - pivot.y,
+                color,
+                DrawTextureParams { 
+                    dest_size: Some(size), 
+                    rotation: body.rotation().angle() * -1., 
+                    pivot: Some(macroquad_pos),
+                    ..Default::default()
+                }
+            
+            );
+        }
+
+        let mut color = GREEN;
+
+        color.a = 1. - (self.last_sent_position_update.elapsed().as_secs_f32() / 1.);
+
+        
+        // draw_texture_ex(
+        //     texture, 
+        //     macroquad_pos.x, 
+        //     macroquad_pos.y - pivot.y,
+        //     color,
+        //     DrawTextureParams { 
+        //         dest_size: Some(size), 
+        //         rotation: body.rotation().angle() * -1., 
+        //         pivot: Some(macroquad_pos),
+        //         ..Default::default()
+        //     }
+        
+        // );
         // if let Some(owner) = self.owner {
         //     if let Owner::ClientId(owner) = owner {
         //         if owner == draw_context.id {
@@ -1230,6 +1279,8 @@ impl Drawable for Prop {
         //         }
         //     }
         // }
+
+        //draw_text(&format!("{:?}", self.owner), macroquad_pos.x, macroquad_pos.y, 20., WHITE);
 
         
 
@@ -1280,6 +1331,7 @@ impl Drawable for Prop {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct PropSave {
+
     #[serde(default)]
     pub scale: f32,
     pub pos: Pose2,
@@ -1304,8 +1356,10 @@ pub struct PropSave {
     #[serde(default)]
     pub lifespan: Option<web_time::Duration>,
     #[serde(default = "default_sync_physics")] 
-    pub sync_physics: bool
+    pub sync_physics: bool,
 }
+
+
 
 fn default_sync_physics() -> bool {
     true
@@ -1319,7 +1373,7 @@ fn default_prop_name() -> String {
     "Unnamed Prop".to_string()
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default, Copy, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default, Copy, PartialEq, Hash, Eq)]
 pub struct PropId {
     id: u64
 }

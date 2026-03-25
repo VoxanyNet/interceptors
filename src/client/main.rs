@@ -13,14 +13,14 @@ mod shaders;
 fn window_conf() -> Conf {
     let mut conf = Conf {
         window_title: "Interceptors".to_owned(),
-        window_width: 1280,
-        window_height: 720,
+        window_width: 900,
+        window_height: 900,
         window_resizable: true,
         fullscreen: false, 
         platform: Platform::default(),
         ..Default::default()
     };
-    conf.platform.swap_interval = Some(0); // disable vsync
+    conf.platform.swap_interval = Some(1); // disable vsync
     conf
 }
 #[macroquad::main(window_conf)]
