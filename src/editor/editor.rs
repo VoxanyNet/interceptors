@@ -17,7 +17,7 @@ use crate::{editor_input_context::EditorInputContext, editor_mode_select_ui::Edi
 pub enum EditorMode {
     PrefabPlacement,
     SetSpawnPoint,
-    TilePlacement, 
+    TilePlacement,
     Select
 }
 
@@ -58,7 +58,7 @@ impl AreaEditor {
 
     pub fn draw_coords(&self, cursor: macroquad::math::Vec2) {
 
-        
+
 
         let rapier_coords = macroquad_to_rapier(&cursor);
 
@@ -69,20 +69,20 @@ impl AreaEditor {
 
     pub fn get_hovered_object(&mut self, disabled_layers: &Vec<u32>) -> Option<SelectableObjectId> {
 
-        for (clip_index, clip) in self.area.clips.iter().enumerate() { 
+        for (clip_index, clip) in self.area.clips.iter().enumerate() {
 
             if disabled_layers.contains(&clip.layer) {continue;}
 
             let clip_collider = self.area.space.collider_set.get(clip.collider_handle).unwrap();
 
-            
+
             //dbg!(clip_collider.shape().as_cuboid().unwrap().half_extents);
             if clip_collider.shape().as_cuboid().unwrap().contains_point(clip_collider.position(), Vec2::new(self.rapier_cursor().x, self.rapier_cursor().y)) {
-                
+
                 return Some(SelectableObjectId::Clip(clip_index))
             }
         }
-        
+
         for (decoration_index, decoration) in self.area.decorations.iter().enumerate() {
             if disabled_layers.contains(&decoration.layer) {continue;}
 
@@ -101,7 +101,7 @@ impl AreaEditor {
             if prop_collider.shape().as_voxels().unwrap().contains_point(prop_collider.position(), glamx::Vec2::new(self.rapier_cursor().x, self.rapier_cursor().y)) {
 
                 return Some(SelectableObjectId::Prop(prop.id))
-                
+
             }
         }
 
@@ -111,11 +111,11 @@ impl AreaEditor {
             return Some(
                 SelectableObjectId::Tile(
                     (
-                        (rapier_mouse_pos.x / 50.) as usize, 
+                        (rapier_mouse_pos.x / 50.) as usize,
                         (rapier_mouse_pos.y / 50.) as usize)
                     )
             )
-        } 
+        }
 
 
         return None;
@@ -141,11 +141,11 @@ impl AreaEditor {
             }
 
             self.selected_objects.push(hovered_object_id);
-        } 
+        }
     }
 
     pub fn update_active_layer_to_selected_object(&mut self) {
-        
+
         // only if one object is selected
         if self.selected_objects.len() != 1 {
             return;
@@ -176,7 +176,7 @@ impl AreaEditor {
 
     pub fn drag_object(&mut self, disabled_layers: &Vec<u32>) {
 
-        self.dragging_object = false;  
+        self.dragging_object = false;
 
         if self.current_mode() != EditorMode::Select {return};
         if !is_mouse_button_down(MouseButton::Left) {return};
@@ -184,7 +184,7 @@ impl AreaEditor {
         if self.selection_rect.is_some() && !self.selected_released_flag {return};
 
         self.dragging_object = true;
-        
+
 
         let delta = mouse_world_pos(&self.camera_rect) - self.last_mouse_pos;
 
@@ -192,7 +192,7 @@ impl AreaEditor {
             if let Some(selected_object) = selected_object_id.get_object(&mut self.area.props, &mut self.area.tiles, &mut self.area.decorations, &mut self.area.clips) {
                 match selected_object {
                     SelectableObject::Decoration(decoration) => {
-    
+
                         decoration.pos += delta;
                     },
                     SelectableObject::Tile(_tile) => {
@@ -205,25 +205,25 @@ impl AreaEditor {
                         body.set_angvel(0., false);
 
                         body.set_position(
-                            Pose2::new(vec2(body.translation().x + delta.x, body.translation().y - delta.y), 0.), 
+                            Pose2::new(vec2(body.translation().x + delta.x, body.translation().y - delta.y), 0.),
                             true
                         );
                     },
                     SelectableObject::Clip(clip) => {
                         let body = self.area.space.rigid_body_set.get_mut(clip.rigid_body_handle).unwrap();
 
-                        
+
 
                         body.set_position(
-                            Pose2::new(vec2(body.translation().x + delta.x, body.translation().y - delta.y), 0.), 
+                            Pose2::new(vec2(body.translation().x + delta.x, body.translation().y - delta.y), 0.),
                             true
                         );
                     },
                 }
             }
         }
-        
-         
+
+
     }
 
     pub fn highlight_object(&mut self, item: SelectableObjectId, color: Color) {
@@ -254,9 +254,9 @@ impl AreaEditor {
                 let macroquad_pos = rapier_to_macroquad(Vec2::new(tile_index.0 as f32 * 50., tile_index.1 as f32 * 50.));
 
                 let tile_rect = Rect::new(
-                    macroquad_pos.x - 25., 
-                    macroquad_pos.y - 25., 
-                    50., 
+                    macroquad_pos.x - 25.,
+                    macroquad_pos.y - 25.,
+                    50.,
                     50.
                 );
 
@@ -275,9 +275,9 @@ impl AreaEditor {
                 let prop_rect = Rect::new(macroquad_prop_pos.x - shape.local_aabb().half_extents().x, macroquad_prop_pos.y - shape.local_aabb().half_extents().y,  shape.local_aabb().half_extents().x * 2., shape.local_aabb().half_extents().y * 2.);
 
                 draw_rectangle_lines(prop_rect.x, prop_rect.y, prop_rect.w, prop_rect.h, 3., color);
-            },  
+            },
             SelectableObject::Clip(clip) => {
-                
+
                 let clip_pos = self.area.space.rigid_body_set.get(clip.rigid_body_handle).unwrap().position();
 
                 let shape = self.area.space.collider_set.get(clip.collider_handle).unwrap().shape().as_cuboid().unwrap();
@@ -317,7 +317,7 @@ impl AreaEditor {
                         let empty_area_json = serde_json::to_string_pretty(&Area::empty().save()).unwrap();
 
                         fs::write(&area_path,  &empty_area_json)
-                            .map_err(|e| 
+                            .map_err(|e|
                                 {
                                     log::error!("Failed to write new area at path: {:?}: {}", area_path, e);
                                     exit(1)
@@ -375,7 +375,7 @@ impl AreaEditor {
             self.input_context = EditorInputContext::EditorModeMenu
         } else if self.spawner.hovered() {
             self.input_context = EditorInputContext::SpawnerMenu
-        } 
+        }
         else {
             self.input_context = EditorInputContext::World;
         }
@@ -386,7 +386,7 @@ impl AreaEditor {
     }
 
     pub fn move_delete(&mut self) {
-        
+
         let mut decorations_remove: Vec<Decoration> = Vec::new();
 
         for decoration in &mut self.area.decorations {
@@ -404,7 +404,7 @@ impl AreaEditor {
 
                     break;
                 }
-                 
+
             }
         }
 
@@ -412,7 +412,7 @@ impl AreaEditor {
     }
 
     pub fn delete(&mut self) {
-        
+
     }
 
     pub fn highlight_hovered_object(&mut self) {
@@ -441,14 +441,14 @@ impl AreaEditor {
             return;
         }
 
-        let bounding_box = self.spawner.get_snapping_bounding_box(self.cursor); 
+        let bounding_box = self.spawner.get_snapping_bounding_box(self.cursor);
 
         if let Some(bounding_box)= bounding_box {
             for decoration in &self.area.decorations {
                 let decoration_rect = Rect::new(decoration.pos.x, decoration.pos.y, decoration.size.x, decoration.size.y);
 
                 // Left snap
-                if bounding_box.x < decoration_rect.center().x 
+                if bounding_box.x < decoration_rect.center().x
                 && (decoration_rect.left() - bounding_box.right()) < bounding_box.size().x / 2.
                 && (bounding_box.center().y - decoration_rect.center().y).abs() < bounding_box.size().y / 2.{
 
@@ -457,9 +457,9 @@ impl AreaEditor {
 
                 }
 
-                
+
                 // Right snap
-                else if bounding_box.x > decoration_rect.center().x 
+                else if bounding_box.x > decoration_rect.center().x
                 && (bounding_box.left() - decoration_rect.right()) < bounding_box.size().x / 2.
                 && (bounding_box.center().y - decoration_rect.center().y).abs() < bounding_box.size().y / 2. {
 
@@ -468,8 +468,8 @@ impl AreaEditor {
                 }
 
                 // Top snap
-                else if bounding_box.y < decoration_rect.top() 
-                && (decoration_rect.top() - bounding_box.bottom()) < bounding_box.size().y 
+                else if bounding_box.y < decoration_rect.top()
+                && (decoration_rect.top() - bounding_box.bottom()) < bounding_box.size().y
                 && (decoration_rect.center().x - bounding_box.center().x).abs() < bounding_box.size().x / 2. {
 
                     self.cursor.x = decoration_rect.x;
@@ -477,8 +477,8 @@ impl AreaEditor {
                 }
 
                 // Bottom snap
-                else if bounding_box.top() > decoration_rect.bottom() 
-                && (bounding_box.top() - decoration_rect.bottom()) < bounding_box.size().y 
+                else if bounding_box.top() > decoration_rect.bottom()
+                && (bounding_box.top() - decoration_rect.bottom()) < bounding_box.size().y
                 && (decoration_rect.center().x - bounding_box.center().x).abs() < bounding_box.size().x / 2. {
 
                     self.cursor.x = decoration_rect.x;
@@ -494,7 +494,7 @@ impl AreaEditor {
         self.cursor = mouse_world_pos(&self.camera_rect);
 
         self.snap_cursor();
-        
+
     }
 
     pub fn current_mode(&self) -> EditorMode {
@@ -504,7 +504,7 @@ impl AreaEditor {
     pub fn save_area(&self) {
 
         std::fs::write(
-            &self.current_area_path, 
+            &self.current_area_path,
             serde_json::to_string_pretty(
                 &self.area.save()
             ).unwrap()
@@ -599,7 +599,7 @@ impl AreaEditor {
         if is_key_down(KeyCode::S) {
             self.camera_rect.y += camera_speed;
         }
-        
+
         if is_key_down(KeyCode::A) {
             self.camera_rect.x -= camera_speed;
         }
@@ -613,7 +613,7 @@ impl AreaEditor {
             self.camera_rect.y += mouse_delta_position().y * 200.;
         }
     }
-    
+
     pub fn draw_clip_points(&self) {
         if let Some(clip_point_1) = self.clip_point_1 {
 
@@ -630,7 +630,7 @@ impl AreaEditor {
         }
     }
 
-    
+
 
     pub async fn draw(&mut self) {
 
@@ -640,19 +640,19 @@ impl AreaEditor {
         set_camera(&camera);
 
         self.area.draw(
-            &mut self.textures, 
-            &self.camera_rect, 
-            &self.prefab_data, 
-            &camera, 
-            &self.fonts, 
+            &mut self.textures,
+            &self.camera_rect,
+            &self.prefab_data,
+            &camera,
+            &self.fonts,
             &self.material_loader,
-            self.start.elapsed(), 
+            self.start.elapsed(),
             self.layer_toggle_ui.get_invisible_layers(),
             true,
             ClientId::new()
         ).await;
 
-        
+
 
         let draw_context = DrawContext {
             space: &self.area.space,
@@ -671,18 +671,18 @@ impl AreaEditor {
         if self.current_mode() == EditorMode::PrefabPlacement {
 
             let rapier_cursor = self.rapier_cursor();
-            
+
             self.spawner.draw_preview_spawn(&draw_context, self.cursor, rapier_cursor, &self.textures).await;
         }
-        
+
         self.draw_cursor();
         self.draw_clip_points();
-        
+
         self.draw_selection_rect();
         self.highlight_hovered_object();
         self.highlight_selected_object();
         self.step_space();
-        
+
 
         set_default_camera();
         self.ui.draw(&self.textures);
@@ -694,7 +694,7 @@ impl AreaEditor {
             self.spawner.draw_menu(&self.camera_rect, &mut self.textures, self.cursor).await;
         }
 
-        
+
 
 
         self.draw_selected_mode();
@@ -729,23 +729,23 @@ impl AreaEditor {
         match self.selection_rect {
             Some(selection_rect) => {
                 draw_rectangle_lines(
-                    selection_rect.x, 
-                    selection_rect.y, 
-                    selection_rect.w, 
-                    selection_rect.h, 
-                    3., 
+                    selection_rect.x,
+                    selection_rect.y,
+                    selection_rect.w,
+                    selection_rect.h,
+                    3.,
                     WHITE
                 );
             },
             None => {},
         }
-        
+
     }
 
     pub fn draw_cursor(&self) {
         draw_rectangle(self.cursor.x, self.cursor.y, 5., 5., WHITE);
     }
-    
+
     pub fn draw_mode_selection_buttons(&self) {
 
     }
@@ -754,10 +754,10 @@ impl AreaEditor {
         let rapier_cursor = self.rapier_cursor();
 
         self.spawner.tick(
-            &mut self.area, 
-            &self.camera_rect, 
-            self.cursor, 
-            rapier_cursor, 
+            &mut self.area,
+            &self.camera_rect,
+            self.cursor,
+            rapier_cursor,
             self.input_context,
             &self.textures
         );
@@ -766,7 +766,7 @@ impl AreaEditor {
 
     fn mode_set_spawnpoint_tick(&mut self) {
 
-    
+
     }
 
     fn mode_tile_placement_tick(&mut self) {
@@ -788,15 +788,15 @@ impl AreaEditor {
             }
         }
 
-        
+
         if self.dragging_object {return;}
-        
+
         if is_mouse_button_down(MouseButton::Left) {
 
             // new selection rect
             if self.selected_released_flag {
                 self.selection_rect = Some(Rect::new(mouse_world_pos(&self.camera_rect).x, mouse_world_pos(&self.camera_rect).y, 0., 0.));
-                self.selected_released_flag = false;    
+                self.selected_released_flag = false;
             }
 
             match &mut self.selection_rect {
@@ -810,7 +810,7 @@ impl AreaEditor {
             }
 
         }
-        
+
 
 
     }
@@ -851,10 +851,10 @@ impl AreaEditor {
         self.drag_object(&self.layer_toggle_ui.get_disabled_layers());
         self.select_object();
         self.rectangle_select();
-        self.select_objects_in_rectangle(); 
+        self.select_objects_in_rectangle();
     }
 
-    
+
 
     fn select_objects_in_rectangle(&mut self) {
 
@@ -871,7 +871,7 @@ impl AreaEditor {
             if self.layer_toggle_ui.get_disabled_layers().contains(&selected_object.get_layer()) {
                 continue;
             }
-            
+
             new_selected_objects.push(selected_object_id);
         }
 
@@ -898,32 +898,32 @@ impl AreaEditor {
     pub fn step_space(&mut self) {
 
         self.area.space.step(web_time::Duration::from_secs_f64(0.016));
-        
+
     }
 
     pub fn update_context_menus(&mut self) {
 
         for (index, decoration) in self.area.decorations.iter_mut().enumerate() {
-            
+
             let selected = self.selected_objects.contains(&SelectableObjectId::Decoration(index));
             decoration.update_menu(&mut self.area.space, &self.camera_rect, selected, &self.textures);
         }
 
         for (index, clip) in self.area.clips.iter_mut().enumerate() {
-            let selected = self.selected_objects.contains(&SelectableObjectId::Clip(index));            
+            let selected = self.selected_objects.contains(&SelectableObjectId::Clip(index));
             clip.update_menu(&mut self.area.space, &self.camera_rect, selected, &self.textures);
         }
 
         for (_index, prop) in self.area.props.iter_mut().enumerate() {
-            
+
             let selected = self.selected_objects.contains(&SelectableObjectId::Prop(prop.id));
-            
+
             prop.update_menu(&mut self.area.space, &self.camera_rect, selected, &self.textures);
 
-            
+
         }
     }
-    
+
     pub fn update_modifying_status(&mut self) {
 
         let area_save = self.area.save();
@@ -935,7 +935,7 @@ impl AreaEditor {
 
         self.last_area_save = area_save
 
-        
+
     }
     pub fn add_undo_checkpoint(&mut self) {
         let current_area_save = self.area.save();
@@ -946,8 +946,8 @@ impl AreaEditor {
         }
 
         if let Some(last_checkpoint) = self.undo_checkpoints.last() {
-            
-            
+
+
 
             if *last_checkpoint != current_area_save && self.modifying == false {
                 self.last_checkpoint_save = web_time::Instant::now();
@@ -955,14 +955,14 @@ impl AreaEditor {
                 self.undo_checkpoints.push(current_area_save);
 
                 //println!("adding checkpoint: {}", self.undo_checkpoints.len());
-                
+
             }
         } else {
             // insert the first checkpoint
             self.undo_checkpoints.push(current_area_save);
         }
 
-        
+
         if self.undo_checkpoints.len() > 500 {
             let excess = self.undo_checkpoints.len() - 500;
             self.undo_checkpoints.drain(0..excess);
@@ -975,29 +975,29 @@ impl AreaEditor {
         if is_key_down(KeyCode::LeftControl) && is_key_released(KeyCode::Z) {
 
             self.last_undo = web_time::Instant::now();
-            
+
             let area_id = self.area.id.clone();
 
             if let Some(checkpoint) = self.undo_checkpoints.pop() {
                 self.area = Area::from_save(
-                    checkpoint, 
-                    Some(area_id), 
+                    checkpoint,
+                    Some(area_id),
                     &self.prefab_data, (&self.textures).into()
                 );
             }
-            
-        }   
 
-        
+        }
+
+
     }
 
-    pub fn tick(&mut self) {    
+    pub fn tick(&mut self) {
 
         self.update_input_context();
         self.ui.update(&mut EditorUITickContext { selected_mode: &mut self.selected_mode, input_context: self.input_context, simulate_space: &mut self.simulate_space });
         self.layer_toggle_ui.update(self.area.get_drawable_objects_self());
         self.editor_mode_tick();
-        
+
         self.update_cursor();
         self.change_mode();
         self.update_camera();
@@ -1021,8 +1021,8 @@ impl AreaEditor {
         self.update_modifying_status();
         self.undo();
         self.add_undo_checkpoint();
-        
-        
+
+
     }
 
     pub fn set_spawn_point(&mut self) {
@@ -1054,7 +1054,7 @@ impl AreaEditor {
                 }
             }
         }
-        
+
     }
 
     pub async fn run(&mut self) {
@@ -1063,6 +1063,6 @@ impl AreaEditor {
             self.tick();
             self.draw().await
         }
-        
-    } 
+
+    }
 }

@@ -114,6 +114,25 @@ impl Prop {
         self.despawn = true;
     }
 
+    pub fn force_owner_update_with_networking(
+        &mut self,
+        new_owner: Owner,
+        area_context: &AreaContext,
+        ctx: &mut TickContext
+    ) {
+        self.owner = Some(new_owner);
+
+        self.last_ownership_change = web_time::Instant::now();
+
+        ctx.send_network_packet(
+            PropUpdateOwner {
+                owner: Some(new_owner),
+                id: self.id,
+                area_id: *area_context.id,
+            }.into()
+        );
+    }
+
     pub fn draw_preview(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, _prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
         draw_preview(textures, size, draw_pos, color, rotation, &self.sprite_path);
     }
@@ -355,15 +374,9 @@ impl Prop {
             true
         );
 
-        // need to manually send velocity update if we arent the owner
+        // BECOME the owner if arent the owner!!!!!!!!!!!!! RARGHHHHHH
         if let Some(owner) = self.owner && ctx.id() != owner {
-            ctx.send_network_packet(
-                PropVelocityUpdate {
-                    velocity: *rigid_body.vels(),
-                    id: self.id,
-                    area_id: *area_context.id,
-                }.into()
-            );
+            self.force_owner_update_with_networking(ctx.id(), area_context, ctx);
         }
 
         // only break apart props on client side FOR NOW

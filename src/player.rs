@@ -1106,30 +1106,61 @@ impl Player {
             }
         }
 
-        for (prop_id, (closest_player, _)) in distances {
+        for (prop_id, (closest_player, distance)) in distances {
             if closest_player == self.id {
 
                 let prop = area_context.props.iter_mut().find(|prop| prop.id == prop_id).unwrap();
 
-                if prop.last_ownership_change.elapsed().as_secs() < 3 {
+                if prop.last_ownership_change.elapsed().as_secs() < 1 {
                     continue;
                 }
 
-                if prop.owner.unwrap() != ctx.id() {
+                // if we are the closest but still far away we pass it to the server.
+                // this might improve performance for clients?
+                if distance > 300. {
 
-                    prop.owner = Some(ctx.id());
+
+                    match prop.owner.unwrap() {
+                        Owner::ClientId(_) => {
 
 
-                    prop.last_ownership_change = web_time::Instant::now();
+                            prop.owner = Some(Owner::Server);
 
-                    ctx.send_network_packet(
-                        PropUpdateOwner {
-                            owner: Some(self.owner),
-                            id: prop_id,
-                            area_id: *area_context.id,
-                        }.into()
-                    );
+                            prop.last_ownership_change = web_time::Instant::now();
+
+                            ctx.send_network_packet(
+                                PropUpdateOwner {
+                                    owner: Some(Owner::Server),
+                                    id: prop_id,
+                                    area_id: *area_context.id,
+                                }.into()
+                            );
+                        },
+                        Owner::Server => {
+                            // already owned by the server, do nothing
+                        },
+                    }
+
+                    continue;
                 }
+
+                // dont send an update if we already own the prop
+                if prop.owner.unwrap() == ctx.id() {
+                    continue;
+                }
+
+                prop.owner = Some(ctx.id());
+
+                prop.last_ownership_change = web_time::Instant::now();
+
+                ctx.send_network_packet(
+                    PropUpdateOwner {
+                        owner: Some(self.owner),
+                        id: prop_id,
+                        area_id: *area_context.id,
+                    }.into()
+                );
+
 
 
             }
