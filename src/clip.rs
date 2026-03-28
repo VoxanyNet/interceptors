@@ -77,6 +77,7 @@ impl Clip {
 
         let collider = space.collider_set.get(self.collider_handle).unwrap();
         let shape = collider.shape().as_cuboid().unwrap();
+    
 
         let body = space.rigid_body_set.get(self.rigid_body_handle).unwrap();
         let position = body.position();

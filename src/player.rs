@@ -366,6 +366,10 @@ impl Player {
         ctx: &mut ClientTickContext,
         area_context: &mut AreaContext
     ) {
+        
+        if !is_key_down(KeyCode::Y) {
+            return;
+        }
 
         let player_position = area_context.space.rigid_body_set.get(self.body.body_handle).unwrap().translation();
         let macroquad_player_position = rapier_to_macroquad(player_position);
@@ -817,7 +821,7 @@ impl Player {
         self.angle_head_to_mouse(area_context.space);
 
         self.materialize_tiles(area_context.space, area_context.tiles);
-
+        
         if self.owner == ctx.id() {
             self.owner_tick(
                 ctx,
@@ -1083,20 +1087,31 @@ impl Player {
         let mut distances: HashMap<PropId, (PlayerId, f32)> = HashMap::new();
 
         
-        log::debug!("{}", area_context.props.len());
+        
         for prop in &mut *area_context.props {
             let prop_body = area_context.space.rigid_body_set.get(prop.rigid_body_handle).unwrap();
+            let prop_pose = prop_body.position();
+            let prop_collider = area_context.space.collider_set.get(prop.collider_handle).unwrap();
+            let prop_shape = prop_collider.shape();
 
             let our_player_body = area_context.space.rigid_body_set.get(self.body.body_handle).unwrap();
-            let distance = (prop_body.translation() - our_player_body.translation()).length();
+            let our_player_translation = our_player_body.translation();
+            
+            
+            let then = web_time::Instant::now();
+            let distance = prop_shape.distance_to_point(prop_pose, our_player_translation, true).abs();
+            log::debug!("{:?}", then.elapsed());
+            //let distance = (prop_body.translation() - our_player_body.translation()).length();
 
             distances.insert(prop.id, (self.id, distance));
 
             for player in &mut *area_context.players {
                 let player_body = area_context.space.rigid_body_set.get(player.body.body_handle).unwrap();
-
-                let distance = (prop_body.translation() - player_body.translation()).length();
-
+                
+                
+                let distance = prop_shape.distance_to_point(prop_pose, player_body.translation(), true);
+                
+                
                 if let Some((current_closest_player, current_closest_distance)) = distances.get_mut(&prop.id) {
                     if *current_closest_distance > distance {
                         *current_closest_distance = distance;
@@ -1174,7 +1189,8 @@ impl Player {
         ctx: &mut TickContext,
         area_context: &mut AreaContext
     ) {
-
+        
+        
         if let TickContext::Client(ctx) = ctx {
             self.update_cursor_pos(ctx, area_context);
             self.change_active_inventory_slot(ctx, area_context);

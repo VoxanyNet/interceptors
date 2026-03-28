@@ -1344,6 +1344,7 @@ impl Drawable for Prop {
 
 
 
+/// Prop saves store values that will vary throughout gameplay
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct PropSave {
 

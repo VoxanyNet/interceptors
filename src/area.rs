@@ -1252,6 +1252,7 @@ pub struct AreaContext<'a> {
     pub bullet_impact_queue: &'a mut Vec<BulletImpactData>,
 }
 
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AreaSave {
     spawn_point: Vec2,

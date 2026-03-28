@@ -51,6 +51,8 @@ pub mod server_texture_loader;
 pub mod dissolved_pixel;
 pub mod prop_fragment;
 pub mod material_loader;
+pub mod prop_definition;
+pub mod area_definition;
 
 
 pub fn flood_fill(start_point: glamx::IVec2, voxels: &Voxels) -> HashSet<glamx::IVec2> {
