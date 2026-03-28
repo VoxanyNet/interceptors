@@ -1082,7 +1082,8 @@ impl Player {
 
         let mut distances: HashMap<PropId, (PlayerId, f32)> = HashMap::new();
 
-
+        
+        log::debug!("{}", area_context.props.len());
         for prop in &mut *area_context.props {
             let prop_body = area_context.space.rigid_body_set.get(prop.rigid_body_handle).unwrap();
 
