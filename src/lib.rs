@@ -20,7 +20,7 @@ pub mod decoration;
 pub mod player;
 pub mod clip;
 pub mod background;
-pub mod prop;
+pub mod base_prop;
 pub mod all_keys;
 pub mod body_part;
 pub mod weapon;
@@ -51,8 +51,10 @@ pub mod server_texture_loader;
 pub mod dissolved_pixel;
 pub mod prop_fragment;
 pub mod material_loader;
-pub mod prop_definition;
-pub mod area_definition;
+pub mod props;
+pub mod prop;
+pub mod prop_type_save;
+pub mod base_prop_save;
 
 
 pub fn flood_fill(start_point: glamx::IVec2, voxels: &Voxels) -> HashSet<glamx::IVec2> {

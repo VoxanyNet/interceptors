@@ -4,18 +4,18 @@ use derive_more::From;
 use macroquad::{camera::{set_camera, Camera2D}, color::{Color, BLACK, GRAY, WHITE}, math::{Rect, Vec2}, shapes::draw_line, text::{draw_text_ex, TextParams}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::clear_background};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, button::Button, drawable::{DrawContext, Drawable}, font_loader::FontLoader, mouse_world_pos, player::Player, prop::{Prop, PropSave}, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, weapons::{weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
+use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, base_prop::BaseProp, base_prop_save::BasePropSave, button::Button, drawable::{DrawContext, Drawable}, font_loader::FontLoader, mouse_world_pos, player::Player, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, weapons::{weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
 
 #[derive(PartialEq, Clone, Debug, From)]
 pub enum Item {
-    Prop(Prop),
+    Prop(BaseProp),
     Weapon(WeaponType)
 }
 
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum ItemSave {
-    Prop(PropSave),
+    Prop(BasePropSave),
     Weapon(WeaponTypeSave)
 }
 
@@ -39,7 +39,7 @@ impl Item {
 
     pub fn from_save(item_save: ItemSave, space: &mut Space, textures: TextureLoader) -> Item {
         match item_save {
-            ItemSave::Prop(prop_save) => Item::Prop(Prop::from_save(prop_save, space, textures)),
+            ItemSave::Prop(prop_save) => Item::Prop(BaseProp::from_save(prop_save, space, textures)),
             ItemSave::Weapon(weapon_type_save) => Item::Weapon(WeaponType::from_save(space, weapon_type_save, None)) 
         }
     }
@@ -243,7 +243,7 @@ impl StoreCategory {
 pub struct Computer {
     pub available_items: Vec<StoreItem>,
     pub selected_item: usize,
-    pub prop: Prop,
+    pub prop: BaseProp,
     pub active: bool,
     pub screen_pos: Vec2,
     pub screen_size: Vec2,
@@ -259,11 +259,11 @@ impl Computer {
 
     pub fn new(prefabs: &Prefabs, space:&mut crate::space::Space, pos: glamx::Pose2, texures: TextureLoader) -> Self {
         
-        let save: PropSave = serde_json::from_str(
+        let save: BasePropSave = serde_json::from_str(
             &prefabs.get_prefab_data("prefabs\\generic_physics_props\\computer.json")
         ).unwrap();
 
-        let mut prop = Prop::from_save(
+        let mut prop = BaseProp::from_save(
             save, 
             space,
             texures.clone()
@@ -277,7 +277,7 @@ impl Computer {
             StoreItem {
                 cost: 20,
                 item: Item::Prop(
-                    Prop::from_prefab(
+                    BaseProp::from_prefab(
                         "prefabs\\generic_physics_props\\box2.json".to_string(),
                         space,
                         texures.clone()
@@ -291,7 +291,7 @@ impl Computer {
             StoreItem {
                 cost: 20,
                 item: Item::Prop(
-                    Prop::from_prefab(
+                    BaseProp::from_prefab(
                         "prefabs\\generic_physics_props\\anvil.json".to_string(), space, texures.clone()
                     )
                 ),
@@ -328,7 +328,7 @@ impl Computer {
                 StoreItem {
                     cost: 20,
                     item: Item::Prop(
-                        Prop::from_prefab("prefabs\\generic_physics_props\\box2.json".to_string(), space, texures.clone())
+                        BaseProp::from_prefab("prefabs\\generic_physics_props\\box2.json".to_string(), space, texures.clone())
                     ),
                     quantity: None
                 }
@@ -340,7 +340,7 @@ impl Computer {
                 StoreItem {
                     cost: 20,
                     item: Item::Prop(
-                        Prop::from_prefab("prefabs\\generic_physics_props\\stone2.json".to_string(), space, texures.clone())
+                        BaseProp::from_prefab("prefabs\\generic_physics_props\\stone2.json".to_string(), space, texures.clone())
                     ),
                     quantity: Some(1)
                 }

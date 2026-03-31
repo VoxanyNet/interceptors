@@ -3,11 +3,11 @@ use std::path::PathBuf;
 use macroquad::{color::Color, math::Vec2};
 use rapier2d::prelude::{ImpulseJointHandle, RigidBodyHandle};
 
-use crate::{ClientId, TickContext, area::AreaContext, player::{Facing, PlayerContext}, space::Space, texture_loader::ClientTextureLoader, weapons::{shotgun::weapon_save::ShotgunSave, weapon::weapon::{WeaponBase, WeaponOwner}, weapon_fire_context::WeaponFireContext, weapon_type::ShooterContext}};
+use crate::{ClientId, TickContext, area::AreaContext, player::{Facing, PlayerContext}, space::Space, texture_loader::ClientTextureLoader, weapons::{shotgun::weapon_save::ShotgunSave, weapon::weapon::{BaseWeapon, WeaponOwner}, weapon_fire_context::WeaponFireContext, weapon_type::ShooterContext}};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct Shotgun {
-    pub weapon: WeaponBase
+    pub weapon: BaseWeapon
 }
 
 impl Shotgun {
@@ -38,7 +38,7 @@ impl Shotgun {
 
     pub fn from_save(save: ShotgunSave, space: &mut Space, player_rigid_body_handle: Option<RigidBodyHandle>) -> Self {
         Self {
-            weapon: WeaponBase::from_save(save.weapon, space, player_rigid_body_handle),
+            weapon: BaseWeapon::from_save(save.weapon, space, player_rigid_body_handle),
         }
     }
     pub fn fire(
@@ -76,7 +76,7 @@ impl Shotgun {
     ) -> Self {
 
         Self {
-            weapon: WeaponBase::new(
+            weapon: BaseWeapon::new(
                 owner, 
                 player_rigid_body_handle, 
                 PathBuf::from("assets\\shotgun.png"), 

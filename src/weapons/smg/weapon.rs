@@ -3,11 +3,11 @@ use std::{path::PathBuf, str::FromStr};
 use macroquad::{color::Color, math::Vec2};
 use rapier2d::prelude::{ImpulseJointHandle, RigidBodyHandle};
 
-use crate::{ClientId, TickContext, area::AreaContext, player::{Facing, PlayerContext}, space::Space, texture_loader::ClientTextureLoader, weapons::{smg::weapon_save::SMGSave, weapon::weapon::{WeaponBase, WeaponOwner}, weapon_fire_context::WeaponFireContext, weapon_type::ShooterContext}};
+use crate::{ClientId, TickContext, area::AreaContext, player::{Facing, PlayerContext}, space::Space, texture_loader::ClientTextureLoader, weapons::{smg::weapon_save::SMGSave, weapon::weapon::{BaseWeapon, WeaponOwner}, weapon_fire_context::WeaponFireContext, weapon_type::ShooterContext}};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct SMG {
-    pub weapon_base: WeaponBase
+    pub weapon_base: BaseWeapon
 }
 
 impl SMG {
@@ -43,7 +43,7 @@ impl SMG {
 
     pub fn from_save(save: SMGSave, space: &mut Space, player_rigid_body_handle: Option<RigidBodyHandle>) -> Self {
         Self {
-            weapon_base: WeaponBase::from_save(save.weapon_base , space, player_rigid_body_handle),
+            weapon_base: BaseWeapon::from_save(save.weapon_base , space, player_rigid_body_handle),
         }
     }
 
@@ -85,7 +85,7 @@ impl SMG {
     ) -> Self {
 
         Self {
-            weapon_base: WeaponBase::new(
+            weapon_base: BaseWeapon::new(
                 owner, 
                 player_rigid_body_handle, 
                 PathBuf::from("assets\\smg.png"), 

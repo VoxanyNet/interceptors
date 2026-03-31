@@ -3,11 +3,11 @@ use std::{path::PathBuf, time::Duration};
 use macroquad::math::Vec2;
 use rapier2d::prelude::RigidBodyHandle;
 
-use crate::{ClientId, TickContext, area::AreaContext, player::{Facing, PlayerContext}, space::Space, texture_loader::ClientTextureLoader, weapons::{lmg::weapon_save::LMGSave, weapon::weapon::{WeaponBase, WeaponOwner}, weapon_fire_context::WeaponFireContext, weapon_type::ShooterContext}};
+use crate::{ClientId, TickContext, area::AreaContext, player::{Facing, PlayerContext}, space::Space, texture_loader::ClientTextureLoader, weapons::{lmg::weapon_save::LMGSave, weapon::weapon::{BaseWeapon, WeaponOwner}, weapon_fire_context::WeaponFireContext, weapon_type::ShooterContext}};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct LMG {
-    pub weapon: WeaponBase 
+    pub weapon: BaseWeapon 
 }
 
 
@@ -55,14 +55,14 @@ impl LMG {
 
     pub fn from_save(save: LMGSave, space: &mut Space, player_rigid_body_handle: Option<RigidBodyHandle>) -> Self {
         Self {
-            weapon: WeaponBase::from_save(save.weapon, space, player_rigid_body_handle),
+            weapon: BaseWeapon::from_save(save.weapon, space, player_rigid_body_handle),
         }
     }
     
 
     pub fn new(_space: &mut Space, _pos: Vec2, owner: WeaponOwner, player_rigid_body_handle: Option<RigidBodyHandle>, _facing: Facing) -> Self {
         Self {
-            weapon: WeaponBase::new(
+            weapon: BaseWeapon::new(
                 owner,
                 player_rigid_body_handle,
                 PathBuf::from("assets\\lmg.png"),

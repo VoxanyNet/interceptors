@@ -1,6 +1,6 @@
 use std::{fs::read_to_string, process::exit};
 
-use interceptors_lib::{ClientId, Owner, Prefabs, ServerAssets, ServerIO, ServerTickContext, TickContext, area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, load_assets_server, load_prefabs, player::{ItemSlot, Player}, prop::{Prop, PropUpdateOwner}, updates::{LoadArea, NetworkPacket, PlayerDespawnUpdate}, weapons::weapon_type::WeaponType, world::World};
+use interceptors_lib::{ClientId, Owner, Prefabs, ServerAssets, ServerIO, ServerTickContext, TickContext, area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, load_assets_server, load_prefabs, player::{ItemSlot, Player}, base_prop::{BaseProp, PropUpdateOwner}, updates::{LoadArea, NetworkPacket, PlayerDespawnUpdate}, weapons::weapon_type::WeaponType, world::World};
 use rapier2d::prelude::SharedShape;
 use tungstenite::Message;
 
@@ -269,7 +269,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                         }
                     ).unwrap();
 
-                    area.props.push(Prop::from_save(update.prop.clone(), &mut area.space, (&self.assets.textures).into()));
+                    area.props.push(BaseProp::from_save(update.prop.clone(), &mut area.space, (&self.assets.textures).into()));
 
                     self.network_io.send_all_except(network_packet, client_id);
 

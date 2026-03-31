@@ -559,7 +559,7 @@ impl AreaEditor {
                 layer: self.layer_toggle_ui.active_layer,
                 one_way: false,
                 health: None,
-                material: interceptors_lib::prop::Material::None
+                material: interceptors_lib::base_prop::Material::None
             }
         );
 

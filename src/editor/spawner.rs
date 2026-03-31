@@ -1,7 +1,7 @@
 use std::{fs::read_to_string, path::PathBuf, str::FromStr};
 
 use glamx::Pose2;
-use interceptors_lib::{area::Area, background::{Background, BackgroundSave}, button::Button, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, prop::{Prop, PropSave}, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}};
+use interceptors_lib::{area::Area, background::{Background, BackgroundSave}, base_prop::BaseProp, base_prop_save::BasePropSave, button::Button, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}};
 use macroquad::{color::{GREEN, LIGHTGRAY, WHITE}, input::{MouseButton, is_mouse_button_released, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle_lines, text::draw_text};
 use strum::IntoEnumIterator;
 
@@ -278,8 +278,8 @@ impl Spawner {
             },
 
             SpawnerCategory::Prop => {
-                let generic_physics_prop_save: PropSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
-                let mut generic_physics_prop = Prop::from_save(generic_physics_prop_save.clone(), &mut self.preview_space, textures.into());
+                let generic_physics_prop_save: BasePropSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
+                let mut generic_physics_prop = BaseProp::from_save(generic_physics_prop_save.clone(), &mut self.preview_space, textures.into());
                 generic_physics_prop.set_pos(Pose2::new(glamx::vec2(rapier_cursor.x, rapier_cursor.y), 0.), &mut self.preview_space);
                 
                 // need to swap the draw context's space for the spawner 'preview space'
@@ -350,9 +350,9 @@ impl Spawner {
             },
 
             SpawnerCategory::Prop => {
-                let generic_physics_prop_save: PropSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
+                let generic_physics_prop_save: BasePropSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
 
-                let mut generic_physics_prop = Prop::from_save(generic_physics_prop_save.clone(), &mut area.space, textures.into());
+                let mut generic_physics_prop = BaseProp::from_save(generic_physics_prop_save.clone(), &mut area.space, textures.into());
 
                 generic_physics_prop.set_pos(Pose2::new(
                     glamx::vec2(

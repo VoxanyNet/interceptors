@@ -6,7 +6,7 @@ use macroquad::{audio::{PlaySoundParams, play_sound}, color::Color, input::{is_m
 use rapier2d::{math::Vector, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, ClientTickContext, Owner, SwapIter, TickContext, area::{self, AreaContext, AreaId}, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, enemy::EnemyId, get_intersections, get_preview_resolution, player::{Facing, PlayerContext, PlayerId}, prop::StupidDissolvedPixelVelocityUpdate, space::Space, texture_loader::ClientTextureLoader, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon_save::WeaponSave, weapon_fire_context::WeaponFireContext, weapon_type::ShooterContext}};
+use crate::{ClientId, ClientTickContext, Owner, SwapIter, TickContext, area::{self, AreaContext, AreaId}, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, enemy::EnemyId, get_intersections, get_preview_resolution, player::{Facing, PlayerContext, PlayerId}, base_prop::StupidDissolvedPixelVelocityUpdate, space::Space, texture_loader::ClientTextureLoader, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon_save::WeaponSave, weapon_fire_context::WeaponFireContext, weapon_type::ShooterContext}};
 
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize, From)]
@@ -18,7 +18,7 @@ pub enum WeaponOwner {
 
 // common functionality that can be used as a component for a bunch of different weapon types
 #[derive(PartialEq, Clone, Debug)]
-pub struct WeaponBase {
+pub struct BaseWeapon {
     pub player_rigid_body_handle: Option<RigidBodyHandle>,
     pub collider: Option<ColliderHandle>,
     pub rigid_body: Option<RigidBodyHandle>,
@@ -50,7 +50,7 @@ pub struct WeaponBase {
     holding_fire: bool
 }
 
-impl WeaponBase {
+impl BaseWeapon {
 
     pub fn mark_despawn(&mut self) {
 

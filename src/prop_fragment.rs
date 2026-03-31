@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use macroquad::{camera::{Camera2D, set_camera}, color::WHITE, math::{Rect, Vec2}, prelude::{Material, MaterialParams, gl_use_default_material, gl_use_material, load_material}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex, render_target}};
 use rapier2d::prelude::{ColliderHandle, RigidBodyHandle};
 
-use crate::{drawable::{DrawContext, Drawable}, prop::{DESTRUCTION_MASK_FRAGMENT_SHADER, DESTRUCTION_MASK_VERTEXT_SHADER}, rapier_to_macroquad};
+use crate::{drawable::{DrawContext, Drawable}, base_prop::{DESTRUCTION_MASK_FRAGMENT_SHADER, DESTRUCTION_MASK_VERTEXT_SHADER}, rapier_to_macroquad};
 
 pub struct PropFragment {
     sprite_path: PathBuf,

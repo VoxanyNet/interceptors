@@ -3,7 +3,7 @@ use std::{
 };
 use clap::Parser;
 use image::{GenericImageView, ImageReader};
-use interceptors_lib::{background::BackgroundSave, decoration::DecorationSave, prop::{Material, PropSave}};
+use interceptors_lib::{background::BackgroundSave, base_prop::Material, base_prop_save::BasePropSave, decoration::DecorationSave};
 use macroquad::math::{Vec2, vec2};
 use colored::Colorize;
 use rapier2d::prelude::RigidBodyType;
@@ -315,7 +315,7 @@ fn asset_to_prop(relative_path: &PathBuf, scale: Option<f32>) -> Result<String, 
     
     log::info!("Loaded {} with dimensions: {:?}", &relative_path.to_string_lossy(), (width, height));
 
-    let prop_save = PropSave {
+    let prop_save = BasePropSave {
         scale,
         pos: Default::default(),
         mass,

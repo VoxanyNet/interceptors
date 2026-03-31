@@ -1,4 +1,4 @@
-use crate::{clip::Clip, decoration::Decoration, drawable::Drawable, prop::{Prop, PropId}, tile::Tile};
+use crate::{clip::Clip, decoration::Decoration, drawable::Drawable, base_prop::{BaseProp, PropId}, tile::Tile};
 
 #[derive(Clone, PartialEq, Copy, Debug)]
 pub enum SelectableObjectId {
@@ -11,7 +11,7 @@ pub enum SelectableObjectId {
 pub enum SelectableObject<'a> {
     Decoration(&'a mut Decoration),
     Tile(&'a mut Tile),
-    Prop(&'a mut Prop),
+    Prop(&'a mut BaseProp),
     Clip(&'a mut Clip)
 }
 
@@ -29,7 +29,7 @@ impl<'a> SelectableObject<'a> {
 impl SelectableObjectId {
 
     pub fn get_object<'a> (&self, 
-        props: &'a mut Vec<Prop>, 
+        props: &'a mut Vec<BaseProp>, 
         _tiles: &'a mut Vec<Vec<Option<Tile>>>, 
         decorations: &'a mut Vec<Decoration>,
         clips: &'a mut Vec<Clip>

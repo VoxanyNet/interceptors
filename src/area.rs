@@ -6,7 +6,7 @@ use noise::{NoiseFn, Perlin};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TextureLoader, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, material_loader::MaterialLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::{NewProp, Prop, PropId, PropSave}, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, smg::weapon::SMG, weapon::weapon::WeaponOwner}};
+    ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TextureLoader, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, base_prop::{BaseProp, NewProp, PropId}, base_prop_save::BasePropSave, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::{Computer, Item}, decoration::{Decoration, DecorationSave}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, material_loader::MaterialLoader, player::{Facing, NewPlayer, Player, PlayerSave}, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, smg::weapon::SMG, weapon::weapon::WeaponOwner}};
 
 macro_rules! test {
     ($s:ident) => {
@@ -33,7 +33,7 @@ pub struct Area {
     pub decorations: Vec<Decoration>,
     pub clips: Vec<Clip>,
     pub players: Vec<Player>,
-    pub props: Vec<Prop>,
+    pub props: Vec<BaseProp>,
     pub id: AreaId,
     pub bullet_trails: Vec<BulletTrail>,
     pub dissolved_pixels: Vec<DissolvedPixel>,
@@ -469,7 +469,7 @@ impl Area {
     pub fn get_drawable_objects<'a> (
         backgrounds: &'a Vec<Background>,
         decorations: &'a Vec<Decoration>,
-        props: &'a Vec<Prop>,
+        props: &'a Vec<BaseProp>,
         dropped_items: &'a Vec<DroppedItem>,
         computer: &'a Option<Computer>,
         players: &'a Vec<Player>,
@@ -515,7 +515,7 @@ impl Area {
     }
     pub fn get_drawable_objects_mut<'a> (
         decorations: &'a mut Vec<Decoration>,
-        props: &'a mut Vec<Prop>,
+        props: &'a mut Vec<BaseProp>,
         dropped_items: &'a mut Vec<DroppedItem>,
         computer: &'a mut Option<Computer>,
         players: &'a mut Vec<Player>,
@@ -604,9 +604,9 @@ impl Area {
 
         if is_key_released(KeyCode::E) {
             
-            let prefab_save: PropSave = serde_json::from_str(&ctx.prefabs.get_prefab_data("prefabs\\generic_physics_props\\box2.json")).unwrap();
+            let prefab_save: BasePropSave = serde_json::from_str(&ctx.prefabs.get_prefab_data("prefabs\\generic_physics_props\\box2.json")).unwrap();
 
-            let mut new_prop = Prop::from_save(prefab_save, &mut self.space, ctx.textures.into());
+            let mut new_prop = BaseProp::from_save(prefab_save, &mut self.space, ctx.textures.into());
 
             new_prop.owner = Some(Owner::ClientId(*ctx.client_id));
 
@@ -1003,7 +1003,7 @@ impl Area {
 
     }
 
-    pub fn find_prop_mut(&mut self, id: PropId) -> Option<&mut Prop> {
+    pub fn find_prop_mut(&mut self, id: PropId) -> Option<&mut BaseProp> {
         if let Some(p) = self.props.iter_mut().find(|p| p.id == id) {
             return Some(p);
         }
@@ -1030,7 +1030,7 @@ impl Area {
         let mut clips: Vec<Clip> = Vec::new();
         let mut players: Vec<Player> = Vec::new();
         let mut backgrounds: Vec<Background> = Vec::new();
-        let mut generic_physics_props: Vec<Prop> = Vec::new();
+        let mut generic_physics_props: Vec<BaseProp> = Vec::new();
         let mut enemies: Vec<Enemy> = Vec::new();
         let mut dropped_items: Vec<DroppedItem> = Vec::new();
         let mut ambiance: Vec<Ambiance> = Vec::new();  
@@ -1062,7 +1062,7 @@ impl Area {
         
         for generic_physics_prop in save.generic_physics_props {
             generic_physics_props.push(
-                Prop::from_save(generic_physics_prop, &mut space, textures.clone())
+                BaseProp::from_save(generic_physics_prop, &mut space, textures.clone())
             );
         }
 
@@ -1140,7 +1140,7 @@ impl Area {
         let mut clips: Vec<ClipSave> = Vec::new();
         let mut players: Vec<PlayerSave> = Vec::new();
         let mut backgrounds: Vec<BackgroundSave> = Vec::new();
-        let mut generic_physics_props: Vec<PropSave> = Vec::new();
+        let mut generic_physics_props: Vec<BasePropSave> = Vec::new();
         let mut enemies: Vec<EnemySave> = Vec::new();
         let mut dropped_items: Vec<DroppedItemSave> = Vec::new();
         let mut ambiances: Vec<AmbianceSave> = Vec::new();
@@ -1232,7 +1232,7 @@ pub struct AreaContext<'a> {
     pub decorations: &'a mut Vec<Decoration>,
     pub clips: &'a mut Vec<Clip>,
     pub players: &'a mut Vec<Player>,
-    pub props: &'a mut Vec<Prop>,
+    pub props: &'a mut Vec<BaseProp>,
     pub id: &'a mut AreaId,
     pub bullet_trails: &'a mut Vec<BulletTrail>,
     pub dissolved_pixels: &'a mut Vec<DissolvedPixel>,
@@ -1262,7 +1262,7 @@ pub struct AreaSave {
     #[serde(default)]
     backgrounds: Vec<BackgroundSave>,
     #[serde(default)]
-    generic_physics_props: Vec<PropSave>,
+    generic_physics_props: Vec<BasePropSave>,
     #[serde(default)]
     enemies: Vec<EnemySave>,
     #[serde(default)]
