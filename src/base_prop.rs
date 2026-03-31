@@ -8,7 +8,7 @@ use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{
 use rapier2d::prelude::{AxisMask, ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyType, RigidBodyVelocity, SharedShape, VoxelData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
-use crate::{ClientId, ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::{Area, AreaContext, AreaId}, base_prop_save::BasePropSave, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, prop::Prop, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
+use crate::{ClientId, ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::{Area, AreaContext, AreaId}, base_prop_save::BasePropSave, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, prop::Prop, prop_type_save::PropTypeSave, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
 
 
@@ -65,18 +65,18 @@ pub struct BaseProp {
     pub last_ownership_change: web_time::Instant,
     pub rigid_body_handle: RigidBodyHandle,
     pub collider_handle: ColliderHandle,
-    sprite_path: PathBuf,
-    previous_velocity: RigidBodyVelocity<f32>,
-    material: Material,
+    pub sprite_path: PathBuf,
+    pub previous_velocity: RigidBodyVelocity<f32>,
+    pub material: Material,
     pub id: PropId,
     pub owner: Option<Owner>,
-    last_sound_play: web_time::Instant,
+    pub last_sound_play: web_time::Instant,
     pub despawn: bool,
-    last_pos_update: web_time::Instant,
-    last_velocity_update: web_time::Instant,
-    name: String,
-    context_menu_data: Option<EditorContextMenuData>,
-    layer: u32,
+    pub last_pos_update: web_time::Instant,
+    pub last_velocity_update: web_time::Instant,
+    pub name: String,
+    pub context_menu_data: Option<EditorContextMenuData>,
+    pub layer: u32,
     pub rigid_body_type: RigidBodyType, // we store this here as well so we can revert back to it when we regain ownership
     pub voxels_modified: bool,
     pub scale: f32,
@@ -94,6 +94,10 @@ pub struct BaseProp {
 }
 
 impl Prop for BaseProp {
+
+    fn update_menu(&mut self, space: &mut Space, camera_rect: &Rect, selected: bool, textures: &ClientTextureLoader) {
+        <BaseProp as EditorContextMenu>::update_menu(self, space, camera_rect, selected, textures);
+    }
     fn name(&self) -> String {
         self.name.clone()
     }
@@ -109,6 +113,87 @@ impl Prop for BaseProp {
     fn sprite_path(&self) -> PathBuf {
         self.sprite_path.clone()
     }
+
+    fn tick(&mut self, area_context: &mut AreaContext, ctx: &mut TickContext) {
+        self.inner_tick(area_context, ctx);
+    }
+
+    fn id(&self) -> PropId {
+        self.id
+    }
+
+    fn should_despawn(&self) -> bool {
+        self.despawn
+    }
+
+    fn despawn_callback(&mut self, space: &mut Space) {
+        self.inner_despawn_callback(space);
+    }
+
+    fn handle_bullet_impact(
+            &mut self,
+            ctx: &mut TickContext,
+            area_context: &mut AreaContext,
+            impact: &BulletImpactData,
+        ) {
+        self.inner_handle_bullet_impact(ctx, area_context, impact);
+    }
+
+    fn save(&self, space: &Space) -> crate::prop_type_save::PropTypeSave {
+        self.inner_save(space).into()
+    }
+    
+    fn last_ownership_change(&self) -> web_time::Instant {
+        self.last_ownership_change
+    }
+
+    fn owner(&self) -> Option<Owner> {
+        self.owner
+    }
+
+    fn owner_mut(&mut self) -> &mut Option<Owner> {
+        &mut self.owner
+    }
+
+    fn last_ownership_change_mut(&mut self) -> &mut web_time::Instant {
+        &mut self.last_ownership_change
+    }
+
+    fn removed_voxels(&self) -> &Vec<glamx::IVec2> {
+        &self.removed_voxels
+    }
+
+    fn removed_voxels_mut(&mut self) -> &mut Vec<glamx::IVec2> {
+        &mut self.removed_voxels
+    }
+
+    fn voxels_modified(&self) -> &bool {
+        &self.voxels_modified
+    }
+
+    fn voxels_modified_mut(&mut self) -> &mut bool {
+        &mut self.voxels_modified
+    }
+
+    fn last_received_position_update(&self) -> web_time::Instant {
+        self.last_ownership_change
+    }
+
+    fn last_received_position_update_mut(&mut self) -> &mut web_time::Instant {
+        &mut self.last_ownership_change
+    }
+    
+    fn mark_despawn(&mut self) {
+        self.despawn = true;
+    }
+
+    fn draw_editor_context_menu(&self) {
+        <BaseProp as EditorContextMenu>::draw_editor_context_menu(&self);
+    }
+
+
+    
+    
 }
 
 // need to skip the mask render target in partialeq
@@ -202,7 +287,7 @@ impl BaseProp {
         ctx: &mut TickContext,
         space: &mut Space,
         impacted_voxels: &Vec<glamx::IVec2>,
-        props: &mut Vec<BaseProp>
+        props: &mut Vec<Box<dyn Prop>>
     ) -> Option<Vec<IVec2>> {
         let voxels = space.collider_set
             .get_mut(self.collider_handle)
@@ -276,12 +361,13 @@ impl BaseProp {
 
             ctx.send_network_packet(
                 NewProp {
-                    prop: new_prop.save(space),
+                    prop: new_prop.inner_save(space).into(),
                     area_id,
                 }.into()
             );
 
-            props.push(new_prop);
+            // when we are breaking apart props here we are creating new base props, not the actual prop. this might cause problems
+            props.push(Box::new(new_prop));
         }
 
 
@@ -367,7 +453,7 @@ impl BaseProp {
             .any(|voxel| !voxel.state.is_empty())
     }
 
-    pub fn handle_bullet_impact(
+    pub fn inner_handle_bullet_impact(
         &mut self,
         ctx: &mut TickContext,
         area_context: &mut AreaContext,
@@ -460,7 +546,7 @@ impl BaseProp {
     }
 
 
-    pub fn despawn_callback(&mut self, space: &mut Space, _area_id: AreaId) {
+    pub fn inner_despawn_callback(&mut self, space: &mut Space) {
         space.rigid_body_set.remove(self.rigid_body_handle, &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
     }
     pub fn from_prefab(prefab_path: String, space: &mut Space, textures: TextureLoader) -> Self {
@@ -658,27 +744,25 @@ impl BaseProp {
         }
     }
 
-    pub fn tick(
+    pub fn inner_tick(
         &mut self,
-        space: &mut Space,
-        area_id: AreaId,
+        area_context: &mut AreaContext,
         ctx: &mut TickContext,
-        dissolved_pixels: &mut Vec<DissolvedPixel>
     ) {
 
         if self.despawn {
             return;
         }
 
-        self.update_kinematic_state(ctx, space);
+        self.update_kinematic_state(ctx, area_context.space);
 
         if let Some(owner) = self.owner {
             if owner == ctx.id() {
-                self.owner_tick(ctx, space, area_id, dissolved_pixels);
+                self.owner_tick(ctx, area_context.space, *area_context.id, area_context.dissolved_pixels);
             }
         }
 
-        let current_velocity = *space.rigid_body_set.get(self.rigid_body_handle).unwrap().vels();
+        let current_velocity = *area_context.space.rigid_body_set.get(self.rigid_body_handle).unwrap().vels();
 
         self.previous_velocity = current_velocity;
     }
@@ -712,7 +796,7 @@ impl BaseProp {
         lifespan: Option<web_time::Duration>,
         collide_with_players: bool,
         sync_physics: bool
-    ) -> Self {
+    ) -> Self { 
 
         let other_body = space.rigid_body_set.get(other.rigid_body_handle).unwrap();
 
@@ -1026,7 +1110,7 @@ impl BaseProp {
         }
     }
 
-    pub fn save(&self, space: &Space) -> BasePropSave {
+    pub fn inner_save(&self, space: &Space) -> BasePropSave {
 
         let body = space.rigid_body_set.get(self.rigid_body_handle).unwrap();
         let pos = body.position().clone();
@@ -1173,7 +1257,7 @@ impl EditorContextMenu for BaseProp {
 
     fn data_editor_export(&self, ctx: &crate::editor_context_menu::DataEditorContext) -> Option<String> {
         serde_json::to_string_pretty(
-            &self.save(ctx.space)
+            &self.inner_save(ctx.space)
         ).unwrap().into()
     }
 
@@ -1196,6 +1280,7 @@ impl EditorContextMenu for BaseProp {
 impl Drawable for BaseProp {
     async fn draw(&mut self, draw_context: &crate::drawable::DrawContext) {
 
+    
 
         if self.despawn {
             return;
@@ -1232,6 +1317,8 @@ impl Drawable for BaseProp {
             //     //color.a = (lifespan.as_secs_f32() - self.spawned.elapsed().as_secs_f32()) / 5.
             // }
         }
+
+        
 
 
 
@@ -1313,7 +1400,7 @@ impl Drawable for BaseProp {
         //     }
         // }
 
-        //draw_text(&format!("{:?}", self.owner), macroquad_pos.x, macroquad_pos.y, 20., WHITE);
+        draw_text(&format!("{:?}", self.owner), macroquad_pos.x, macroquad_pos.y, 20., WHITE);
 
 
 
@@ -1344,7 +1431,6 @@ impl Drawable for BaseProp {
         //     draw_rectangle(macroquad_pos.x - (4.), macroquad_pos.y - (4.), 8., 8., color);
 
         // }
-
 
 
 
@@ -1398,7 +1484,7 @@ pub struct PropUpdateOwner {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NewProp {
-    pub prop: BasePropSave,
+    pub prop: PropTypeSave,
     pub area_id: AreaId
 }
 

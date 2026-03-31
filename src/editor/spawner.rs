@@ -363,7 +363,7 @@ impl Spawner {
                     &mut area.space
                 );
 
-                area.props.push(generic_physics_prop);
+                area.props.push(Box::new(generic_physics_prop));
             },
 
             SpawnerCategory::Tile => {

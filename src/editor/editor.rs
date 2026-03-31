@@ -96,11 +96,11 @@ impl AreaEditor {
         for prop in &self.area.props {
             if disabled_layers.contains(&prop.draw_layer()) {continue;}
 
-            let prop_collider = self.area.space.collider_set.get(prop.collider_handle).unwrap();
+            let prop_collider = self.area.space.collider_set.get(prop.collider_handle()).unwrap();
 
             if prop_collider.shape().as_voxels().unwrap().contains_point(prop_collider.position(), glamx::Vec2::new(self.rapier_cursor().x, self.rapier_cursor().y)) {
 
-                return Some(SelectableObjectId::Prop(prop.id))
+                return Some(SelectableObjectId::Prop(prop.id()))
 
             }
         }
@@ -199,7 +199,7 @@ impl AreaEditor {
 
                     },
                     SelectableObject::Prop(prop) => {
-                        let body = self.area.space.rigid_body_set.get_mut(prop.rigid_body_handle).unwrap();
+                        let body = self.area.space.rigid_body_set.get_mut(prop.rigid_body_handle()).unwrap();
 
                         body.set_vels(RigidBodyVelocity::zero(), false);
                         body.set_angvel(0., false);
@@ -266,9 +266,9 @@ impl AreaEditor {
 
             SelectableObject::Prop(prop) => {
 
-                let prop_pos = self.area.space.rigid_body_set.get(prop.rigid_body_handle).unwrap().position();
+                let prop_pos = self.area.space.rigid_body_set.get(prop.rigid_body_handle()).unwrap().position();
 
-                let shape = self.area.space.collider_set.get(prop.collider_handle).unwrap().shape().as_voxels().unwrap();
+                let shape = self.area.space.collider_set.get(prop.collider_handle()).unwrap().shape().as_voxels().unwrap();
 
                 let macroquad_prop_pos = rapier_to_macroquad(prop_pos.translation);
 
@@ -833,12 +833,12 @@ impl AreaEditor {
         }
 
         for prop in &self.area.props {
-            let prop_collider = self.area.space.collider_set.get(prop.collider_handle).unwrap();
+            let prop_collider = self.area.space.collider_set.get(prop.collider_handle()).unwrap();
 
             let prop_macroquad_pos = rapier_to_macroquad(prop_collider.position().translation);
 
             if selection_rect.contains(prop_macroquad_pos) {
-                selected_objects.push(SelectableObjectId::Prop(prop.id));
+                selected_objects.push(SelectableObjectId::Prop(prop.id()));
             }
         }
 
@@ -916,7 +916,7 @@ impl AreaEditor {
 
         for (_index, prop) in self.area.props.iter_mut().enumerate() {
 
-            let selected = self.selected_objects.contains(&SelectableObjectId::Prop(prop.id));
+            let selected = self.selected_objects.contains(&SelectableObjectId::Prop(prop.id()));
 
             prop.update_menu(&mut self.area.space, &self.camera_rect, selected, &self.textures);
 

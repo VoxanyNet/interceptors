@@ -1,0 +1,457 @@
+{
+  "spawn_point": [
+    600.0,
+    1000.0
+  ],
+  "decorations": [],
+  "clips": [
+    {
+      "size": [
+        1186.625,
+        74.9375
+      ],
+      "pos": [
+        658.41797,
+        228.96875
+      ],
+      "layer": 0,
+      "one_way": false,
+      "health": null,
+      "material": "None"
+    }
+  ],
+  "players": [],
+  "backgrounds": [
+    {
+      "repeat": true,
+      "pos": [
+        289.2614,
+        -845.6724
+      ],
+      "sprite_path": "assets/checkerboard.png",
+      "size": [
+        1000.0,
+        650.0
+      ],
+      "parallax": 0.25
+    }
+  ],
+  "generic_physics_props": [
+    {
+      "BasePropSave": {
+        "scale": 2.0,
+        "pos": {
+          "rotation": {
+            "re": 0.99999976,
+            "im": 0.0007165723
+          },
+          "translation": [
+            775.97314,
+            266.2698
+          ]
+        },
+        "mass": 4096.0,
+        "sprite_path": "assets/box2.png",
+        "id": {
+          "id": 8134209477636059063
+        },
+        "owner": null,
+        "material": "Wood",
+        "name": "Crate",
+        "layer": 0,
+        "voxels": null,
+        "rigid_body_type": "Dynamic",
+        "removed_voxels": [],
+        "lifespan": null,
+        "sync_physics": true
+      }
+    },
+    {
+      "BasePropSave": {
+        "scale": 2.0,
+        "pos": {
+          "rotation": {
+            "re": 0.99999994,
+            "im": 0.00041613157
+          },
+          "translation": [
+            976.76465,
+            266.31982
+          ]
+        },
+        "mass": 4096.0,
+        "sprite_path": "assets/box2.png",
+        "id": {
+          "id": 5332619025954802264
+        },
+        "owner": null,
+        "material": "Wood",
+        "name": "Crate",
+        "layer": 0,
+        "voxels": null,
+        "rigid_body_type": "Dynamic",
+        "removed_voxels": [],
+        "lifespan": null,
+        "sync_physics": true
+      }
+    },
+    {
+      "BasePropSave": {
+        "scale": 2.0,
+        "pos": {
+          "rotation": {
+            "re": 0.9999997,
+            "im": -0.00078172225
+          },
+          "translation": [
+            882.00854,
+            266.41327
+          ]
+        },
+        "mass": 4096.0,
+        "sprite_path": "assets/box2.png",
+        "id": {
+          "id": 2017492921009008977
+        },
+        "owner": null,
+        "material": "Wood",
+        "name": "Crate",
+        "layer": 0,
+        "voxels": null,
+        "rigid_body_type": "Dynamic",
+        "removed_voxels": [],
+        "lifespan": null,
+        "sync_physics": true
+      }
+    },
+    {
+      "BasePropSave": {
+        "scale": 2.0,
+        "pos": {
+          "rotation": {
+            "re": 0.6277981,
+            "im": 0.7783763
+          },
+          "translation": [
+            865.34686,
+            309.63068
+          ]
+        },
+        "mass": 4096.0,
+        "sprite_path": "assets/box2.png",
+        "id": {
+          "id": 16776791601332366478
+        },
+        "owner": null,
+        "material": "Wood",
+        "name": "Crate",
+        "layer": 0,
+        "voxels": null,
+        "rigid_body_type": "Dynamic",
+        "removed_voxels": [],
+        "lifespan": null,
+        "sync_physics": true
+      }
+    },
+    {
+      "BasePropSave": {
+        "scale": 2.0,
+        "pos": {
+          "rotation": {
+            "re": -0.00021606885,
+            "im": 1.0
+          },
+          "translation": [
+            751.33514,
+            266.406
+          ]
+        },
+        "mass": 4096.0,
+        "sprite_path": "assets/box2.png",
+        "id": {
+          "id": 5321126841522675689
+        },
+        "owner": null,
+        "material": "Wood",
+        "name": "Crate",
+        "layer": 0,
+        "voxels": null,
+        "rigid_body_type": "Dynamic",
+        "removed_voxels": [],
+        "lifespan": null,
+        "sync_physics": true
+      }
+    },
+    {
+      "BasePropSave": {
+        "scale": 2.0,
+        "pos": {
+          "rotation": {
+            "re": -0.00018082066,
+            "im": 1.0
+          },
+          "translation": [
+            687.3455,
+            266.40744
+          ]
+        },
+        "mass": 4096.0,
+        "sprite_path": "assets/box2.png",
+        "id": {
+          "id": 3719569749665761019
+        },
+        "owner": null,
+        "material": "Wood",
+        "name": "Crate",
+        "layer": 0,
+        "voxels": null,
+        "rigid_body_type": "Dynamic",
+        "removed_voxels": [],
+        "lifespan": null,
+        "sync_physics": true
+      }
+    },
+    {
+      "BasePropSave": {
+        "scale": 2.0,
+        "pos": {
+          "rotation": {
+            "re": -0.0013323704,
+            "im": -0.99999917
+          },
+          "translation": [
+            953.2592,
+            394.3108
+          ]
+        },
+        "mass": 4096.0,
+        "sprite_path": "assets/box2.png",
+        "id": {
+          "id": 12483510546222152856
+        },
+        "owner": null,
+        "material": "Wood",
+        "name": "Crate",
+        "layer": 0,
+        "voxels": null,
+        "rigid_body_type": "Dynamic",
+        "removed_voxels": [],
+        "lifespan": null,
+        "sync_physics": true
+      }
+    },
+    {
+      "BasePropSave": {
+        "scale": 2.0,
+        "pos": {
+          "rotation": {
+            "re": 0.62642217,
+            "im": 0.779484
+          },
+          "translation": [
+            917.55505,
+            349.76654
+          ]
+        },
+        "mass": 4096.0,
+        "sprite_path": "assets/box2.png",
+        "id": {
+          "id": 17121025216503640531
+        },
+        "owner": null,
+        "material": "Wood",
+        "name": "Crate",
+        "layer": 0,
+        "voxels": null,
+        "rigid_body_type": "Dynamic",
+        "removed_voxels": [],
+        "lifespan": null,
+        "sync_physics": true
+      }
+    },
+    {
+      "BasePropSave": {
+        "scale": 2.0,
+        "pos": {
+          "rotation": {
+            "re": -0.0019958098,
+            "im": 0.99999803
+          },
+          "translation": [
+            815.2904,
+            330.27487
+          ]
+        },
+        "mass": 4096.0,
+        "sprite_path": "assets/box2.png",
+        "id": {
+          "id": 18213362613404175827
+        },
+        "owner": null,
+        "material": "Wood",
+        "name": "Crate",
+        "layer": 0,
+        "voxels": null,
+        "rigid_body_type": "Dynamic",
+        "removed_voxels": [],
+        "lifespan": null,
+        "sync_physics": true
+      }
+    },
+    {
+      "BasePropSave": {
+        "scale": 2.0,
+        "pos": {
+          "rotation": {
+            "re": 0.9999996,
+            "im": -0.0009580061
+          },
+          "translation": [
+            1184.1461,
+            266.44174
+          ]
+        },
+        "mass": 4096.0,
+        "sprite_path": "assets/box2.png",
+        "id": {
+          "id": 4177173647932509241
+        },
+        "owner": null,
+        "material": "Wood",
+        "name": "Crate",
+        "layer": 0,
+        "voxels": null,
+        "rigid_body_type": "Dynamic",
+        "removed_voxels": [],
+        "lifespan": null,
+        "sync_physics": true
+      }
+    },
+    {
+      "BasePropSave": {
+        "scale": 2.0,
+        "pos": {
+          "rotation": {
+            "re": -0.0013926,
+            "im": -0.99999905
+          },
+          "translation": [
+            1120.2511,
+            330.42
+          ]
+        },
+        "mass": 4096.0,
+        "sprite_path": "assets/box2.png",
+        "id": {
+          "id": 5231545915252957175
+        },
+        "owner": null,
+        "material": "Wood",
+        "name": "Crate",
+        "layer": 0,
+        "voxels": null,
+        "rigid_body_type": "Dynamic",
+        "removed_voxels": [],
+        "lifespan": null,
+        "sync_physics": true
+      }
+    },
+    {
+      "BasePropSave": {
+        "scale": 2.0,
+        "pos": {
+          "rotation": {
+            "re": 0.6260909,
+            "im": 0.7797501
+          },
+          "translation": [
+            867.7414,
+            389.89377
+          ]
+        },
+        "mass": 4096.0,
+        "sprite_path": "assets/box2.png",
+        "id": {
+          "id": 801770687603338585
+        },
+        "owner": null,
+        "material": "Wood",
+        "name": "Crate",
+        "layer": 0,
+        "voxels": null,
+        "rigid_body_type": "Dynamic",
+        "removed_voxels": [],
+        "lifespan": null,
+        "sync_physics": true
+      }
+    },
+    {
+      "BasePropSave": {
+        "scale": 2.0,
+        "pos": {
+          "rotation": {
+            "re": 0.6485743,
+            "im": 0.7611514
+          },
+          "translation": [
+            1086.7705,
+            290.99408
+          ]
+        },
+        "mass": 4096.0,
+        "sprite_path": "assets/box2.png",
+        "id": {
+          "id": 10974867319206615096
+        },
+        "owner": null,
+        "material": "Wood",
+        "name": "Crate",
+        "layer": 0,
+        "voxels": null,
+        "rigid_body_type": "Dynamic",
+        "removed_voxels": [],
+        "lifespan": null,
+        "sync_physics": true
+      }
+    },
+    {
+      "BasePropSave": {
+        "scale": 2.0,
+        "pos": {
+          "rotation": {
+            "re": 1.0,
+            "im": 0.0
+          },
+          "translation": [
+            2341.205,
+            -22611.053
+          ]
+        },
+        "mass": 4096.0,
+        "sprite_path": "assets/box2.png",
+        "id": {
+          "id": 18359536033425638582
+        },
+        "owner": null,
+        "material": "Wood",
+        "name": "Crate",
+        "layer": 0,
+        "voxels": null,
+        "rigid_body_type": "Dynamic",
+        "removed_voxels": [],
+        "lifespan": null,
+        "sync_physics": true
+      }
+    }
+  ],
+  "enemies": [],
+  "computer_pos": null,
+  "dropped_items": [],
+  "max_camera_y": 0.0,
+  "minimum_camera_width": 1920.0,
+  "minimum_camera_height": 1080.0,
+  "despawn_y": 0.0,
+  "master": null,
+  "ambiance": [],
+  "tiles": []
+}

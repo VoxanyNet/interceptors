@@ -366,10 +366,7 @@ impl Player {
         ctx: &mut ClientTickContext,
         area_context: &mut AreaContext
     ) {
-        
-        if !is_key_down(KeyCode::Y) {
-            return;
-        }
+     
 
         let player_position = area_context.space.rigid_body_set.get(self.body.body_handle).unwrap().translation();
         let macroquad_player_position = rapier_to_macroquad(player_position);
@@ -1089,9 +1086,9 @@ impl Player {
         
         
         for prop in &mut *area_context.props {
-            let prop_body = area_context.space.rigid_body_set.get(prop.rigid_body_handle).unwrap();
+            let prop_body = area_context.space.rigid_body_set.get(prop.rigid_body_handle()).unwrap();
             let prop_pose = prop_body.position();
-            let prop_collider = area_context.space.collider_set.get(prop.collider_handle).unwrap();
+            let prop_collider = area_context.space.collider_set.get(prop.collider_handle()).unwrap();
             let prop_shape = prop_collider.shape();
 
             let our_player_body = area_context.space.rigid_body_set.get(self.body.body_handle).unwrap();
@@ -1103,7 +1100,7 @@ impl Player {
             log::debug!("{:?}", then.elapsed());
             //let distance = (prop_body.translation() - our_player_body.translation()).length();
 
-            distances.insert(prop.id, (self.id, distance));
+            distances.insert(prop.id(), (self.id, distance));
 
             for player in &mut *area_context.players {
                 let player_body = area_context.space.rigid_body_set.get(player.body.body_handle).unwrap();
@@ -1112,7 +1109,7 @@ impl Player {
                 let distance = prop_shape.distance_to_point(prop_pose, player_body.translation(), true);
                 
                 
-                if let Some((current_closest_player, current_closest_distance)) = distances.get_mut(&prop.id) {
+                if let Some((current_closest_player, current_closest_distance)) = distances.get_mut(&prop.id()) {
                     if *current_closest_distance > distance {
                         *current_closest_distance = distance;
                         *current_closest_player = player.id
@@ -1125,9 +1122,9 @@ impl Player {
         for (prop_id, (closest_player, distance)) in distances {
             if closest_player == self.id {
 
-                let prop = area_context.props.iter_mut().find(|prop| prop.id == prop_id).unwrap();
+                let prop = area_context.props.iter_mut().find(|prop| prop.id() == prop_id).unwrap();
 
-                if prop.last_ownership_change.elapsed().as_secs() < 1 {
+                if prop.last_ownership_change().elapsed().as_secs() < 1 {
                     continue;
                 }
 
@@ -1136,13 +1133,13 @@ impl Player {
                 if distance > 300. {
 
 
-                    match prop.owner.unwrap() {
+                    match prop.owner().unwrap() {
                         Owner::ClientId(_) => {
 
 
-                            prop.owner = Some(Owner::Server);
+                            *prop.owner_mut() = Some(Owner::Server);
 
-                            prop.last_ownership_change = web_time::Instant::now();
+                            *prop.last_ownership_change_mut() = web_time::Instant::now();
 
                             ctx.send_network_packet(
                                 PropUpdateOwner {
@@ -1161,13 +1158,13 @@ impl Player {
                 }
 
                 // dont send an update if we already own the prop
-                if prop.owner.unwrap() == ctx.id() {
+                if prop.owner().unwrap() == ctx.id() {
                     continue;
                 }
 
-                prop.owner = Some(ctx.id());
+                *prop.owner_mut() = Some(ctx.id());
 
-                prop.last_ownership_change = web_time::Instant::now();
+                *prop.last_ownership_change_mut() = web_time::Instant::now();
 
                 ctx.send_network_packet(
                     PropUpdateOwner {

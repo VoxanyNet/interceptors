@@ -24,7 +24,7 @@ impl Server {
 
 
         //let lobby_save: AreaSave = serde_json::from_str(&read_to_string("areas/ship.json").unwrap()).unwrap();
-        let forest_save: AreaSave = serde_json::from_str(&read_to_string("areas/newoffice.json").unwrap()).unwrap();
+        let forest_save: AreaSave = serde_json::from_str(&read_to_string("areas/test.json").unwrap()).unwrap();
 
 
 
@@ -68,8 +68,8 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
         if self.network_io.clients.len() == 1 {
             for area in &mut self.world.areas {
                 for prop in &mut area.props {
-                    prop.owner = Some(Owner::ClientId(new_client));
-                    self.network_io.send_all_clients(NetworkPacket::PropUpdateOwner(PropUpdateOwner{ owner: Some(Owner::ClientId(new_client)), id: prop.id, area_id: area.id }));
+                    *prop.owner_mut() = Some(Owner::ClientId(new_client));
+                    self.network_io.send_all_clients(NetworkPacket::PropUpdateOwner(PropUpdateOwner{ owner: Some(Owner::ClientId(new_client)), id: prop.id(), area_id: area.id }));
                 }
             }
         }
@@ -118,14 +118,14 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
 
             area.props
                 .iter_mut()
-                .filter(|prop| prop.owner == Some(Owner::ClientId(client_id)))
+                .filter(|prop| prop.owner() == Some(Owner::ClientId(client_id)))
                 .for_each(|prop| {
-                    prop.owner = new_owner;
+                    *prop.owner_mut() = new_owner;
 
                     self.network_io.send_all_except(
                         PropUpdateOwner {
-                            owner: prop.owner,
-                            id: prop.id,
+                            owner: prop.owner(),
+                            id: prop.id(),
                             area_id: area.id,
                         }.into(),
                         client_id
@@ -193,7 +193,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                 NetworkPacket::UpdatePropVoxels(update) => {
 
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
-                    let prop = area.props.iter_mut().find(|prop| {prop.id == update.prop_id});
+                    let prop = area.props.iter_mut().find(|prop| {prop.id() == update.prop_id});
 
                     let Some(prop) = prop else {
 
@@ -201,14 +201,14 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                     };
 
                     area.space.collider_set
-                        .get_mut(prop.collider_handle)
+                        .get_mut(prop.collider_handle())
                         .unwrap()
                         .set_shape(
                             SharedShape::voxels(glamx::vec2(8., 8.), &update.new_voxels)
                         );
 
-                    prop.removed_voxels = update.removed_voxels.clone();
-                    prop.voxels_modified = true;
+                    *prop.removed_voxels_mut() = update.removed_voxels.clone();
+                    *prop.voxels_modified_mut() = true;
 
                     self.network_io.send_all_except(
                         network_packet,
@@ -243,18 +243,21 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                         }
                     ).unwrap();
 
-                    let mut prop = area.props.iter_mut().find(|prop| {prop.id == update.id});
+                    let mut prop = area.props.iter_mut().find(|prop| {prop.id() == update.id});
 
-                    if prop.is_none() {
-                        if let Some(computer) = &mut area.computer {
-                            if computer.prop.id == update.id {
-                                prop = Some(&mut computer.prop);
-                            }
-                        }
-                    }
+                    // if prop.is_none() {
+                    //     if let Some(computer) = &mut area.computer {
+                    //         if computer.prop.id == update.id {
+                    //             prop = Some(&mut computer.prop);
+                    //         }
+                    //     }
+                    // }
 
                     if let Some(prop) = prop {
-                        prop.set_velocity(update.velocity, &mut area.space);
+
+                        let body = area.space.rigid_body_set.get_mut(prop.rigid_body_handle()).unwrap();
+
+                        body.set_vels(update.velocity, true);
 
                         self.network_io.send_all_except(network_packet, client_id);
                     }
@@ -269,7 +272,9 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                         }
                     ).unwrap();
 
-                    area.props.push(BaseProp::from_save(update.prop.clone(), &mut area.space, (&self.assets.textures).into()));
+                    area.props.push(
+                        update.prop.load(&mut area.space, (&self.assets.textures).into())
+                    );
 
                     self.network_io.send_all_except(network_packet, client_id);
 
@@ -398,7 +403,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                 NetworkPacket::PropPositionUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let prop = match area.props.iter_mut().find(|prop| {prop.id} == update.prop_id) {
+                    let prop = match area.props.iter_mut().find(|prop| {prop.id()} == update.prop_id) {
                         Some(prop) => prop,
                         None => {
                             log::warn!("Received bad prop position update");
@@ -418,14 +423,14 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                 NetworkPacket::PropUpdateOwner(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let Some(prop) = area.props.iter_mut().find(|prop| {prop.id} == update.id) else {
+                    let Some(prop) = area.props.iter_mut().find(|prop| {prop.id()} == update.id) else {
                         log::warn!("client: {:?} sent an invalid prop update", client_id);
                         return;
                     };
 
-                    prop.last_ownership_change = web_time::Instant::now();
+                    *prop.last_ownership_change_mut() = web_time::Instant::now();
 
-                    prop.owner = update.owner;
+                    *prop.owner_mut() = update.owner;
 
                     self.network_io.send_all_except(network_packet, client_id);
                 },
@@ -439,7 +444,7 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                 NetworkPacket::RemovePropUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    if let Some(prop) = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}) {
+                    if let Some(prop) = area.props.iter_mut().find(|prop|{prop.id() == update.prop_id}) {
 
                         prop.mark_despawn();
                     }

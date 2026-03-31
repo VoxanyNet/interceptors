@@ -32,7 +32,7 @@ impl Item {
 
     pub fn save(&self, space: &Space) -> ItemSave {
         match self {
-            Item::Prop(prop) => ItemSave::Prop(prop.save(space)),
+            Item::Prop(prop) => ItemSave::Prop(prop.inner_save(space)),
             Item::Weapon(weapon) => ItemSave::Weapon(weapon.save(space))
         }
     }

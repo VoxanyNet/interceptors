@@ -215,14 +215,14 @@ impl Client {
                 NetworkPacket::SetPropVoxel(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let prop = area.props.iter_mut().find(|prop| {prop.id == update.prop_id});
+                    let prop = area.props.iter_mut().find(|prop| {prop.id() == update.prop_id});
 
                     let Some(prop) = prop else {
                         continue;
                     };
 
                     let voxels = area.space.collider_set
-                        .get_mut(prop.collider_handle)
+                        .get_mut(prop.collider_handle())
                         .unwrap()
                         .shape_mut()
                         .as_voxels_mut()
@@ -235,36 +235,34 @@ impl Client {
                         .collect();
 
                     area.space.collider_set
-                        .get_mut(prop.collider_handle)
+                        .get_mut(prop.collider_handle())
                         .unwrap()
                         .set_shape(
                             SharedShape::voxels(glamx::vec2(8., 8.), &new_voxels)
                         );
 
-                    prop.removed_voxels.push(update.voxel_index);
+                    prop.removed_voxels_mut().push(update.voxel_index);
                 },
 
                 NetworkPacket::UpdatePropVoxels(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let prop = area.props.iter_mut().find(|prop| {prop.id == update.prop_id});
+                    let prop = area.props.iter_mut().find(|prop| {prop.id() == update.prop_id});
 
                     let Some(prop) = prop else {
                         continue;
                     };
 
-
-
                     area.space.collider_set
-                        .get_mut(prop.collider_handle)
+                        .get_mut(prop.collider_handle())
                         .unwrap()
                         .set_shape(
                             SharedShape::voxels(glamx::vec2(8., 8.), &update.new_voxels)
                         );
 
 
-                    prop.removed_voxels = update.removed_voxels;
-                    prop.voxels_modified = true;
+                    *prop.removed_voxels_mut() = update.removed_voxels;
+                    *prop.voxels_modified_mut() = true;
 
                 }
 
@@ -287,28 +285,40 @@ impl Client {
                 NetworkPacket::PropVelocityUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id} ).unwrap();
 
-                    let prop = area.props.iter_mut().find(|prop| {prop.id == update.id});
+                    let prop = area.props.iter_mut().find(|prop| {prop.id() == update.id});
 
-                    if let Some(prop) = prop { prop.set_velocity(update.velocity, &mut area.space) }
+                
+                    if let Some(prop) = prop {
+                        if prop.should_despawn() {
+                            continue;
+                        }
+
+                        let body = area.space.rigid_body_set.get_mut(prop.rigid_body_handle()).unwrap();
+
+                        body.set_vels(update.velocity, true);
+
+
+
+                    }
                 },
                 NetworkPacket::PropUpdateOwner(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
 
-                    let Some(prop) = area.props.iter_mut().find(|prop| {prop.id} == update.id) else {
-                        return;
+                    let Some(prop) = area.props.iter_mut().find(|prop| {prop.id()} == update.id) else {
+                        continue;
                     };
 
 
-                    prop.last_ownership_change = web_time::Instant::now();
+                    *prop.last_ownership_change_mut() = web_time::Instant::now();
 
-                    prop.owner = update.owner;
+                    *prop.owner_mut() = update.owner;
 
                 },
                 NetworkPacket::NewProp(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    area.props.push(BaseProp::from_save(update.prop, &mut area.space, (&self.textures).into()));
+                    area.props.push(update.prop.load(&mut area.space, (&self.textures).into()));
 
 
                 },
@@ -361,30 +371,30 @@ impl Client {
                 NetworkPacket::PropPositionUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let prop = if let Some(prop) = area.props.iter_mut().find(|prop| {prop.id} == update.prop_id) {prop} else {continue};
+                    let prop = if let Some(prop) = area.props.iter_mut().find(|prop| {prop.id()} == update.prop_id) {prop} else {continue};
                     
                     // we might receive old position updates from preview owners and we are just going to ignore those :)
-                    if prop.owner == Some(Owner::ClientId(self.client_id)) {
+                    if prop.owner() == Some(Owner::ClientId(self.client_id)) {
                         continue;
                     }
 
                     prop.set_pos(update.pos, &mut area.space);
-                    prop.last_received_position_update = web_time::Instant::now();
+                    *prop.last_received_position_update_mut() = web_time::Instant::now();
 
 
                 },
                 NetworkPacket::DissolveProp(update) => {
 
-                    let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
+                    // let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let prop = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}).unwrap();
+                    // let prop = area.props.iter_mut().find(|prop|{prop.id() == update.prop_id}).unwrap();
 
-                    prop.dissolve(&self.textures, &mut area.space, &mut area.dissolved_pixels,None, area.id);
+                    // prop.dissolve(&self.textures, &mut area.space, &mut area.dissolved_pixels,None, area.id);
                 }
                 NetworkPacket::RemovePropUpdate(update) => {
                     let area = self.world.areas.iter_mut().find(|area| {area.id == update.area_id}).unwrap();
 
-                    let prop = area.props.iter_mut().find(|prop|{prop.id == update.prop_id}).unwrap();
+                    let prop = area.props.iter_mut().find(|prop|{prop.id() == update.prop_id}).unwrap();
 
                     prop.mark_despawn();
 
