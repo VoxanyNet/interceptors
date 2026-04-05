@@ -55,7 +55,7 @@ pub mod props;
 pub mod prop;
 pub mod prop_type_save;
 pub mod base_prop_save;
-
+pub mod items;
 
 pub fn flood_fill(start_point: glamx::IVec2, voxels: &Voxels) -> HashSet<glamx::IVec2> {
     let mut island_voxels = HashSet::new();

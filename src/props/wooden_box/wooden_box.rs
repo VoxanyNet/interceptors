@@ -42,7 +42,6 @@ impl Prop for WoodenBox {
                 area_context: &mut AreaContext,
                 impact: &BulletImpactData,
             );
-
             fn removed_voxels(&self) -> &Vec<glamx::IVec2>;
             fn removed_voxels_mut(&mut self) -> &mut Vec<glamx::IVec2>;
             fn voxels_modified(&self) -> &bool;

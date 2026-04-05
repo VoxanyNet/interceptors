@@ -4,71 +4,71 @@ use derive_more::From;
 use macroquad::{camera::{set_camera, Camera2D}, color::{Color, BLACK, GRAY, WHITE}, math::{Rect, Vec2}, shapes::draw_line, text::{draw_text_ex, TextParams}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::clear_background};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, base_prop::BaseProp, base_prop_save::BasePropSave, button::Button, drawable::{DrawContext, Drawable}, font_loader::FontLoader, mouse_world_pos, player::Player, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, weapons::{weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
+use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, base_prop::BaseProp, base_prop_save::BasePropSave, button::Button, drawable::{DrawContext, Drawable}, font_loader::FontLoader, items::Item, mouse_world_pos, player::Player, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, weapons::{weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
 
-#[derive(PartialEq, Clone, Debug, From)]
-pub enum Item {
-    Prop(BaseProp),
-    Weapon(WeaponType)
-}
-
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub enum ItemSave {
-    Prop(BasePropSave),
-    Weapon(WeaponTypeSave)
-}
+// #[derive(PartialEq, Clone, Debug, From)]
+// pub enum Item {
+//     Prop(BaseProp),
+//     Weapon(WeaponType)
+// }
 
 
+// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+// pub enum ItemSave {
+//     Prop(BasePropSave),
+//     Weapon(WeaponTypeSave)
+// }
 
-impl Item {
 
-    pub fn stackable(&self) -> bool {
-        match self {
-            Item::Prop(_prop) => true,
-            Item::Weapon(_weapon_type_item) => false,
-        }
-    }
 
-    pub fn save(&self, space: &Space) -> ItemSave {
-        match self {
-            Item::Prop(prop) => ItemSave::Prop(prop.inner_save(space)),
-            Item::Weapon(weapon) => ItemSave::Weapon(weapon.save(space))
-        }
-    }
+// impl Item {
 
-    pub fn from_save(item_save: ItemSave, space: &mut Space, textures: TextureLoader) -> Item {
-        match item_save {
-            ItemSave::Prop(prop_save) => Item::Prop(BaseProp::from_save(prop_save, space, textures)),
-            ItemSave::Weapon(weapon_type_save) => Item::Weapon(WeaponType::from_save(space, weapon_type_save, None)) 
-        }
-    }
-    pub fn draw_preview(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
-        match self {
-            Item::Prop(prop) => prop.draw_preview(textures, size, draw_pos, prefabs, color, rotation),
-            Item::Weapon(weapon) => weapon.draw_preview(textures, size, draw_pos, color, rotation),
-        }
-    }
+//     pub fn stackable(&self) -> bool {
+//         match self {
+//             Item::Prop(_prop) => true,
+//             Item::Weapon(_weapon_type_item) => false,
+//         }
+//     }
 
-    pub fn get_preview_resolution(&self, textures: &ClientTextureLoader, size: f32, prefabs: &Prefabs) -> Vec2 {
-        match self {
-            Item::Prop(prop_item) => prop_item.get_preview_resolution(size, prefabs, textures),
-            Item::Weapon(weapon) => weapon.get_preview_resolution(size, textures)
+//     pub fn save(&self, space: &Space) -> ItemSave {
+//         match self {
+//             Item::Prop(prop) => ItemSave::Prop(prop.inner_save(space)),
+//             Item::Weapon(weapon) => ItemSave::Weapon(weapon.save(space))
+//         }
+//     }
+
+//     pub fn from_save(item_save: ItemSave, space: &mut Space, textures: TextureLoader) -> Item {
+//         match item_save {
+//             ItemSave::Prop(prop_save) => Item::Prop(BaseProp::from_save(prop_save, space, textures)),
+//             ItemSave::Weapon(weapon_type_save) => Item::Weapon(WeaponType::from_save(space, weapon_type_save, None)) 
+//         }
+//     }
+//     pub fn draw_preview(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
+//         match self {
+//             Item::Prop(prop) => prop.draw_preview(textures, size, draw_pos, prefabs, color, rotation),
+//             Item::Weapon(weapon) => weapon.draw_preview(textures, size, draw_pos, color, rotation),
+//         }
+//     }
+
+//     pub fn get_preview_resolution(&self, textures: &ClientTextureLoader, size: f32, prefabs: &Prefabs) -> Vec2 {
+//         match self {
+//             Item::Prop(prop_item) => prop_item.get_preview_resolution(size, prefabs, textures),
+//             Item::Weapon(weapon) => weapon.get_preview_resolution(size, textures)
             
-        }
-    }
+//         }
+//     }
 
-    pub fn name(&self, _prefabs: &Prefabs) -> String {
-        match self {
-            Item::Prop(prop) => prop.name(),
-            Item::Weapon(weapon) => weapon.name()
+//     pub fn name(&self, _prefabs: &Prefabs) -> String {
+//         match self {
+//             Item::Prop(prop) => prop.name(),
+//             Item::Weapon(weapon) => weapon.name()
             
-        }
-    }
-}
+//         }
+//     }
+// }
 pub struct StoreItem {
     cost: u32,
-    item: Item,
+    item: Box<dyn Item>,
     quantity: Option<u32>
 
 }

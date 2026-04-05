@@ -2,7 +2,7 @@ use derive_more::From;
 use macroquad::{color::Color, math::Vec2};
 use rapier2d::prelude::{ColliderHandle, ImpulseJointHandle, RigidBodyHandle};
 
-use crate::{TickContext, area::AreaContext, enemy::EnemyContext, player::{Facing, Player, PlayerContext}, space::Space, texture_loader::ClientTextureLoader, weapons::{lmg::weapon::LMG, shotgun::weapon::Shotgun, smg::weapon::SMG, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
+use crate::{TickContext, area::AreaContext, enemy::EnemyContext, items::Item, player::{Facing, Player, PlayerContext}, space::Space, texture_loader::ClientTextureLoader, weapons::{lmg::weapon::LMG, shotgun::weapon::Shotgun, smg::weapon::SMG, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
 
 // in order to be an equipable weapon your weapon must be part of this enum 
 #[derive(PartialEq, Clone, Debug, From)]
@@ -157,6 +157,38 @@ impl WeaponType {
 
 }
 
+impl Item for WeaponType {
+    fn stackable(&self) -> bool {
+        false
+    }
+
+    fn save(&self, space: &Space) -> ItemSave {
+        
+    }
+
+    fn draw_preview(
+        &self, 
+        textures: &ClientTextureLoader, 
+        size: f32,
+        draw_pos: Vec2,
+        color: Option<Color>,
+        rotation: f32
+    ) {
+        todo!()
+    }
+
+    fn get_preview_resolution(
+        &self,
+        textures: &ClientTextureLoader,
+        size: f32
+    ) -> Vec2 {
+        todo!()
+    }
+
+    fn name(&self) -> String {
+        todo!()
+    }
+}
 
 #[derive(From)]
 pub enum ShooterContext<'a> {
