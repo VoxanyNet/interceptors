@@ -1,8 +1,8 @@
-use crate::{ClientId, area::{AreaId, AreaSave}, bullet_trail::SpawnBulletTrail, dropped_item::{DroppedItemVelocityUpdate, NewDroppedItemUpdate, RemoveDroppedItemUpdate}, enemy::{EnemyDespawnUpdate, EnemyHealthUpdate, EnemyPositionUpdate, EnemyVelocityUpdate, EnemyWeaponUpdate, NewEnemyUpdate}, player::{ActiveItemSlotUpdate, ItemSlotQuantityUpdate, ItemSlotUpdate, NewPlayer, PlayerCursorUpdate, PlayerFacingUpdate, PlayerHealthUpdate, PlayerId, PlayerPositionUpdate, PlayerVelocityUpdate}, base_prop::{DissolveProp, NewProp, PropPositionUpdate, PropUpdateOwner, PropVelocityUpdate, RemovePropUpdate, SetPropVoxel, StupidDissolvedPixelVelocityUpdate, UpdatePropVoxels}, uuid_u64};
+use crate::{ClientId, area::{AreaId, AreaSave}, bullet_trail::SpawnBulletTrail, dropped_item::{DroppedItemVelocityUpdate, NewDroppedItemUpdate, RemoveDroppedItemUpdate}, enemy::{EnemyDespawnUpdate, EnemyHealthUpdate, EnemyPositionUpdate, EnemyVelocityUpdate, EnemyItemUpdate, NewEnemyUpdate}, player::{ActiveItemSlotUpdate, ItemSlotQuantityUpdate, ItemSlotUpdate, NewPlayer, PlayerCursorUpdate, PlayerFacingUpdate, PlayerHealthUpdate, PlayerId, PlayerPositionUpdate, PlayerVelocityUpdate}, base_prop::{DissolveProp, NewProp, PropPositionUpdate, PropUpdateOwner, PropVelocityUpdate, RemovePropUpdate, SetPropVoxel, StupidDissolvedPixelVelocityUpdate, UpdatePropVoxels}, uuid_u64};
 use derive_more::From;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, From)]
+#[derive(Serialize, Deserialize, From, Clone)]
 pub enum NetworkPacket {
     Ping(Ping),
     LoadArea(LoadArea),
@@ -27,7 +27,7 @@ pub enum NetworkPacket {
     NewEnemyUpdate(NewEnemyUpdate),
     EnemyVelocityUpdate(EnemyVelocityUpdate),
     EnemyPositionUpdate(EnemyPositionUpdate),
-    EnemyWeaponUpdate(EnemyWeaponUpdate),
+    EnemyWeaponUpdate(EnemyItemUpdate),
     EnemyDespawnUpdate(EnemyDespawnUpdate),
     PlayerHealthUpdate(PlayerHealthUpdate),
     EnemyHealthUpdate(EnemyHealthUpdate),

@@ -4,7 +4,7 @@ use derive_more::From;
 use macroquad::{camera::{set_camera, Camera2D}, color::{Color, BLACK, GRAY, WHITE}, math::{Rect, Vec2}, shapes::draw_line, text::{draw_text_ex, TextParams}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::clear_background};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, base_prop::BaseProp, base_prop_save::BasePropSave, button::Button, drawable::{DrawContext, Drawable}, font_loader::FontLoader, items::Item, mouse_world_pos, player::Player, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, weapons::{weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
+use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, base_prop::BaseProp, base_prop_save::BasePropSave, button::Button, drawable::{DrawContext, Drawable}, font_loader::FontLoader, items::{Item, prop::prop_item::PropItem}, mouse_world_pos, player::Player, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, weapons::weapon_type_save::WeaponTypeSave};
 
 // #[derive(PartialEq, Clone, Debug, From)]
 // pub enum Item {
@@ -75,7 +75,7 @@ pub struct StoreItem {
 
 impl StoreItem {
     pub fn draw(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
-        self.item.draw_preview(textures, size, draw_pos, prefabs, color, rotation);
+        self.item.draw_preview(textures, size, draw_pos, color, rotation);
     }
 
 }
@@ -276,13 +276,7 @@ impl Computer {
         available_items.push(
             StoreItem {
                 cost: 20,
-                item: Item::Prop(
-                    BaseProp::from_prefab(
-                        "prefabs\\generic_physics_props\\box2.json".to_string(),
-                        space,
-                        texures.clone()
-                    )
-                ),
+                item: Box::new(PropItem::WoodenBox),
                 quantity: None
             }
         );
@@ -290,11 +284,7 @@ impl Computer {
         available_items.push(
             StoreItem {
                 cost: 20,
-                item: Item::Prop(
-                    BaseProp::from_prefab(
-                        "prefabs\\generic_physics_props\\anvil.json".to_string(), space, texures.clone()
-                    )
-                ),
+                item: Box::new(PropItem::WoodenBox),
                 quantity: None
             }
         );
@@ -327,9 +317,7 @@ impl Computer {
             structures_category.insert_item(
                 StoreItem {
                     cost: 20,
-                    item: Item::Prop(
-                        BaseProp::from_prefab("prefabs\\generic_physics_props\\box2.json".to_string(), space, texures.clone())
-                    ),
+                    item: Box::new(PropItem::WoodenBox),
                     quantity: None
                 }
             );
@@ -339,9 +327,7 @@ impl Computer {
             structures_category.insert_item(
                 StoreItem {
                     cost: 20,
-                    item: Item::Prop(
-                        BaseProp::from_prefab("prefabs\\generic_physics_props\\stone2.json".to_string(), space, texures.clone())
-                    ),
+                    item: Box::new(PropItem::WoodenBox),
                     quantity: Some(1)
                 }
             );
@@ -477,75 +463,75 @@ impl Computer {
     }
 }
 
-#[async_trait::async_trait]
-impl Drawable for Computer {
-    async fn draw(&mut self, draw_context: &DrawContext) {
-        self.prop.draw(draw_context).await;
+// #[async_trait::async_trait]
+// impl Drawable for Computer {
+//     async fn draw(&mut self, draw_context: &DrawContext) {
+//         self.prop.draw(draw_context).await;
 
-        let _prop_pos = draw_context.space.rigid_body_set.get(self.prop.rigid_body_handle).unwrap().position();
+//         let _prop_pos = draw_context.space.rigid_body_set.get(self.prop.rigid_body_handle).unwrap().position();
 
-        let mut color = BLACK;
+//         let mut color = BLACK;
 
-        color.a = 0.25;
+//         color.a = 0.25;
 
-        let render_target = match &self.render_target {
-            Some(render_target) => render_target.clone(),
-            None => {
-                self.render_target = Some(render_target(320, 180));
-                self.render_target.clone().unwrap()
-            },
-        };
+//         let render_target = match &self.render_target {
+//             Some(render_target) => render_target.clone(),
+//             None => {
+//                 self.render_target = Some(render_target(320, 180));
+//                 self.render_target.clone().unwrap()
+//             },
+//         };
 
-        let camera_rect = Rect::new(0., 0., 320., 180.);
+//         let camera_rect = Rect::new(0., 0., 320., 180.);
 
-        let mut camera = Camera2D::from_display_rect(camera_rect);
+//         let mut camera = Camera2D::from_display_rect(camera_rect);
 
-        camera.render_target = Some(render_target.clone());
+//         camera.render_target = Some(render_target.clone());
 
-        camera.zoom.y = -camera.zoom.y;
+//         camera.zoom.y = -camera.zoom.y;
 
-        set_camera(&camera);
+//         set_camera(&camera);
 
     
-        clear_background(color);        
+//         clear_background(color);        
 
-        let _font = draw_context.fonts.get(PathBuf::from("assets/fonts/CutePixel.ttf"));
+//         let _font = draw_context.fonts.get(PathBuf::from("assets/fonts/CutePixel.ttf"));
 
-        //draw_rectangle(0., 0., 20., 20., RED);
+//         //draw_rectangle(0., 0., 20., 20., RED);
 
-        // draw_text_ex("STORE", 0., 20., TextParams {
-        //     font: Some(&font),
-        //     font_size: 32,
-        //     color: WHITE,
-        //     ..Default::default()
+//         // draw_text_ex("STORE", 0., 20., TextParams {
+//         //     font: Some(&font),
+//         //     font_size: 32,
+//         //     color: WHITE,
+//         //     ..Default::default()
             
-        // });
+//         // });
 
-        for category_tab in &self.category_tabs {
-            category_tab.draw(draw_context.fonts);
-        }
+//         for category_tab in &self.category_tabs {
+//             category_tab.draw(draw_context.fonts);
+//         }
 
-        let selected_item_category = self.item_categories.get(self.selected_category).unwrap();
+//         let selected_item_category = self.item_categories.get(self.selected_category).unwrap();
 
-        selected_item_category.draw(draw_context.textures, draw_context.prefabs, draw_context.fonts);
+//         selected_item_category.draw(draw_context.textures, draw_context.prefabs, draw_context.fonts);
         
 
-        // set the camera back
-        set_camera(draw_context.default_camera);
+//         // set the camera back
+//         set_camera(draw_context.default_camera);
 
-        draw_texture_ex(
-            &camera.render_target.unwrap().texture, 
-            self.screen_pos.x, 
-            self.screen_pos.y, 
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(self.screen_size),
-                ..Default::default()
-            }
-        );
-    }
+//         draw_texture_ex(
+//             &camera.render_target.unwrap().texture, 
+//             self.screen_pos.x, 
+//             self.screen_pos.y, 
+//             WHITE,
+//             DrawTextureParams {
+//                 dest_size: Some(self.screen_size),
+//                 ..Default::default()
+//             }
+//         );
+//     }
 
-    fn draw_layer(&self) -> u32 {
-        1
-    }
-}
+//     fn draw_layer(&self) -> u32 {
+//         1
+//     }
+// }

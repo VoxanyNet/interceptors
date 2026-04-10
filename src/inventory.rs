@@ -1,4 +1,4 @@
-use crate::{area::AreaId, computer::Item, player::{ItemSlot, ItemSlotQuantityUpdate, ItemSlotUpdate, PlayerId}, space::Space, updates::NetworkPacket, ClientTickContext};
+use crate::{ClientTickContext, area::AreaId, items::Item, player::{ItemSlot, ItemSlotQuantityUpdate, ItemSlotUpdate, PlayerId}, space::Space, updates::NetworkPacket};
 
 pub struct Inventory {
     pub items: [Option<ItemSlot>; 6]
@@ -15,12 +15,12 @@ impl Inventory {
     /// Will try to insert item into inventory but will return if cant
     pub fn try_insert_into_inventory(
         &mut self, 
-        item: Item, 
+        item: Box<dyn Item>, 
         ctx: &mut ClientTickContext, 
         area_id: AreaId,
         space: &mut Space,
         player_id: PlayerId
-    ) -> Option<Item> {
+    ) -> Option<Box<dyn Item>> {
     
         for (item_slot_index, item_slot) in &mut self.items.iter_mut().enumerate() {
             match item_slot {
@@ -31,7 +31,7 @@ impl Inventory {
                         continue;
                     }
                     // matching item
-                    if item_slot.item == item {
+                    if item_slot.item.same(item.as_ref()) {
                         item_slot.quantity += 1;
 
                         ctx.network_io.send_network_packet(

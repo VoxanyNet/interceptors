@@ -99,17 +99,9 @@ impl Area {
 
         self.handle_bullet_impacts(ctx);
         self.tick_entities(ctx);
-        self.despawn_entities();
+        self.despawn_entities(ctx);
     }
 
-    pub fn server_tick(&mut self, _io: &mut ServerIO, dt: web_time::Duration) {
-
-        self.despawn_entities();
-
-        self.space.step(dt);
-
-        //self.designate_master(io);
-    }
 
 
     pub fn tick_entities(&mut self, ctx: &mut TickContext) {
@@ -528,18 +520,18 @@ impl Area {
         for prop in props {
             drawable_objects.push(prop.as_ref() as &dyn Drawable); // need to learn why this works
         }
-        for dropped_item in dropped_items {
-            drawable_objects.push(dropped_item);
-        }
-        if let Some(computer) = computer {
-            drawable_objects.push(computer);
-        }
-        for player in players {
-            drawable_objects.push(player);
-        }
-        for enemy in enemies {
-            drawable_objects.push(enemy);
-        }
+        // for dropped_item in dropped_items {
+        //     drawable_objects.push(dropped_item);
+        // }
+        // if let Some(computer) = computer {
+        //     drawable_objects.push(computer);
+        // }
+        // for player in players {
+        //     drawable_objects.push(player);
+        // }
+        // for enemy in enemies {
+        //     drawable_objects.push(enemy);
+        // }
         for pixel in dissolved_pixels {
             drawable_objects.push(pixel);
         }
@@ -571,18 +563,20 @@ impl Area {
         for prop in props {
             drawable_objects.push(prop.as_mut() as &mut dyn Drawable);
         }
-        for dropped_item in dropped_items {
-            drawable_objects.push(dropped_item);
-        }
-        if let Some(computer) = computer {
-            drawable_objects.push(computer);
-        }
-        for player in players {
-            drawable_objects.push(player);
-        }
-        for enemy in enemies {
-            drawable_objects.push(enemy);
-        }
+        // for dropped_item in dropped_items {
+        //     drawable_objects.push(dropped_item);
+        // }
+        // if let Some(computer) = computer {
+        //     drawable_objects.push(computer);
+        // }
+        // for player in players {
+        //     drawable_objects.push(player);
+            
+            
+        // }
+        // for enemy in enemies {
+        //     drawable_objects.push(enemy);
+        // }
         for pixel in dissolved_pixels {
             drawable_objects.push(pixel);
         }
@@ -729,12 +723,12 @@ impl Area {
                 );
                 
                 player.inventory.try_insert_into_inventory(
-                    Item::Weapon(
+                    Box::new(
                         SMG::new(
                             WeaponOwner::Player(player.id), 
                             Some(player.body.body_handle), 
                             Facing::Left
-                        ).into()
+                        )
                     ), 
                     ctx, 
                     self.id, 
@@ -826,7 +820,7 @@ impl Area {
         }
     }
 
-    pub fn despawn_entities(&mut self) {
+    pub fn despawn_entities(&mut self, ctx: &mut TickContext) {
         self.dropped_items.retain_mut(
             |dropped_item|
             {
@@ -900,18 +894,48 @@ impl Area {
             }
         );
 
-        self.players.retain_mut(
-            |player|
-            {
-                if !player.despawn {
-                    return true
-                }
+        let mut players_iter = SwapIter::new(&mut self.players);
 
-                player.despawn_callback(&mut self.space);
-                
-                false
+        while players_iter.not_done() {
+            let (players, mut player) = players_iter.next();
+
+            if !player.despawn {
+                players_iter.restore(player);
+
+                continue;
             }
-        );
+
+            let mut area_context = AreaContext {
+                backgrounds: &mut self.backgrounds,
+                spawn_point: &mut self.spawn_point,
+                space: &mut self.space,
+                decorations: &mut self.decorations,
+                clips: &mut self.clips,
+                players: players,
+                props: &mut self.props,
+                id: &mut self.id,
+                bullet_trails: &mut self.bullet_trails,
+                dissolved_pixels: &mut self.dissolved_pixels,
+                enemies: &mut self.enemies,
+                computer: &mut self.computer,
+                dropped_items: &mut self.dropped_items,
+                max_camera_y: &mut self.max_camera_y,
+                minimum_camera_width: &mut self.minimum_camera_width,
+                minimum_camera_height: &mut self.minimum_camera_height,
+                despawn_y: &mut self.despawn_y,
+                master: &mut self.master,
+                ambiance: &mut self.ambiance,
+                wave_data: &mut self.wave_data,
+                compound_test: &mut self.compound_test,
+                tiles: &mut self.tiles,
+                impact_points: &mut self.impact_points,
+                bullet_impact_queue: &mut self.bullet_impact_queue,
+            };
+
+            player.despawn_callback(ctx, &mut area_context);
+            
+        }
+        
     }
 
     pub fn handle_bullet_impacts(
@@ -1292,7 +1316,7 @@ pub struct AreaContext<'a> {
 }
 
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct AreaSave {
     spawn_point: Vec2,
     decorations: Vec<DecorationSave>,

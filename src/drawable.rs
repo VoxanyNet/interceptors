@@ -3,6 +3,7 @@ use async_trait::async_trait;
 
 use crate::{ClientId, Prefabs, font_loader::FontLoader, material_loader::MaterialLoader, space::Space, texture_loader::ClientTextureLoader, tile::Tile};
 
+// we dont use the traditional tick context for draw calls because the draw order is independent of object hierarchy
 pub struct DrawContext<'a> {
     pub space: &'a Space,
     pub textures: &'a ClientTextureLoader,

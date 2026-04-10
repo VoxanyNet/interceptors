@@ -1,9 +1,11 @@
 use std::{path::PathBuf, str::FromStr};
 
+use async_trait::async_trait;
+use delegate::delegate;
 use macroquad::{color::Color, math::Vec2};
 use rapier2d::prelude::{ImpulseJointHandle, RigidBodyHandle};
 
-use crate::{ClientId, TickContext, area::AreaContext, player::{Facing, PlayerContext}, space::Space, texture_loader::ClientTextureLoader, weapons::{smg::weapon_save::SMGSave, weapon::weapon::{BaseWeapon, WeaponOwner}, weapon_fire_context::WeaponFireContext, weapon_type::ShooterContext}};
+use crate::{ClientId, TickContext, area::AreaContext, drawable::{DrawContext, Drawable}, items::{ConsumedStatus, Item, item_save::ItemSave}, player::{Facing, PlayerContext}, space::Space, texture_loader::ClientTextureLoader, weapons::{ItemOwnerContext, smg::weapon_save::SMGSave, weapon::weapon::{BaseWeapon, WeaponOwner}, weapon_fire_context::WeaponFireContext, weapon_type::ShooterContext}};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct SMG {
@@ -11,72 +13,6 @@ pub struct SMG {
 }
 
 impl SMG {
-
-    pub async fn draw(&self, space: &Space, textures: &ClientTextureLoader, facing: Facing) {
-        self.weapon_base.draw(space, textures, facing).await
-    }
-    pub fn mark_despawn(&mut self) {
-        self.weapon_base.mark_despawn();
-    }
-
-    pub fn despawn_callback(&mut self, space: &mut Space) {
-        self.weapon_base.despawn_callback(space);
-    }
-
-    pub fn preview_name(&self) -> String {
-        "SMG".to_string()
-    }
-
-    pub fn get_preview_resolution(&self, size: f32, textures: &ClientTextureLoader) -> Vec2 {
-        self.weapon_base.get_preview_resolution(size, textures)
-    }
-
-    pub fn draw_preview(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32) {
-        self.weapon_base.draw_preview(textures, size, draw_pos, color, rotation);
-    }
-
-    pub fn save(&self, space: &Space) -> SMGSave {
-        SMGSave {
-            weapon_base: self.weapon_base.save(space),
-        }
-    }
-
-    pub fn from_save(save: SMGSave, space: &mut Space, player_rigid_body_handle: Option<RigidBodyHandle>) -> Self {
-        Self {
-            weapon_base: BaseWeapon::from_save(save.weapon_base , space, player_rigid_body_handle),
-        }
-    }
-
-    pub fn fire(
-        &mut self, 
-        ctx: &mut TickContext, 
-        area_context: &mut AreaContext,
-        shooter_context: &mut ShooterContext 
-    ) {
-        
-        //let bullet_inaccurary = Some(0.1);
-        let bullet_inaccuracy = None;
-        self.weapon_base.fire(
-            ctx, 
-            area_context,
-            shooter_context, 
-            bullet_inaccuracy, 
-            Some(1)
-        );
-    }
-
-    pub fn player_joint_handle(&self) -> Option<ImpulseJointHandle> {
-        self.weapon_base.player_joint_handle
-    }
-
-    pub fn reload(&mut self) {
-        self.weapon_base.reload();
-    }
-
-    pub fn rigid_body_handle(&self) -> Option<RigidBodyHandle> {
-        self.weapon_base.rigid_body
-    }
-
 
     pub fn new(
         owner: WeaponOwner, 
@@ -113,7 +49,75 @@ impl SMG {
         }
     }
 
+}
 
+#[async_trait]
+impl Drawable for SMG {
+    async fn draw(&mut self, draw_context: &DrawContext) {
+        todo!()
+    }
 
+    fn draw_layer(&self) -> u32 {
+        self.weapon_base.draw_layer()
+    }
+}   
 
+impl Item for SMG {
+
+    fn same(&self, other: &dyn Item) -> bool {
+        if let Some(other_concrete) = other.downcast_ref::<Self>() {
+            other_concrete == self
+        } else {
+            false
+        }
+    }
+    delegate! {
+        to self.weapon_base {
+            fn use_released(&mut self, ctx: &mut TickContext, area_context: &mut AreaContext, weapon_owner_context: &mut ItemOwnerContext) -> ConsumedStatus;
+
+            fn use_hold(&mut self, ctx: &mut TickContext, area_context: &mut AreaContext, weapon_owner_context: &mut ItemOwnerContext) -> ConsumedStatus;
+
+            fn stackable(&self) -> bool;
+            fn save(&self, space: &Space) -> Box<dyn ItemSave>;
+            fn draw_preview(
+                &self, 
+                textures: &ClientTextureLoader, 
+                size: f32,
+                draw_pos: Vec2,
+                color: Option<Color>,
+                rotation: f32
+            );
+            fn get_preview_resolution(
+                &self,
+                textures: &ClientTextureLoader,
+                size: f32
+            ) -> Vec2;
+
+            
+            fn draw_active(&self, textures: &ClientTextureLoader);
+
+            fn name(&self) -> String;
+
+            fn equip(
+                &mut self, 
+                ctx: &mut TickContext, 
+                area_context: &mut AreaContext, 
+                player_context: &mut PlayerContext
+            );
+
+            fn unequip(
+                &mut self, 
+                ctx: &mut TickContext, 
+                area_context: &mut AreaContext, 
+                player_context: &mut PlayerContext
+            );
+
+            fn tick(
+                &mut self,
+                ctx: &mut TickContext, 
+                area_context: &mut AreaContext, 
+                player_context: &mut PlayerContext
+            );
+        }
+    }
 }

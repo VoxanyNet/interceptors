@@ -1,6 +1,6 @@
 use std::{fs::read_to_string, process::exit};
 
-use interceptors_lib::{ClientId, Owner, Prefabs, ServerAssets, ServerIO, ServerTickContext, TickContext, area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, load_assets_server, load_prefabs, player::{ItemSlot, Player}, base_prop::{BaseProp, PropUpdateOwner}, updates::{LoadArea, NetworkPacket, PlayerDespawnUpdate}, weapons::weapon_type::WeaponType, world::World};
+use interceptors_lib::{ClientId, Owner, Prefabs, ServerAssets, ServerIO, ServerTickContext, TickContext, area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, load_assets_server, load_prefabs, player::{ItemSlot, Player}, base_prop::{BaseProp, PropUpdateOwner}, updates::{LoadArea, NetworkPacket, PlayerDespawnUpdate}, world::World};
 use rapier2d::prelude::SharedShape;
 use tungstenite::Message;
 
@@ -552,8 +552,8 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                     let enemy = area.enemies.iter_mut().find(|enemy| {enemy.id == update.enemy_id}).unwrap();
 
 
-                    enemy.weapon = Some(
-                        WeaponType::from_save(&mut area.space, update.weapon.clone(), Some(enemy.body.body_handle))
+                    enemy.item = Some(
+                        update.item.load()
                     );
 
                     self.network_io.send_all_except(network_packet, client_id);

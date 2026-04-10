@@ -1,4 +1,4 @@
-use std::{collections::{HashMap, HashSet, VecDeque}, f32::consts::PI, fs::read_to_string, net::{TcpListener, TcpStream}, path::{Path, PathBuf}, process::exit, str::FromStr};
+use std::{collections::{HashMap, HashSet, VecDeque}, f32::consts::PI, fs::read_to_string, marker::PhantomData, net::{TcpListener, TcpStream}, path::{Path, PathBuf}, process::exit, str::FromStr};
 
 use derive_more::From;
 use ewebsock::{WsReceiver, WsSender};
@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tungstenite::WebSocket;
 use include_dir::{Dir, include_dir};
 
-use crate::{all_keys::ALL_KEYS, font_loader::FontLoader, material_loader::MaterialLoader, player::Facing, screen_shake::ScreenShakeParameters, server_texture_loader::ServerTextureLoader, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, weapons::weapon_type::WeaponType};
+use crate::{all_keys::ALL_KEYS, font_loader::FontLoader, material_loader::MaterialLoader, player::Facing, screen_shake::ScreenShakeParameters, server_texture_loader::ServerTextureLoader, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, weapons::Weapon};
 
 pub mod space;
 pub mod updates;
@@ -161,16 +161,14 @@ pub fn get_intersections(
 
 pub fn angle_weapon_to_mouse(
     space: &mut Space, 
-    weapon: Option<&mut WeaponType>, 
+    weapon: &mut dyn Weapon, 
     body_rigid_body_handle: RigidBodyHandle, 
     cursor_pos_rapier: glamx::Vec2,
     facing: Facing
 ) {
-    if weapon.is_none() {
-        return;
-    }
+ 
 
-    let shotgun_joint_handle = match weapon.as_ref().unwrap().player_joint_handle() {
+    let shotgun_joint_handle = match weapon.player_joint_handle() {
         Some(shotgun_joint_handle) => shotgun_joint_handle,
         None => return,
     };
@@ -182,7 +180,7 @@ pub fn angle_weapon_to_mouse(
     let _body_body_pos = Vec2::new(body_body.translation().x, body_body.translation().y);
 
 
-    let weapon_pos = space.rigid_body_set.get(weapon.as_ref().unwrap().rigid_body_handle().unwrap()).unwrap().translation();
+    let weapon_pos = space.rigid_body_set.get(weapon.rigid_body_handle().unwrap()).unwrap().translation();
 
     let angle_to_mouse = get_angle_between_rapier_points(glamx::Vec2::new(weapon_pos.x, weapon_pos.y), cursor_pos_rapier);
 
@@ -823,17 +821,23 @@ pub struct ServerTickContext<'a> {
     pub last_tick_duration: web_time::Duration
 }
 
+pub struct EditorTickContext<'a> {
+    pub e: &'a bool
+}
+
 /// This needs a better name
 #[derive(Debug, From, Clone, Serialize, Deserialize, PartialEq, Copy)]
 pub enum Owner {
     ClientId(ClientId),
-    Server
+    Server,
+    Editor
 }
 
 #[derive(From)]
 pub enum TickContext<'a> {
     Client(ClientTickContext<'a>),
-    Server(ServerTickContext<'a>)
+    Server(ServerTickContext<'a>),
+    Editor(EditorTickContext<'a>)
 }
 
 impl<'a> TickContext<'a> {
@@ -841,6 +845,7 @@ impl<'a> TickContext<'a> {
         match self {
             TickContext::Client(client_tick_context) => Owner::ClientId(*client_tick_context.client_id),
             TickContext::Server(_server_tick_context) => Owner::Server,
+            TickContext::Editor(_) => Owner::Editor
         }
     }
 
@@ -857,6 +862,9 @@ impl<'a> TickContext<'a> {
                     packet
                 );
             },
+            TickContext::Editor(editor) => {
+
+            }
         }
     }
 
@@ -864,6 +872,8 @@ impl<'a> TickContext<'a> {
         match self {
             TickContext::Client(client_tick_context) => *client_tick_context.last_tick_duration,
             TickContext::Server(server_tick_context) => server_tick_context.last_tick_duration,
+            TickContext::Editor(_) => todo!()
+            
         }
     }
 }

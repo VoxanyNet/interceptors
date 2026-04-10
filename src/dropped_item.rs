@@ -3,7 +3,7 @@ use macroquad::{color::WHITE, math::Vec2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{Prefabs, TextureLoader, area::AreaId, computer::{Item, ItemSave}, drawable::{DrawContext, Drawable}, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, uuid_u64};
+use crate::{Prefabs, TextureLoader, area::AreaId, drawable::{DrawContext, Drawable}, items::{Item, item_save::ItemSave}, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, uuid_u64};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct DroppedItemId {
@@ -22,9 +22,9 @@ impl DroppedItemId {
     }
 }
 
-#[derive(Clone)]
+//#[derive(Clone)]
 pub struct DroppedItem {
-    pub(crate) item: Item,
+    pub(crate) item: Box<dyn Item>,
     pub body: RigidBodyHandle,
     collider: ColliderHandle,
     pub id: DroppedItemId,
@@ -57,7 +57,7 @@ impl DroppedItem {
         textures: TextureLoader
     ) -> Self {
 
-        let item = Item::from_save(save.item, space, textures);
+        let item = save.item.load();
 
         let rigid_body = space.rigid_body_set.insert(
             RigidBodyBuilder::dynamic()
@@ -110,9 +110,9 @@ impl DroppedItem {
 
         }
     }
-    pub fn new(item: Item, pos: Pose2, vel: RigidBodyVelocity<f32>, space: &mut Space, textures: &ClientTextureLoader, prefabs: &Prefabs, size: f32) -> Self {
+    pub fn new(item: Box<dyn Item>, pos: Pose2, vel: RigidBodyVelocity<f32>, space: &mut Space, textures: &ClientTextureLoader, prefabs: &Prefabs, size: f32) -> Self {
 
-        let preview_size = item.get_preview_resolution(textures, size, prefabs);
+        let preview_size = item.get_preview_resolution(textures, size);
 
         let rigid_body = space.rigid_body_set.insert(
             RigidBodyBuilder::dynamic()
@@ -140,52 +140,51 @@ impl DroppedItem {
     }
 }
 
-#[async_trait::async_trait]
-impl Drawable for DroppedItem {
-    async fn draw(&mut self, draw_context: &DrawContext) {
-        if self.despawn == true {
-            return;
-        }
+// #[async_trait::async_trait]
+// impl Drawable for DroppedItem {
+//     async fn draw(&mut self, draw_context: &DrawContext) {
+//         if self.despawn == true {
+//             return;
+//         }
 
-        let body = draw_context.space.rigid_body_set.get(self.body).unwrap();
+//         let body = draw_context.space.rigid_body_set.get(self.body).unwrap();
 
-        let pos = body.position();
+//         let pos = body.position();
 
-        let half_extents = draw_context.space.collider_set.get(self.collider).unwrap().shape().as_cuboid().unwrap().half_extents;
+//         let half_extents = draw_context.space.collider_set.get(self.collider).unwrap().shape().as_cuboid().unwrap().half_extents;
 
-        // preview uses macroquad coords
-        let macroquad_pos = rapier_to_macroquad(pos.translation);
+//         // preview uses macroquad coords
+//         let macroquad_pos = rapier_to_macroquad(pos.translation);
 
-        let macroquad_rotation = pos.rotation.angle() * -1.;
+//         let macroquad_rotation = pos.rotation.angle() * -1.;
 
-        // this is stupid
+//         // this is stupid
 
-        let size = match self.size.x >= self.size.y {
-            true => self.size.x * 2.,
-            false => self.size.y * 2.,
-        };
+//         let size = match self.size.x >= self.size.y {
+//             true => self.size.x * 2.,
+//             false => self.size.y * 2.,
+//         };
 
-        self.item.draw_preview(
-            draw_context.textures, 
-            size, 
-            Vec2 {
-                x: macroquad_pos.x - half_extents.x,
-                y: macroquad_pos.y - half_extents.y,
-            }, 
-            draw_context.prefabs, 
-            Some(WHITE),
-            macroquad_rotation
-        );
-    }
+//         self.item.draw_preview(
+//             draw_context.textures, 
+//             size, 
+//             Vec2 {
+//                 x: macroquad_pos.x - half_extents.x,
+//                 y: macroquad_pos.y - half_extents.y,
+//             },
+//             Some(WHITE),
+//             macroquad_rotation
+//         );
+//     }
 
-    fn draw_layer(&self) -> u32 {
-        1
-    }
-}
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+//     fn draw_layer(&self) -> u32 {
+//         1
+//     }
+// }
+#[derive(Serialize, Deserialize, Clone)]
 pub struct DroppedItemSave {
     pos: Pose2,
-    item: ItemSave,
+    item: Box<dyn ItemSave>,
     velocity: RigidBodyVelocity<f32>,
     id: DroppedItemId,
     size: glamx::Vec2

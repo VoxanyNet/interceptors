@@ -1,5 +1,5 @@
 use core::f32;
-use std::{collections::HashMap, f32::consts::PI, mem::take, path::PathBuf, str::FromStr, usize};
+use std::{collections::HashMap, f32::consts::PI, mem::{swap, take}, path::PathBuf, str::FromStr, usize};
 
 use cs_utils::drain_filter;
 use glamx::{Pose2, Vec2, vec2};
@@ -7,7 +7,7 @@ use macroquad::{camera::Camera2D, color::{BLACK, WHITE}, input::{KeyCode, is_key
 use rapier2d::{parry::query::Ray, prelude::{ImpulseJointHandle, QueryFilter, RevoluteJointBuilder, RigidBody, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, angle_weapon_to_mouse, area::{AreaContext, AreaId}, body_part::BodyPart, bullet_trail::BulletTrail, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, mouse_world_pos, base_prop::{BaseProp, PropId, PropUpdateOwner}, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
+use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, angle_weapon_to_mouse, area::{AreaContext, AreaId}, base_prop::{BaseProp, PropId, PropUpdateOwner}, body_part::BodyPart, bullet_trail::BulletTrail, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, items::{Item, item_save::ItemSave}, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy, Hash, Eq)]
 pub struct PlayerId {
@@ -28,10 +28,10 @@ pub enum Facing {
     Left
 }
 
-#[derive(Debug)]
+
 pub struct ItemSlot {
     pub quantity: u32,
-    pub item: Item
+    pub item: Box<dyn Item>
 }
 
 impl ItemSlot {
@@ -46,15 +46,15 @@ impl ItemSlot {
 
         ItemSlot {
             quantity: save.quantity,
-            item: Item::from_save(save.item, space, textures),
+            item: save.item.load(),
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ItemSlotSave {
     quantity: u32,
-    item: ItemSave
+    item: Box<dyn ItemSave>
 }
 
 pub struct Player {
@@ -92,20 +92,18 @@ impl Player {
         self.despawn = true;
     }
 
-    pub fn despawn_callback(&mut self, space: &mut Space) {
-        self.head.despawn(space);
-        self.body.despawn(space);
-        self.unequip_previous_weapon(space);
+    pub fn despawn_callback(&mut self, ctx: &mut TickContext, area_context: &mut AreaContext) {
+        self.head.despawn(area_context.space);
+        self.body.despawn(area_context.space);
+
+        
+
+        self.unequip_previous_weapon(ctx, area_context);
     }
 
-    pub fn unequip_held_item(&mut self, space: &mut Space) {
+    pub fn unequip_held_item(&mut self,ctx: &mut TickContext, area_context: &mut AreaContext, player_context: &mut PlayerContext) {
         if let Some(item_slot) = &mut self.inventory.items[self.selected_item] {
-            match &mut item_slot.item {
-                Item::Prop(_prop) => {},
-                Item::Weapon(weapon_type) => {
-                    weapon_type.unequip(space);
-                },
-            }
+            item_slot.item.unequip(ctx, area_context, player_context);
         }
     }
     pub fn dash(&mut self, space: &mut Space) {
@@ -135,25 +133,52 @@ impl Player {
 
     }
 
-    pub fn equip_selected_item(&mut self, space: &mut Space) {
+    pub fn equip_selected_item(&mut self, ctx: &mut TickContext, area_context: &mut AreaContext) {
 
         if self.previous_selected_item == self.selected_item {
             return;
         }
 
-        let item_slot = &mut self.inventory.items[self.selected_item];
+        let mut item_slot = take(&mut self.inventory.items[self.selected_item]);
 
+        let player_context = &mut PlayerContext {
+            id: &mut self.id,
+            health: &mut self.health,
+            head: &mut self.head,
+            body: &mut self.body,
+            max_speed: &mut self.max_speed,
+            owner: &mut self.owner,
+            previous_velocity: &mut self.previous_velocity,
+            head_joint_handle: &mut self.head_joint_handle,
+            facing: &mut self.facing,
+            cursor_pos_rapier: &mut self.cursor_pos_rapier,
+            previous_cursor_pos: &mut self.previous_cursor_pos,
+            selected_item: &mut self.selected_item,
+            inventory: &mut self.inventory,
+            junk: &mut self.junk,
+            last_changed_inventory_slot: &mut self.last_changed_inventory_slot,
+            previous_selected_item: &mut self.previous_selected_item,
+            last_dash: &mut self.last_dash,
+            previous_pos: &mut self.previous_pos,
+            last_position_update: &mut self.last_position_update,
+            last_autofire: &mut self.last_autofire,
+            flying: &mut self.flying,
+            despawn: &mut self.despawn,
+            move_right_toggle: &mut self.move_right_toggle,
+            move_left_toggle: &mut self.move_left_toggle,
+            current_camera_width: &mut self.current_camera_width,
+            desired_camera_width: &mut self.desired_camera_width,
+
+        };
         match item_slot {
-            Some(item_slot) => {
-                match &mut item_slot.item {
-                    Item::Weapon(weapon_type) => {
-                        weapon_type.equip(space, self.body.body_handle)
-                    },
-                    Item::Prop(_) => return
-                }
+            Some(ref mut item_slot) => {
+                item_slot.item.equip(ctx, area_context, player_context);
             },
             None => return,
         }
+
+        self.inventory.items[self.selected_item] = item_slot;
+
     }
 
     pub fn pickup_item(
@@ -193,14 +218,7 @@ impl Player {
                 }
             );
 
-            match ctx {
-                TickContext::Client(ctx) => {
-                    ctx.network_io.send_network_packet(packet);
-                },
-                TickContext::Server(ctx) => {
-                    ctx.network_io.send_all_clients(packet);
-                },
-            }
+            ctx.send_network_packet(packet);
         }
 
         'drop_item_loop: for dropped_item in picked_up_items {
@@ -209,7 +227,7 @@ impl Player {
                     Some(item_slot) => {
 
                         // matching item
-                        if item_slot.item == dropped_item.item {
+                        if item_slot.item.same(dropped_item.item.as_ref()) {
                             item_slot.quantity += 1;
 
                             let packet = NetworkPacket::ItemSlotQuantityUpdate(
@@ -221,14 +239,7 @@ impl Player {
                                 }
                             );
 
-                            match ctx {
-                                TickContext::Client(ctx) => {
-                                    ctx.network_io.send_network_packet(packet);
-                                },
-                                TickContext::Server(ctx) => {
-                                    ctx.network_io.send_all_clients(packet);
-                                },
-                            };
+                            ctx.send_network_packet(packet);
                         }
 
                         continue 'drop_item_loop;
@@ -255,14 +266,7 @@ impl Player {
                             }
                         );
 
-                        match ctx {
-                            TickContext::Client(ctx) => {
-                                ctx.network_io.send_network_packet(packet);
-                            },
-                            TickContext::Server(ctx) => {
-                                ctx.network_io.send_all_clients(packet);
-                            },
-                        };
+                        ctx.send_network_packet(packet);
 
                         continue 'drop_item_loop;
                     },
@@ -325,7 +329,7 @@ impl Player {
 
             match item {
                 Some(item_slot) => {
-                    item_slot.item.draw_preview(textures, 30., item_preview_pos, prefabs, Some(item_color), 0.);
+                    item_slot.item.draw_preview(textures, 30., item_preview_pos, Some(item_color), 0.);
 
                     if item_slot.quantity > 1 {
                         draw_text_ex(
@@ -568,11 +572,7 @@ impl Player {
         &mut self,
         ctx: &mut TickContext,
         area_context: &mut AreaContext
-    ) {
-
-        if !(is_mouse_button_released(macroquad::input::MouseButton::Left) || is_mouse_button_down(macroquad::input::MouseButton::Left))  {
-            return;
-        }
+    ) { 
 
         // take the item slot out of the inventory
         let item_slot = take(&mut self.inventory.items[self.selected_item]);
@@ -587,47 +587,43 @@ impl Player {
 
         let mut item_slot = item_slot.unwrap();
 
-        match &mut item_slot.item {
-            Item::Prop(_prop) => {
+        let player_context = PlayerContext {
+            id: &mut self.id,
+            health: &mut self.health,
+            head: &mut self.head,
+            body: &mut self.body,
+            max_speed: &mut self.max_speed,
+            owner: &mut self.owner,
+            previous_velocity: &mut self.previous_velocity,
+            head_joint_handle: &mut self.head_joint_handle,
+            facing: &mut self.facing,
+            cursor_pos_rapier: &mut self.cursor_pos_rapier,
+            previous_cursor_pos: &mut self.previous_cursor_pos,
+            selected_item: &mut self.selected_item,
+            inventory: &mut self.inventory,
+            junk: &mut self.junk,
+            last_changed_inventory_slot: &mut self.last_changed_inventory_slot,
+            previous_selected_item: &mut self.previous_selected_item,
+            last_dash: &mut self.last_dash,
+            previous_pos: &mut self.previous_pos,
+            last_position_update: &mut self.last_position_update,
+            last_autofire: &mut self.last_autofire,
+            flying: &mut self.flying,
+            despawn: &mut self.despawn,
+            move_right_toggle: &mut self.move_right_toggle,
+            move_left_toggle: &mut self.move_left_toggle,
+            current_camera_width: &mut self.current_camera_width,
+            desired_camera_width: &mut self.desired_camera_width,
 
-                //prop.use_item(&mut item_slot.quantity, ctx, space, props);
-
-            },
-            Item::Weapon(weapon_type) => {
-
-                let mut player_context = PlayerContext {
-                    id: &mut self.id,
-                    health: &mut self.health,
-                    head: &mut self.head,
-                    body: &mut self.body,
-                    max_speed: &mut self.max_speed,
-                    owner: &mut self.owner,
-                    previous_velocity: &mut self.previous_velocity,
-                    head_joint_handle: &mut self.head_joint_handle,
-                    facing: &mut self.facing,
-                    cursor_pos_rapier: &mut self.cursor_pos_rapier,
-                    previous_cursor_pos: &mut self.previous_cursor_pos,
-                    selected_item: &mut self.selected_item,
-                    inventory: &mut self.inventory,
-                    junk: &mut self.junk,
-                    last_changed_inventory_slot: &mut self.last_changed_inventory_slot,
-                    previous_selected_item: &mut self.previous_selected_item,
-                    last_dash: &mut self.last_dash,
-                    previous_pos: &mut self.previous_pos,
-                    last_position_update: &mut self.last_position_update,
-                    last_autofire: &mut self.last_autofire,
-                    flying: &mut self.flying,
-                    despawn: &mut self.despawn,
-                    move_right_toggle: &mut self.move_right_toggle,
-                    move_left_toggle: &mut self.move_left_toggle,
-                    current_camera_width: &mut self.current_camera_width,
-                    desired_camera_width: &mut self.desired_camera_width,
-
-                };
-
-                weapon_type.fire(ctx, area_context, &mut player_context.into());
-            }
         };
+
+        if is_mouse_button_released(macroquad::input::MouseButton::Left) {
+            item_slot.item.use_released(ctx, area_context, &mut player_context.into());
+        } else {
+            if is_mouse_button_down(macroquad::input::MouseButton::Left) {
+                item_slot.item.use_hold(ctx, area_context, &mut player_context.into());
+            }
+        }
 
         match item_slot.quantity == 0 {
             true => {
@@ -791,17 +787,52 @@ impl Player {
     }
 
 
-    pub fn unequip_previous_weapon(&mut self, space: &mut Space) {
+    pub fn unequip_previous_weapon(&mut self, ctx: &mut TickContext, area_context: &mut AreaContext) {
         if self.selected_item != self.previous_selected_item {
-            match &mut self.inventory.items[self.previous_selected_item] {
-                Some(item_slot) => {
-                    match &mut item_slot.item {
-                        Item::Prop(_prop) => {},
-                        Item::Weapon(weapon_type) => weapon_type.unequip(space),
-                    }
+
+            
+            // temporarily remove the item so we arent taking a borrow on inventory
+            let mut item_slot = take(&mut self.inventory.items[self.previous_selected_item]);
+            
+            match item_slot {
+                Some(ref mut item_slot) => {
+
+                    let player_context = &mut PlayerContext {
+                        id: &mut self.id,
+                        health: &mut self.health,
+                        head: &mut self.head,
+                        body: &mut self.body,
+                        max_speed: &mut self.max_speed,
+                        owner: &mut self.owner,
+                        previous_velocity: &mut self.previous_velocity,
+                        head_joint_handle: &mut self.head_joint_handle,
+                        facing: &mut self.facing,
+                        cursor_pos_rapier: &mut self.cursor_pos_rapier,
+                        previous_cursor_pos: &mut self.previous_cursor_pos,
+                        selected_item: &mut self.selected_item,
+                        inventory: &mut self.inventory,
+                        junk: &mut self.junk,
+                        last_changed_inventory_slot: &mut self.last_changed_inventory_slot,
+                        previous_selected_item: &mut self.previous_selected_item,
+                        last_dash: &mut self.last_dash,
+                        previous_pos: &mut self.previous_pos,
+                        last_position_update: &mut self.last_position_update,
+                        last_autofire: &mut self.last_autofire,
+                        flying: &mut self.flying,
+                        despawn: &mut self.despawn,
+                        move_right_toggle: &mut self.move_right_toggle,
+                        move_left_toggle: &mut self.move_left_toggle,
+                        current_camera_width: &mut self.current_camera_width,
+                        desired_camera_width: &mut self.desired_camera_width,
+
+                    };
+
+                    item_slot.item.unequip(ctx, area_context, player_context);
                 },
                 None => {},
             }
+
+            self.inventory.items[self.previous_selected_item] = item_slot;
         }
     }
 
@@ -826,8 +857,8 @@ impl Player {
             );
         }
 
-        self.unequip_previous_weapon(area_context.space);
-        self.equip_selected_item(area_context.space);
+        self.unequip_previous_weapon(ctx, area_context);
+        self.equip_selected_item(ctx, area_context);
 
         self.previous_selected_item = self.selected_item;
         self.previous_velocity = current_velocity;
@@ -914,10 +945,7 @@ impl Player {
     pub async fn draw_selected_item(&self, space: &Space, textures: &ClientTextureLoader) {
         match &self.inventory.items[self.selected_item] {
             Some(item_slot) => {
-                match &item_slot.item {
-                    Item::Prop(_prop) => todo!(),
-                    Item::Weapon(weapon_type) => weapon_type.draw(space, textures, self.facing).await,
-                }
+                item_slot.item.draw_active(textures);
             },
             None => {},
         }
@@ -960,11 +988,12 @@ impl Player {
     pub fn angle_weapon_to_mouse(&mut self, space: &mut Space) {
 
         match &mut self.inventory.items[self.selected_item] {
-            Some(item_slot) => match &mut item_slot.item {
-                Item::Prop(_prop) => {return;},
-                Item::Weapon(weapon_type) => {
-                    angle_weapon_to_mouse(space, Some(weapon_type), self.body.body_handle, self.cursor_pos_rapier, self.facing);
-                },
+            Some(item_slot) =>  {
+
+                if let Some(weapon) = item_slot.item.as_weapon_mut() {
+                    angle_weapon_to_mouse(space, weapon, self.body.body_handle, self.cursor_pos_rapier, self.facing);
+                }
+    
             },
             None => {},
         }
@@ -1003,10 +1032,10 @@ impl Player {
         &mut self.inventory.items[self.selected_item]
     }
 
-    pub fn get_selected_item_mut(&mut self) -> Option<&mut Item> {
+    pub fn get_selected_item_mut(&mut self) -> Option<&mut dyn Item> {
         match &mut self.inventory.items[self.selected_item] {
             Some(item_slot) => {
-                Some(&mut item_slot.item)
+                Some(item_slot.item.as_mut())
             },
             None => None,
         }
@@ -1031,14 +1060,7 @@ impl Player {
                 }
             );
 
-            match ctx {
-                TickContext::Client(ctx) => {
-                    ctx.network_io.send_network_packet(packet);
-                },
-                TickContext::Server(ctx) => {
-                    ctx.network_io.send_all_clients(packet);
-                },
-            }
+            ctx.send_network_packet(packet);
 
             self.last_position_update = web_time::Instant::now();
         }
@@ -1064,14 +1086,7 @@ impl Player {
                 }
             );
 
-            match ctx {
-                TickContext::Client(ctx) => {
-                    ctx.network_io.send_network_packet(packet);
-                },
-                TickContext::Server(ctx) => {
-                    ctx.network_io.send_all_clients(packet);
-                },
-            }
+            ctx.send_network_packet(packet);
         }
     }
 
@@ -1152,6 +1167,7 @@ impl Player {
                         Owner::Server => {
                             // already owned by the server, do nothing
                         },
+                        Owner::Editor => todo!(),
                     }
 
                     continue;
@@ -1251,30 +1267,30 @@ impl Player {
     }
 }
 
-#[async_trait::async_trait]
-impl Drawable for Player {
-    async fn draw(&mut self, draw_context: &DrawContext) {
+// #[async_trait::async_trait]
+// impl Drawable for Player {
+//     async fn draw(&mut self, draw_context: &DrawContext) {
 
-        let flip_x = match self.facing {
-            Facing::Right => false,
-            Facing::Left => true,
-        };
+//         let flip_x = match self.facing {
+//             Facing::Right => false,
+//             Facing::Left => true,
+//         };
 
-        self.body.draw(draw_context.textures, draw_context.space, flip_x).await;
-        self.head.draw(draw_context.textures, draw_context.space, flip_x).await;
+//         self.body.draw(draw_context.textures, draw_context.space, flip_x).await;
+//         self.head.draw(draw_context.textures, draw_context.space, flip_x).await;
 
-        self.draw_selected_item(draw_context.space, draw_context.textures).await;
-        self.draw_inventory(draw_context.textures, draw_context.space, draw_context.prefabs, draw_context.fonts);
+//         self.draw_selected_item(draw_context.space, draw_context.textures).await;
+//         self.draw_inventory(draw_context.textures, draw_context.space, draw_context.prefabs, draw_context.fonts);
 
-        let pos = draw_context.space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation;
+//         let pos = draw_context.space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation;
 
-        draw_text(&format!("{:?}", pos), draw_context.camera_rect.x + 40., draw_context.camera_rect.y + 40., 20., WHITE);
-    }
+//         draw_text(&format!("{:?}", pos), draw_context.camera_rect.x + 40., draw_context.camera_rect.y + 40., 20., WHITE);
+//     }
 
-    fn draw_layer(&self) -> u32 {
-        1
-    }
-}
+//     fn draw_layer(&self) -> u32 {
+//         1
+//     }
+// }
 
 pub struct PlayerContext<'a> {
     pub id: &'a mut PlayerId,
@@ -1304,7 +1320,7 @@ pub struct PlayerContext<'a> {
     pub current_camera_width: &'a mut f32,
     pub desired_camera_width: &'a mut f32
 }
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, )]
 pub struct PlayerSave {
     pos: Pose2,
     owner: Owner,
@@ -1361,7 +1377,7 @@ pub struct ActiveItemSlotUpdate {
     pub active_item_slot: u32
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize,  Clone)]
 pub struct ItemSlotUpdate {
     pub area_id: AreaId,
     pub player_id: PlayerId,

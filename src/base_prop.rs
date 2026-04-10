@@ -713,14 +713,8 @@ impl BaseProp {
                 }
             );
 
-            match ctx {
-                TickContext::Client(ctx) => {
-                    ctx.network_io.send_network_packet(packet);
-                },
-                TickContext::Server(ctx) => {
-                    ctx.network_io.send_all_clients(packet);
-                },
-            }
+            ctx.send_network_packet(packet);
+            
 
             self.last_sent_position_update = web_time::Instant::now();
 

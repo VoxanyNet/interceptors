@@ -2,11 +2,11 @@ use std::path::PathBuf;
 
 use derive_more::From;
 use glamx::Pose2;
-use macroquad::{audio::{PlaySoundParams, play_sound}, color::Color, input::{is_mouse_button_down, is_mouse_button_released}, math::Vec2, rand::RandomRange};
+use macroquad::{audio::{PlaySoundParams, play_sound}, color::Color, input::{is_mouse_button_down, is_mouse_button_released}, math::Vec2, models::draw_mesh, rand::RandomRange};
 use rapier2d::{math::Vector, prelude::{ColliderHandle, ImpulseJointHandle, InteractionGroups, RevoluteJointBuilder, RigidBodyBuilder, RigidBodyHandle}};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientId, ClientTickContext, Owner, SwapIter, TickContext, area::{self, AreaContext, AreaId}, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, enemy::EnemyId, get_intersections, get_preview_resolution, player::{Facing, PlayerContext, PlayerId}, base_prop::StupidDissolvedPixelVelocityUpdate, space::Space, texture_loader::ClientTextureLoader, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon_save::WeaponSave, weapon_fire_context::WeaponFireContext, weapon_type::ShooterContext}};
+use crate::{ClientId, ClientTickContext, Owner, SwapIter, TickContext, area::{self, AreaContext, AreaId}, base_prop::StupidDissolvedPixelVelocityUpdate, bullet_trail::{BulletTrail, SpawnBulletTrail}, collider_from_texture_size, draw_preview, draw_texture_onto_physics_body, drawable::{DrawContext, Drawable}, enemy::EnemyId, get_intersections, get_preview_resolution, items::{ConsumedStatus, Item, item_save::ItemSave}, player::{Facing, PlayerContext, PlayerId}, space::Space, texture_loader::ClientTextureLoader, weapons::{Weapon, ItemOwnerContext, bullet_impact_data::BulletImpactData, weapon::weapon_save::WeaponSave, weapon_fire_context::WeaponFireContext, weapon_type::ShooterContext}};
 
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize, From)]
@@ -47,7 +47,8 @@ pub struct BaseWeapon {
     pub fire_cooldown: web_time::Duration,
     pub hold_fire_begin_sound_path: Option<PathBuf>, // worst variable name awards
     pub hold_fire_end_sound_path: Option<PathBuf>,
-    holding_fire: bool
+    holding_fire: bool,
+    facing: Facing
 }
 
 impl BaseWeapon {
@@ -64,150 +65,7 @@ impl BaseWeapon {
         }
     }
 
-    pub fn equip(&mut self, space: &mut Space, player_rigid_body_handle: RigidBodyHandle) {
 
-        if self.rigid_body.is_some() {
-            panic!()
-        }
-
-        let rigid_body = space.rigid_body_set.insert(
-            RigidBodyBuilder::dynamic()
-                .ccd_enabled(true)
-                .pose(
-                    Pose2::new(
-                        glamx::vec2(0., 0.),
-                        0.
-                    )
-                )
-                .build()
-        ); 
-
-
-        let collider = space.collider_set.insert_with_parent(
-            collider_from_texture_size(self.texture_size * self.scale)
-                .mass(self.mass)
-                .build(), 
-            rigid_body, 
-            &mut space.rigid_body_set
-        );
-        space.collider_set.get_mut(collider).unwrap().set_collision_groups(InteractionGroups::none());
-
-        // joint the shotgun to the player
-        self.player_joint_handle = Some(space.impulse_joint_set.insert(
-            player_rigid_body_handle,
-            rigid_body,
-            RevoluteJointBuilder::new()
-                .local_anchor1(glamx::vec2(0., 0.))
-                .local_anchor2(glamx::vec2(30., 0.))
-                .limits([-0.8, 0.8])
-                .contacts_enabled(false)
-            .build(),
-            true
-        ));
-
-        self.rigid_body = Some(rigid_body);
-        self.collider = Some(collider);
-
-    }
-
-    pub fn unequip(&mut self, space: &mut Space) {
-
-        if self.rigid_body.is_none() {
-            panic!()
-        }
-
-        space.rigid_body_set.remove(
-            self.rigid_body.unwrap(), 
-            &mut space.island_manager, 
-            &mut space.collider_set, 
-            &mut space.impulse_joint_set, 
-            &mut space.multibody_joint_set, 
-            true
-        );
-
-        self.rigid_body = None;
-        self.collider = None;
-        self.player_joint_handle = None;
-
-
-        //println!("unequuop");
-
-    }
-
-    
-    pub fn draw_preview(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32) {
-        draw_preview(textures, size, draw_pos, color, rotation, &self.sprite);
-    }
-
-    pub fn get_preview_resolution(&self, size: f32, textures: &ClientTextureLoader) -> Vec2 {
-        get_preview_resolution(size, textures, &self.sprite)
-    }
-
-    pub fn from_save(
-        save: WeaponSave, 
-        _space: &mut Space, 
-        player_rigid_body_handle: Option<RigidBodyHandle>
-    ) -> Self {
-
-        Self::new(
-            save.owner, 
-            player_rigid_body_handle, 
-            save.sprite, 
-            save.scale, 
-            None, 
-            Some(save.mass), 
-            save.fire_sound_path, 
-            save.x_screen_shake_frequency, 
-            save.x_screen_shake_intensity, 
-            save.y_screen_shake_frequency, 
-            save.y_screen_shake_intensity, 
-            save.shell_sprite, 
-            save.texture_size, 
-            Facing::Right, // this parameter doesnt do anything in new()
-            web_time::Duration::from_secs_f32(save.reload_duration), 
-            save.rounds, 
-            save.capacity, 
-            save.reserve_capacity,
-            save.base_damage,
-            save.knockback,
-            save.fire_cooldown,
-            save.hold_fire_begin_sound_path,
-            save.hold_fire_end_sound_path
-        )
-    }
-
-    pub fn save(&self, space: &Space) -> WeaponSave {
-
-        let _position = match self.rigid_body {
-            Some(rigid_body) => {
-                Some(space.rigid_body_set.get(rigid_body).unwrap().position().clone())
-            },
-            None => None,
-        };
-
-        WeaponSave {
-            mass: self.mass,
-            texture_size: self.texture_size,
-            sprite: self.sprite.clone(),
-            owner: self.owner.clone(),
-            scale: self.scale,
-            fire_sound_path: self.fire_sound_path.clone(),
-            x_screen_shake_frequency: self.x_screen_shake_frequency,
-            x_screen_shake_intensity: self.x_screen_shake_intensity,
-            y_screen_shake_frequency: self.y_screen_shake_frequency,
-            y_screen_shake_intensity: self.y_screen_shake_intensity,
-            shell_sprite: self.shell_sprite.clone(),
-            rounds: self.rounds,
-            capacity: self.capacity,
-            reserve_capacity: self.reserve_capacity,
-            reload_duration: self.reload_duration.as_secs_f32(),
-            base_damage: self.base_damage,
-            knockback: self.knockback,
-            fire_cooldown: self.fire_cooldown,
-            hold_fire_begin_sound_path: self.hold_fire_begin_sound_path.clone(),
-            hold_fire_end_sound_path: self.hold_fire_end_sound_path.clone()
-        }
-    }
     pub fn new(
         owner: WeaponOwner, 
         player_rigid_body_handle: Option<RigidBodyHandle>,
@@ -222,7 +80,7 @@ impl BaseWeapon {
         y_screen_shake_intensity: f64,
         shell_sprite_path: Option<String>,
         texture_size: Vec2,
-        _facing: Facing,
+        facing: Facing,
         reload_duration: web_time::Duration,
         rounds: u32,
         capacity: u32,
@@ -273,42 +131,14 @@ impl BaseWeapon {
             fire_cooldown,
             hold_fire_begin_sound_path,
             hold_fire_end_sound_path,
-            holding_fire: false
+            holding_fire: false,
+            facing
+
             
         }
     }
 
-    pub async fn draw(&self, space: &Space, textures: &ClientTextureLoader, facing: Facing) {
-
-        // dont draw if unequipped
-        let rigid_body = match self.rigid_body {
-            Some(rigid_body) => rigid_body,
-            None => return ,
-        };
-
-        let collider = match self.collider {
-            Some(collider) => collider,
-            None => return ,
-        };
-
-        let flip_x = match facing {
-            Facing::Right => false,
-            Facing::Left => true,
-        };
-
-        draw_texture_onto_physics_body(
-            rigid_body, 
-            collider, 
-            space, 
-            &self.sprite, 
-            textures, 
-            flip_x, 
-            false, 
-            0.,
-        ).await;
-
-        
-    }
+    
 
     pub fn handle_entity_impacts(
         &mut self, 
@@ -382,7 +212,7 @@ impl BaseWeapon {
         &mut self, 
         ctx: &mut TickContext,
         area_context: &mut AreaContext,
-        shooter_context: &mut ShooterContext,
+        weapon_owner_context: &mut ItemOwnerContext,
         bullet_vectors: Vec<glamx::Vec2>,
     ) -> Vec<BulletImpactData> {
         let mut impacts = Vec::new();
@@ -393,7 +223,7 @@ impl BaseWeapon {
             self.create_bullet_trail(
                 ctx, 
                 area_context,
-                shooter_context,
+                weapon_owner_context,
                 bullet_vector.clone(), 
             );
         };
@@ -470,13 +300,11 @@ impl BaseWeapon {
         }
     }
     
-    pub fn fire(
+    fn fire_internal(
         &mut self, 
         ctx: &mut TickContext, 
         area_context: &mut AreaContext,
-        shooter_context: &mut ShooterContext,
-        innaccuracy_factor: Option<f32>,
-        bullet_count: Option<u32>
+        weapon_owner_context: &mut ItemOwnerContext,
         
     ) {
 
@@ -493,8 +321,8 @@ impl BaseWeapon {
             return
         }
 
-        let innaccuracy_factor = innaccuracy_factor.unwrap_or(0.);
-        let bullet_count = bullet_count.unwrap_or(1);
+        let innaccuracy_factor = 0.;
+        let bullet_count = 1;
         self.reload_on_zero_bullets(ctx);
 
         if self.rounds == 0 {return;}
@@ -508,9 +336,9 @@ impl BaseWeapon {
         };
         self.last_fire = web_time::Instant::now();
         
-        let facing = match shooter_context {
-            ShooterContext::PlayerContext(player_context) => *player_context.facing,
-            ShooterContext::EnemyContext(enemy_context) => *enemy_context.facing
+        let facing = match weapon_owner_context {
+            ItemOwnerContext::Player(player_context) => *player_context.facing,
+            ItemOwnerContext::Enemy(enemy_context) => *enemy_context.facing
         };
         let bullet_vectors = self.get_bullet_vectors(
             bullet_count, 
@@ -523,7 +351,7 @@ impl BaseWeapon {
         let bullet_impacts = self.get_bullet_impacts(
             ctx, 
             area_context, 
-            shooter_context,
+            weapon_owner_context,
             bullet_vectors
         );
         
@@ -538,16 +366,16 @@ impl BaseWeapon {
         &mut self, 
         ctx: &mut TickContext, 
         area_context: &mut AreaContext,
-        shooter_context: &mut ShooterContext,
+        weapon_owner_context: &mut ItemOwnerContext,
         bullet_vector: glamx::Vec2, 
         
     ) {
 
         let weapon_pos = area_context.space.rigid_body_set.get(self.rigid_body.unwrap()).unwrap().position();
 
-        let owner = match shooter_context {
-            ShooterContext::PlayerContext(player_context) => &player_context.owner,
-            ShooterContext::EnemyContext(enemy_context) => &enemy_context.owner,
+        let owner = match weapon_owner_context {
+            ItemOwnerContext::Player(player_context) => &player_context.owner,
+            ItemOwnerContext::Enemy(enemy_context) => &enemy_context.owner,
         };
 
         let bullet_trail = BulletTrail::new(
@@ -569,14 +397,7 @@ impl BaseWeapon {
                 save: bullet_trail.save()
             }
         );
-        match ctx {
-            TickContext::Client(ctx) => {
-                ctx.network_io.send_network_packet(packet);
-            },
-            TickContext::Server(ctx) => {
-                ctx.network_io.send_all_clients(packet);
-            },
-        }
+        ctx.send_network_packet(packet);
 
         area_context.bullet_trails.push(
             bullet_trail
@@ -778,6 +599,233 @@ impl BaseWeapon {
         self.last_reload = web_time::Instant::now()
     }
 
+}
+
+impl Weapon for BaseWeapon {
+    fn collider_handle(&self) -> Option<ColliderHandle> {
+        self.collider
+    }
+
+    fn fire(&mut self, ctx: &mut TickContext, area_context: &mut AreaContext, weapon_owner_context: &mut crate::weapons::ItemOwnerContext) {
+        self.fire_internal(ctx, area_context, weapon_owner_context);
+    }
+
+    fn player_joint_handle(&self) -> Option<ImpulseJointHandle> {
+        self.player_joint_handle
+    }
+
+    fn rigid_body_handle(&self) -> Option<RigidBodyHandle> {
+        self.rigid_body
+    }
+}
+impl Item for BaseWeapon {
+
+    fn use_hold(&mut self, ctx: &mut TickContext, area_context: &mut AreaContext, weapon_owner_context: &mut ItemOwnerContext) -> crate::items::ConsumedStatus {
+        self.fire_internal(ctx, area_context, weapon_owner_context);
+
+        ConsumedStatus::NotConsumed
+
+    }
+
+    fn use_released(&mut self, ctx: &mut TickContext, area_context: &mut AreaContext, weapon_owner_context: &mut ItemOwnerContext) -> crate::items::ConsumedStatus {
+        self.fire_internal(ctx, area_context, weapon_owner_context);
+
+        ConsumedStatus::NotConsumed
+    }
+
+    fn as_weapon(&self) -> Option<&dyn crate::weapons::Weapon> {
+        Some(self)
+    }
+
+    fn same(&self, other: &dyn Item) -> bool {
+        if let Some(other_concrete) = other.downcast_ref::<BaseWeapon>() {
+            other_concrete == self
+        } else {
+            false
+        }
+    }
+    fn stackable(&self) -> bool {
+        false
+    }
+
+    fn save(&self, space: &Space) -> Box<dyn crate::items::item_save::ItemSave> {
+        Box::new(
+            WeaponSave {
+                mass: self.mass,
+                texture_size: self.texture_size,
+                sprite: self.sprite.clone(),
+                owner: self.owner.clone(),
+                scale: self.scale,
+                fire_sound_path: self.fire_sound_path.clone(),
+                x_screen_shake_frequency: self.x_screen_shake_frequency,
+                x_screen_shake_intensity: self.x_screen_shake_intensity,
+                y_screen_shake_frequency: self.y_screen_shake_frequency,
+                y_screen_shake_intensity: self.y_screen_shake_intensity,
+                shell_sprite: self.shell_sprite.clone(),
+                rounds: self.rounds,
+                capacity: self.capacity,
+                reserve_capacity: self.reserve_capacity,
+                reload_duration: self.reload_duration.as_secs_f32(),
+                base_damage: self.base_damage,
+                knockback: self.knockback,
+                fire_cooldown: self.fire_cooldown,
+                hold_fire_begin_sound_path: self.hold_fire_begin_sound_path.clone(),
+                hold_fire_end_sound_path: self.hold_fire_end_sound_path.clone()
+            }
+        )
+    }
+
+    fn draw_preview(
+        &self, 
+        textures: &ClientTextureLoader, 
+        size: f32,
+        draw_pos: Vec2,
+        color: Option<Color>,
+        rotation: f32
+    ) {
+        draw_preview(textures, size, draw_pos, color, rotation, &self.sprite);
+    }
+
+    fn get_preview_resolution(
+        &self,
+        textures: &ClientTextureLoader,
+        size: f32
+    ) -> Vec2 {
+        get_preview_resolution(size, textures, &self.sprite)
+    }
+
+    fn draw_active(&self, textures: &ClientTextureLoader) {
+        todo!()
+    }
+
+    fn name(&self) -> String {
+        "Unnamed weapon".to_string()
+    }
+
+    fn equip(
+        &mut self, 
+        ctx: &mut TickContext, 
+        area_context: &mut AreaContext, 
+        player_context: &mut PlayerContext
+    ) {
+        if self.rigid_body.is_some() {
+            panic!()
+        }
+
+        let rigid_body = area_context.space.rigid_body_set.insert(
+            RigidBodyBuilder::dynamic()
+                .ccd_enabled(true)
+                .pose(
+                    Pose2::new(
+                        glamx::vec2(0., 0.),
+                        0.
+                    )
+                )
+                .build()
+        ); 
+
+
+        let collider = area_context.space.collider_set.insert_with_parent(
+            collider_from_texture_size(self.texture_size * self.scale)
+                .mass(self.mass)
+                .build(), 
+            rigid_body, 
+            &mut area_context.space.rigid_body_set
+        );
+        area_context.space.collider_set.get_mut(collider).unwrap().set_collision_groups(InteractionGroups::none());
+
+        // joint the shotgun to the player
+        self.player_joint_handle = Some(area_context.space.impulse_joint_set.insert(
+            player_context.body.body_handle,
+            rigid_body,
+            RevoluteJointBuilder::new()
+                .local_anchor1(glamx::vec2(0., 0.))
+                .local_anchor2(glamx::vec2(30., 0.))
+                .limits([-0.8, 0.8])
+                .contacts_enabled(false)
+            .build(),
+            true
+        ));
+
+        self.rigid_body = Some(rigid_body);
+        self.collider = Some(collider);
+    }
+
+    fn unequip(
+        &mut self, 
+        ctx: &mut TickContext, 
+        area_context: &mut AreaContext, 
+        player_context: &mut PlayerContext
+    ) {
+        if self.rigid_body.is_none() {
+            panic!()
+        }
+
+        area_context.space.rigid_body_set.remove(
+            self.rigid_body.unwrap(), 
+            &mut area_context.space.island_manager, 
+            &mut area_context.space.collider_set, 
+            &mut area_context.space.impulse_joint_set, 
+            &mut area_context.space.multibody_joint_set, 
+            true
+        );
+
+        self.rigid_body = None;
+        self.collider = None;
+        self.player_joint_handle = None;
+    }
+
+    fn tick(
+        &mut self,
+        ctx: &mut TickContext, 
+        area_context: &mut AreaContext, 
+        player_context: &mut PlayerContext
+    ) {
+        // this is important!
+        // this is where the firing logic will come in
+        todo!()
+    }
+}
+
+#[async_trait::async_trait]
+impl Drawable for BaseWeapon {
+    async fn draw(&mut self, draw_context: &DrawContext) {
+
+        // dont draw if unequipped
+        let rigid_body = match self.rigid_body {
+            Some(rigid_body) => rigid_body,
+            None => return ,
+        };
+
+        let collider = match self.collider {
+            Some(collider) => collider,
+            None => return ,
+        };
+
+        let flip_x = match self.facing {
+            Facing::Right => false,
+            Facing::Left => true,
+        };
+
+        draw_texture_onto_physics_body(
+            rigid_body, 
+            collider, 
+            draw_context.space, 
+            &self.sprite, 
+            draw_context.textures, 
+            flip_x, 
+            false, 
+            0.,
+        ).await;
+
+        
+    }
+
+    fn draw_layer(&self) -> u32 {
+
+        
+        1
+    }
 }
 
 

@@ -9,6 +9,7 @@ pub struct WoodenBoxSave {
 
 impl WoodenBoxSave {
     pub fn load(&self, space: &mut Space, textures: TextureLoader) -> WoodenBox {
+        // NEED to update this so that it uses constants instead of using the full base prop save
         WoodenBox {
             base_prop: self.base_prop_save.load(space, textures),
         }

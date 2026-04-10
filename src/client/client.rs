@@ -1,7 +1,7 @@
 use std::{collections::HashMap, process::exit};
 
 use image::codecs::webp;
-use interceptors_lib::{Assets, ClientIO, ClientId, ClientTickContext, Owner, Prefabs, area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, material_loader::MaterialLoader, player::{ItemSlot, Player}, base_prop::BaseProp, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::ClientTextureLoader, updates::{NetworkPacket, Ping}, weapons::weapon_type::WeaponType, world::World};
+use interceptors_lib::{Assets, ClientIO, ClientId, ClientTickContext, Owner, Prefabs, area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, material_loader::MaterialLoader, player::{ItemSlot, Player}, base_prop::BaseProp, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::ClientTextureLoader, updates::{NetworkPacket, Ping}, world::World};
 use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, WHITE}, input::{KeyCode, is_key_released, show_mouse}, math::{Rect, vec2}, prelude::{Material, ShaderSource, gl_use_default_material, load_material}, text::draw_text, texture::{DrawTextureParams, RenderTarget, draw_texture_ex, render_target}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
 use rapier2d::{math::Vector, prelude::{ColliderBuilder, SharedShape}};
 
@@ -519,7 +519,7 @@ impl Client {
 
 
 
-                    enemy.weapon = Some(WeaponType::from_save(&mut area.space, update.weapon, Some(enemy.body.body_handle)));
+                    enemy.item = Some(update.item.load());
 
 
                 },

@@ -1,7 +1,7 @@
 use std::{fs::{self, read_to_string}, path::PathBuf, process::exit, time::Duration};
 
 use glamx::{Pose2, Vec2, vec2};
-use interceptors_lib::{ClientId, Prefabs, area::{Area, AreaSave}, clip::Clip, decoration::Decoration, drawable::{DrawContext, Drawable}, editor_context_menu::EditorContextMenu, font_loader::FontLoader, load_assets, macroquad_to_rapier, material_loader::MaterialLoader, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, texture_loader::ClientTextureLoader};
+use interceptors_lib::{ClientId, EditorTickContext, Prefabs, area::{Area, AreaSave}, clip::Clip, decoration::Decoration, drawable::{DrawContext, Drawable}, editor_context_menu::EditorContextMenu, font_loader::FontLoader, load_assets, macroquad_to_rapier, material_loader::MaterialLoader, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, texture_loader::ClientTextureLoader};
 use log::info;
 use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, RED, WHITE}, input::{KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel}, math::{Rect}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, time::draw_fps, window::{next_frame, screen_height, screen_width}};
 use rapier2d::{prelude::{ColliderBuilder, PointQuery, RigidBodyBuilder, RigidBodyVelocity}};
@@ -20,6 +20,8 @@ pub enum EditorMode {
     TilePlacement,
     Select
 }
+
+
 
 pub struct AreaEditor {
     area: Area,
@@ -48,7 +50,6 @@ pub struct AreaEditor {
     undo_checkpoints: Vec<AreaSave>,
     last_checkpoint_save: web_time::Instant,
     last_undo: web_time::Instant,
-    modifying: bool,
     last_area_save: AreaSave,
     current_area_path: PathBuf,
     material_loader: MaterialLoader,
@@ -363,7 +364,6 @@ impl AreaEditor {
             undo_checkpoints: vec![area_save.clone()],
             last_checkpoint_save: web_time::Instant::now() - Duration::from_secs(50),
             last_undo: web_time::Instant::now(),
-            modifying: false,
             last_area_save: area_save,
             current_area_path: PathBuf::from(area_path),
             material_loader: assets.material_loader
@@ -924,19 +924,6 @@ impl AreaEditor {
         }
     }
 
-    pub fn update_modifying_status(&mut self) {
-
-        let area_save = self.area.save();
-        if self.last_area_save != area_save {
-            self.modifying = true;
-        } else {
-            self.modifying = false;
-        }
-
-        self.last_area_save = area_save
-
-
-    }
     pub fn add_undo_checkpoint(&mut self) {
         let current_area_save = self.area.save();
 
@@ -949,14 +936,16 @@ impl AreaEditor {
 
 
 
-            if *last_checkpoint != current_area_save && self.modifying == false {
-                self.last_checkpoint_save = web_time::Instant::now();
+            // NEED TO IMPLEMENT PARTIALEQ FOR AREA SAVES!!!
 
-                self.undo_checkpoints.push(current_area_save);
+            // if *last_checkpoint != current_area_save && self.modifying == false {
+            //     self.last_checkpoint_save = web_time::Instant::now();
 
-                //println!("adding checkpoint: {}", self.undo_checkpoints.len());
+            //     self.undo_checkpoints.push(current_area_save);
 
-            }
+            //     //println!("adding checkpoint: {}", self.undo_checkpoints.len());
+
+            // }
         } else {
             // insert the first checkpoint
             self.undo_checkpoints.push(current_area_save);
@@ -1003,7 +992,11 @@ impl AreaEditor {
         self.update_camera();
         self.update_context_menus();
         self.update_active_layer_to_selected_object();
-        self.area.despawn_entities();
+
+        let editor_context = EditorTickContext {
+            e: &false
+        };
+        self.area.despawn_entities(&mut editor_context.into());
         self.create_clip();
 
         if is_key_down(KeyCode::LeftControl) {
@@ -1018,7 +1011,7 @@ impl AreaEditor {
         }
 
         self.update_last_mouse_pos();
-        self.update_modifying_status();
+
         self.undo();
         self.add_undo_checkpoint();
 

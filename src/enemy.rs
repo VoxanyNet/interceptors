@@ -5,7 +5,7 @@ use macroquad::{color::{BLACK, GREEN}, math::Vec2, shapes::{draw_rectangle, draw
 use rapier2d::{parry::query::Ray, prelude::{ColliderHandle, Group, ImpulseJointHandle, InteractionGroups, QueryFilter, RevoluteJointBuilder, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientTickContext, Owner, TickContext, angle_weapon_to_mouse, area::{self, AreaContext, AreaId}, base_prop::BaseProp, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, get_angle_between_rapier_points, player::{Facing, Player, PlayerId}, prop::Prop, rapier_to_macroquad, space::Space, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type::WeaponType, weapon_type_save::WeaponTypeSave}};
+use crate::{ClientTickContext, Owner, TickContext, angle_weapon_to_mouse, area::{self, AreaContext, AreaId}, base_prop::BaseProp, body_part::BodyPart, bullet_trail::BulletTrail, collider_groups::{BODY_PART_GROUP, DETACHED_BODY_PART_GROUP}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, get_angle_between_rapier_points, items::{Item, item_save::ItemSave}, player::{Facing, Player, PlayerId}, prop::Prop, rapier_to_macroquad, space::Space, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct EnemyId {
@@ -26,7 +26,7 @@ pub enum Task {
     AttackPlayer,
     ChasePlayer
 }
-#[derive(Debug, Clone)]
+
 pub struct Enemy {
     pub head: BodyPart,
     pub body: BodyPart,
@@ -38,7 +38,7 @@ pub struct Enemy {
     player_target: Option<PlayerId>,
     pub id: EnemyId,
     pub despawn: bool,
-    pub weapon: Option<WeaponType>,
+    pub item: Option<Box<dyn Item>>,
     pub task: Task,
     pub last_fired_weapon: web_time::Instant,
     pub last_task_change: web_time::Instant,
@@ -47,7 +47,8 @@ pub struct Enemy {
     pub last_position_update: web_time::Instant,
     pub last_velocity_update: web_time::Instant,
     pub last_health_update: web_time::Instant,
-    pub death_time: Option<web_time::Instant>
+    pub death_time: Option<web_time::Instant>,
+
 }
 
 impl Enemy {
@@ -133,10 +134,14 @@ impl Enemy {
                 continue
             }
 
-            if let Some(weapon) = &self.weapon {
-                if Some(collider_handle) == weapon.collider_handle() {
-                    continue;
+            if let Some(item) = &self.item {
+
+                if let Some(weapon) = item.as_weapon() {
+                    if weapon.collider_handle() == Some(collider_handle) {
+                        continue;
+                    }
                 }
+                
             }
 
             // if let Some(weapon) = &player.weapon {
@@ -178,26 +183,6 @@ impl Enemy {
         area_context: &mut AreaContext 
     ) {
 
-        if let Some(weapon) = &mut self.weapon {
-            match weapon {
-                WeaponType::Shotgun(_) => {
-                    if self.last_fired_weapon.elapsed().as_secs_f32() < 1. {
-                        return;
-                    }
-                },
-                WeaponType::LMG(_) => {
-                    if self.last_fired_weapon.elapsed().as_secs_f32() < 0.1 {
-                        return;
-                    }
-                },
-                WeaponType::SMG(_) => {
-
-                }
-            }
-        } else {
-            return;
-        };
-
     
         let blocking_colliders = self.get_colliders_between_enemy_and_target(
             area_context.space, 
@@ -205,7 +190,7 @@ impl Enemy {
         );
         
 
-        let _weapon = if let Some(weapon) = &mut self.weapon {
+        let _weapon = if let Some(weapon) = &mut self.item {
             weapon
         } else {
             return;
@@ -294,7 +279,7 @@ impl Enemy {
         position: glamx::Pose2, 
         owner: Owner, 
         space: &mut Space, 
-        weapon: Option<WeaponType>
+        weapon: Option<Box<dyn Item>>
     ) -> Self {
 
         let head = BodyPart::new(
@@ -341,7 +326,7 @@ impl Enemy {
             player_target: None,
             id: EnemyId::new(),
             despawn: false,
-            weapon,
+            item: weapon,
             task: Task::ChasePlayer,
             last_fired_weapon: web_time::Instant::now(),
             last_task_change: web_time::Instant::now(),
@@ -366,7 +351,7 @@ impl Enemy {
 
         if let Some(weapon_save) = save.weapon {
 
-            enemy.weapon = Some(WeaponType::from_save(space, weapon_save, Some(enemy.body.body_handle)));
+            enemy.item = Some(weapon_save.load());
 
         }
 
@@ -378,7 +363,7 @@ impl Enemy {
             pos: *space.rigid_body_set.get(self.body.body_handle).unwrap().position(),
             owner: self.owner,
             id: self.id,
-            weapon: match &self.weapon {
+            weapon: match &self.item {
                 Some(weapon) => Some(weapon.save(space)),
                 None => None,
             }
@@ -454,14 +439,7 @@ impl Enemy {
                     }
                 );
 
-                match ctx {
-                    TickContext::Client(ctx) => {
-                        ctx.network_io.send_network_packet(packet);
-                    },
-                    TickContext::Server(ctx) => {
-                        ctx.network_io.send_all_clients(packet);
-                    },
-                }
+                ctx.send_network_packet(packet);
                
             }
         }
@@ -485,14 +463,7 @@ impl Enemy {
                 }
             );
             
-            match ctx {
-                TickContext::Client(ctx) => {
-                    ctx.network_io.send_network_packet(packet);
-                },
-                TickContext::Server(ctx) => {
-                    ctx.network_io.send_all_clients(packet);
-                },
-            }
+            ctx.send_network_packet(packet);
             
         }
 
@@ -504,32 +475,35 @@ impl Enemy {
         area_context: &mut AreaContext 
     ) {
 
-        if let Some(weapon) = &mut self.weapon {
+        if let Some(item) = &mut self.item {
 
-            let enemy_context = EnemyContext {
-                head: &mut self.head,
-                body: &mut self.body,
-                health: &mut self.health,
-                facing: &mut self.facing,
-                owner: &mut self.owner,
-                head_body_joint: &mut self.head_body_joint,
-                last_jump: &mut self.last_jump,
-                player_target: &mut self.player_target,
-                id: &mut self.id,
-                despawn: &mut self.despawn,
-                weapon: &mut None, // this seems indicative of future problems
-                task: &mut self.task,
-                last_fired_weapon: &mut self.last_fired_weapon,
-                last_task_change: &mut self.last_task_change,
-                previous_velocity: &mut self.previous_velocity,
-                previous_position: &mut self.previous_position,
-                last_position_update: &mut self.last_position_update,
-                last_velocity_update: &mut self.last_velocity_update,
-                last_health_update: &mut self.last_health_update,
-                death_time: &mut self.death_time,
-            };
+            if let Some(weapon) = item.as_weapon_mut() {
+                let enemy_context = EnemyContext {
+                    head: &mut self.head,
+                    body: &mut self.body,
+                    health: &mut self.health,
+                    facing: &mut self.facing,
+                    owner: &mut self.owner,
+                    head_body_joint: &mut self.head_body_joint,
+                    last_jump: &mut self.last_jump,
+                    player_target: &mut self.player_target,
+                    id: &mut self.id,
+                    despawn: &mut self.despawn,
+                    weapon: &mut None, // this seems indicative of future problems
+                    task: &mut self.task,
+                    last_fired_weapon: &mut self.last_fired_weapon,
+                    last_task_change: &mut self.last_task_change,
+                    previous_velocity: &mut self.previous_velocity,
+                    previous_position: &mut self.previous_position,
+                    last_position_update: &mut self.last_position_update,
+                    last_velocity_update: &mut self.last_velocity_update,
+                    last_health_update: &mut self.last_health_update,
+                    death_time: &mut self.death_time,
+                };
 
-            weapon.fire(ctx, area_context, &mut enemy_context.into());
+                weapon.fire(ctx, area_context, &mut enemy_context.into());
+            }
+            
 
             self.last_fired_weapon = web_time::Instant::now();
         }
@@ -567,14 +541,7 @@ impl Enemy {
                 }
             );
 
-            match ctx {
-                TickContext::Client(ctx) => {
-                    ctx.network_io.send_network_packet(packet);
-                },
-                TickContext::Server(ctx) => {
-                    ctx.network_io.send_all_clients(packet);
-                },
-            }
+            ctx.send_network_packet(packet);
             
         }
 
@@ -632,15 +599,15 @@ impl Enemy {
     // }
 
 
-    pub fn set_weapon(&mut self, area_id: AreaId, ctx: &mut ClientTickContext, space: &mut Space, weapon: WeaponType) {
-        self.weapon = Some(weapon);
+    pub fn set_weapon(&mut self, area_id: AreaId, ctx: &mut ClientTickContext, space: &mut Space, weapon: Box<dyn Item>) {
+        self.item = Some(weapon);
 
         ctx.network_io.send_network_packet(
             NetworkPacket::EnemyWeaponUpdate(
-                EnemyWeaponUpdate {
+                EnemyItemUpdate {
                     area_id,
                     enemy_id: self.id,
-                    weapon: self.weapon.as_ref().unwrap().save(space),
+                    item: self.item.as_ref().unwrap().save(space),
                 }
             )
         );
@@ -658,8 +625,7 @@ impl Enemy {
     ) {
 
         let then = web_time::Instant::now();
-        let copy = self.clone();
-        *self = copy;
+        
         
         if self.despawn {
             return;
@@ -674,7 +640,7 @@ impl Enemy {
 
             self.target_player(area_context.players, area_context.space);
 
-            self.angle_weapon_to_mouse(area_context.space, area_context.players);
+            self.angle_weapon_to_enemy(area_context.space, area_context.players);
             self.change_facing_direction(area_context.space);
 
             self.angle_head_to_target(area_context.space, area_context.players);
@@ -809,7 +775,7 @@ impl Enemy {
 
     }
 
-    pub fn angle_weapon_to_mouse(&mut self, space: &mut Space, players: &Vec<Player>) {
+    pub fn angle_weapon_to_enemy(&mut self, space: &mut Space, players: &Vec<Player>) {
 
         if let Some(player_target) = self.player_target {
             let player = players.iter().find(|player|{player.id == player_target}).unwrap();
@@ -818,13 +784,18 @@ impl Enemy {
                 .position()
                 .translation;
 
-            angle_weapon_to_mouse(
-                space, 
-                self.weapon.as_mut(),
-                self.body.body_handle, 
-                player_pos, 
-                self.facing
-            );
+            if let Some(item) = &mut self.item {
+                if let Some(weapon) = item.as_weapon_mut() {
+                    angle_weapon_to_mouse(
+                        space, 
+                        weapon,
+                        self.body.body_handle, 
+                        player_pos, 
+                        self.facing
+                    );
+                }
+            } 
+            
         }
         
     }
@@ -884,33 +855,33 @@ impl Enemy {
 
 
 
-#[async_trait::async_trait]
-impl Drawable for Enemy {
-    async fn draw(&mut self, draw_context: &DrawContext) {
-        if self.despawn {
-            return;
-        }
+// #[async_trait::async_trait]
+// impl Drawable for Enemy {
+//     async fn draw(&mut self, draw_context: &DrawContext) {
+//         if self.despawn {
+//             return;
+//         }
 
-        let flip_x = match self.facing {
-            Facing::Right => false,
-            Facing::Left => true,
-        };
+//         let flip_x = match self.facing {
+//             Facing::Right => false,
+//             Facing::Left => true,
+//         };
 
-        self.body.draw(draw_context.textures, draw_context.space, flip_x).await;
+//         self.body.draw(draw_context.textures, draw_context.space, flip_x).await;
 
-        self.head.draw(draw_context.textures, draw_context.space, flip_x).await;
+//         self.head.draw(draw_context.textures, draw_context.space, flip_x).await;
 
-        if let Some(weapon) = &self.weapon {
-            weapon.draw(draw_context.space, draw_context.textures, self.facing).await
-        }
+//         // if let Some(weapon) = &self.item {
+//         //     weapon.draw(draw_context).await
+//         // }
 
-        self.draw_health_bar(draw_context.space);
-    }
+//         self.draw_health_bar(draw_context.space);
+//     }
 
-    fn draw_layer(&self) -> u32 {
-        3
-    }
-}
+//     fn draw_layer(&self) -> u32 {
+//         3
+//     }
+// }
 
 pub struct EnemyContext<'a> {
     pub head: &'a mut BodyPart,
@@ -923,7 +894,7 @@ pub struct EnemyContext<'a> {
     pub player_target: &'a mut Option<PlayerId>,
     pub id: &'a mut EnemyId,
     pub despawn: &'a mut bool,
-    pub weapon: &'a mut Option<WeaponType>,
+    pub weapon: &'a mut Option<Box<dyn Item>>,
     pub task: &'a mut Task,
     pub last_fired_weapon: &'a mut web_time::Instant,
     pub last_task_change: &'a mut web_time::Instant,
@@ -935,15 +906,15 @@ pub struct EnemyContext<'a> {
     pub death_time: &'a mut Option<web_time::Instant>
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct EnemySave {
     pos: Pose2,
     owner: Owner,
     id: EnemyId,
-    weapon: Option<WeaponTypeSave>
+    weapon: Option<Box<dyn ItemSave>>
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct NewEnemyUpdate {
     pub area_id: AreaId,
     pub enemy: EnemySave
@@ -963,11 +934,11 @@ pub struct EnemyPositionUpdate {
     pub position: Pose2
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct EnemyWeaponUpdate {
+#[derive(Serialize, Deserialize, Clone)]
+pub struct EnemyItemUpdate {
     pub area_id: AreaId,
     pub enemy_id: EnemyId,
-    pub weapon: WeaponTypeSave
+    pub item: Box<dyn ItemSave>
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
