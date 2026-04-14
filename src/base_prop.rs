@@ -8,7 +8,7 @@ use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{
 use rapier2d::prelude::{AxisMask, ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyType, RigidBodyVelocity, SharedShape, VoxelData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
-use crate::{ClientId, ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::{Area, AreaContext, AreaId}, base_prop_save::BasePropSave, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, prop::Prop, prop_type_save::PropTypeSave, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
+use crate::{ClientId, ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::{Area, AreaContext, AreaId}, base_prop_save::BasePropSave, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, prop::Prop, prop_save::PropSave, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
 
 
@@ -95,6 +95,20 @@ pub struct BaseProp {
 
 impl Prop for BaseProp {
 
+    fn set_name(&mut self, name: &str) {
+        self.name = name.into()
+    }
+
+    fn set_material(&mut self, new_material: Material) {
+        self.material = new_material
+    }
+
+    fn set_mass(&self, space: &mut Space, new_mass: f32) {
+        let collider = space.collider_set.get_mut(self.collider_handle).unwrap();
+
+        collider.set_mass(new_mass);
+    }
+
     fn update_menu(&mut self, space: &mut Space, camera_rect: &Rect, selected: bool, textures: &ClientTextureLoader) {
         <BaseProp as EditorContextMenu>::update_menu(self, space, camera_rect, selected, textures);
     }
@@ -139,7 +153,7 @@ impl Prop for BaseProp {
         self.inner_handle_bullet_impact(ctx, area_context, impact);
     }
 
-    fn save(&self, space: &Space) -> crate::prop_type_save::PropTypeSave {
+    fn save(&self, space: &Space) -> Box<dyn PropSave> {
         self.inner_save(space).into()
     }
     
@@ -1104,7 +1118,7 @@ impl BaseProp {
         }
     }
 
-    pub fn inner_save(&self, space: &Space) -> BasePropSave {
+    pub fn inner_save(&self, space: &Space) -> Box<dyn PropSave> {
 
         let body = space.rigid_body_set.get(self.rigid_body_handle).unwrap();
         let pos = body.position().clone();
@@ -1127,7 +1141,7 @@ impl BaseProp {
             None
         };
 
-        BasePropSave {
+        let save = BasePropSave {
             pos,
             mass,
             sprite_path: self.sprite_path.clone(),
@@ -1143,7 +1157,9 @@ impl BaseProp {
             lifespan: self.lifespan,
             sync_physics: self.sync_physics,
 
-        }
+        };
+
+        Box::new(save)
     }
 
     fn draw_mask(
@@ -1476,9 +1492,9 @@ pub struct PropUpdateOwner {
     pub area_id: AreaId
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct NewProp {
-    pub prop: PropTypeSave,
+    pub prop: Box<dyn PropSave>,
     pub area_id: AreaId
 }
 

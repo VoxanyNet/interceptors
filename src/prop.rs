@@ -4,7 +4,7 @@ use downcast_rs::{Downcast, impl_downcast};
 use macroquad::math::Rect;
 use rapier2d::prelude::{ColliderHandle, RigidBodyHandle};
 
-use crate::{Owner, TickContext, area::AreaContext, base_prop::PropId, drawable::Drawable, prop_type_save::PropTypeSave, space::Space, texture_loader::ClientTextureLoader, weapons::bullet_impact_data::BulletImpactData};
+use crate::{Owner, TickContext, area::AreaContext, base_prop::{Material, PropId}, drawable::Drawable, prop_save::PropSave, space::Space, texture_loader::ClientTextureLoader, weapons::bullet_impact_data::BulletImpactData};
 
 
 impl_downcast!(Prop);
@@ -23,7 +23,7 @@ pub trait Prop: Downcast + Drawable {
         area_context: &mut AreaContext,
         impact: &BulletImpactData,
     );
-    fn save(&self, space: &Space) -> PropTypeSave;
+    fn save(&self, space: &Space) -> Box<dyn PropSave>;
     fn last_ownership_change(&self) -> web_time::Instant;
     fn last_ownership_change_mut(&mut self) -> &mut web_time::Instant;
     fn owner(&self) -> Option<Owner>;
@@ -44,5 +44,7 @@ pub trait Prop: Downcast + Drawable {
     fn mark_despawn(&mut self);
     fn draw_editor_context_menu(&self); // maybe we should actually use the trait 
     fn update_menu(&mut self, space: &mut Space, camera_rect: &Rect, selected: bool, textures: &ClientTextureLoader);
-    
+    fn set_mass(&self, space: &mut Space, new_mass: f32);
+    fn set_material(&mut self, new_material: Material);
+    fn set_name(&mut self, name: &str);
 }

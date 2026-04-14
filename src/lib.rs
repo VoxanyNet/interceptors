@@ -53,7 +53,7 @@ pub mod prop_fragment;
 pub mod material_loader;
 pub mod props;
 pub mod prop;
-pub mod prop_type_save;
+pub mod prop_save;
 pub mod base_prop_save;
 pub mod items;
 

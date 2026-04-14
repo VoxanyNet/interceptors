@@ -3,10 +3,10 @@ use std::path::PathBuf;
 use glamx::{IVec2, Pose2};
 use image::GenericImageView;
 use macroquad::{color::BLACK};
-use rapier2d::prelude::{ColliderBuilder, RigidBodyBuilder, RigidBodyType, RigidBodyVelocity};
+use rapier2d::{na::base, prelude::{ColliderBuilder, RigidBodyBuilder, RigidBodyType, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 
-use crate::{Owner, TextureLoader, base_prop::{BaseProp, Material, PropId}, space::Space};
+use crate::{Owner, TextureLoader, base_prop::{BaseProp, Material, PropId}, prop::Prop, prop_save::PropSave, space::Space};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct BasePropSave {
@@ -38,8 +38,15 @@ pub struct BasePropSave {
     pub sync_physics: bool,
 }
 
+#[typetag::serde]
+impl PropSave for BasePropSave {
+    fn load(&self, space: &mut Space, textures:TextureLoader) -> Box<dyn Prop>  {
+        Box::new(self.inner_load(space, textures))
+    }
+
+}
 impl BasePropSave {
-    pub fn load(&self, space: &mut Space, textures: TextureLoader) -> BaseProp {
+    pub fn inner_load(&self, space: &mut Space, textures: TextureLoader) -> BaseProp {
         let body_builder = match self.rigid_body_type {
             RigidBodyType::Dynamic => RigidBodyBuilder::dynamic(),
             RigidBodyType::Fixed => RigidBodyBuilder::fixed(),
@@ -247,7 +254,7 @@ impl BasePropSave {
 
 
 
-        BaseProp {
+        let base_prop = BaseProp {
             last_received_position_update: web_time::Instant::now(),
             rigid_body_type: self.rigid_body_type,
             rigid_body_handle: body,
@@ -276,7 +283,9 @@ impl BasePropSave {
             last_sent_position_update: web_time::Instant::now()
 
 
-        }
+        };
+
+        base_prop
     }
 }
 

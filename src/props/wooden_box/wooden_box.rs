@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::{Owner, TickContext, area::AreaContext, base_prop::{self, BaseProp, PropId}, drawable::Drawable, prop::Prop, prop_type_save::PropTypeSave, space::Space, texture_loader::ClientTextureLoader, weapons::bullet_impact_data::BulletImpactData};
+use crate::{Owner, TickContext, area::AreaContext, base_prop::{self, BaseProp, Material, PropId}, drawable::Drawable, prop::Prop, prop_save::PropSave, space::Space, texture_loader::ClientTextureLoader, weapons::bullet_impact_data::BulletImpactData};
 use async_trait::async_trait;
 use delegate::delegate;
 use macroquad::math::Rect;
@@ -23,6 +23,8 @@ impl Drawable for WoodenBox {
 impl Prop for WoodenBox {
     delegate! {
         to self.base_prop {
+            fn set_name(&mut self, name: &str);
+            fn set_material(&mut self, new_material: Material);
             fn name(&self) -> String;
             fn rigid_body_handle(&self) -> RigidBodyHandle;
             fn collider_handle(&self) -> ColliderHandle;
@@ -35,7 +37,7 @@ impl Prop for WoodenBox {
             fn last_ownership_change_mut(&mut self) -> &mut web_time::Instant;
             fn owner(&self) -> Option<Owner>;
             fn owner_mut(&mut self) -> &mut Option<Owner>;
-            fn save(&self, space: &Space) -> PropTypeSave;
+            fn save(&self, space: &Space) -> Box<dyn PropSave>;
             fn handle_bullet_impact(
                 &mut self,
                 ctx: &mut TickContext,
@@ -51,6 +53,7 @@ impl Prop for WoodenBox {
             fn mark_despawn(&mut self);
             fn draw_editor_context_menu(&self);
             fn update_menu(&mut self, space: &mut Space, camera_rect: &Rect, selected: bool, textures: &ClientTextureLoader);
+            fn set_mass(&self, space: &mut Space, new_mass: f32);
         }
     }
 }

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{drawable::{DrawContext, Drawable}, items::{ConsumedStatus, Item, item_save::ItemSave}, prop::Prop, weapons::ItemOwnerContext};
+use crate::{drawable::{DrawContext, Drawable}, items::{ConsumedStatus, Item, item_save::ItemSave}, prop::Prop, props::wooden_box::wooden_box::WoodenBox, weapons::ItemOwnerContext};
 
 
 
@@ -10,13 +10,14 @@ pub enum PropItem {
     WoodenBox
 }
 
+
 impl Item for PropItem {
     fn stackable(&self) -> bool {
         true
     }
 
     fn save(&self, space: &crate::space::Space) -> Box<dyn crate::items::item_save::ItemSave> {
-        todo!()
+        Box::new(self.clone())
     }
 
     fn use_hold(&mut self, ctx: &mut crate::TickContext, area_context: &mut crate::area::AreaContext,  weapon_owner_context: &mut ItemOwnerContext) -> ConsumedStatus {
