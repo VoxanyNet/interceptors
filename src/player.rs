@@ -7,7 +7,7 @@ use macroquad::{camera::Camera2D, color::{BLACK, WHITE}, input::{KeyCode, is_key
 use rapier2d::{parry::query::Ray, prelude::{ImpulseJointHandle, QueryFilter, RevoluteJointBuilder, RigidBody, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, angle_weapon_to_mouse, area::{AreaContext, AreaId}, base_prop::{BaseProp, PropId, PropUpdateOwner}, body_part::BodyPart, bullet_trail::BulletTrail, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, items::{Item, item_save::ItemSave}, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
+use crate::{ClientTickContext, DrawCommand, DrawRectangleParameters, DrawTextParameters, Owner, Prefabs, TextureLoader, TickContext, angle_weapon_to_mouse, area::{AreaContext, AreaId}, base_prop::{BaseProp, PropId, PropUpdateOwner}, body_part::BodyPart, bullet_trail::BulletTrail, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, items::{Item, item_save::ItemSave}, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy, Hash, Eq)]
 pub struct PlayerId {
@@ -281,7 +281,7 @@ impl Player {
 
     }
 
-    pub fn draw_inventory(&self, textures: &ClientTextureLoader, space: &Space, prefabs: &Prefabs, fonts: &FontLoader) {
+    pub fn draw_inventory(&self, ctx: &mut TickContext, space: &Space) {
 
         let pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation;
 
@@ -313,12 +313,23 @@ impl Player {
                 y: mpos.y - 80.
             };
 
-            draw_rectangle(
-                slot_pos.x,
-                slot_pos.y,
-                40.,
-                40.,
-                slot_color
+            ctx.add_draw_command(
+                1, 
+                DrawCommand::DrawRectangle(
+                    DrawRectangleParameters {
+                        position: macroquad::math::Vec2 {
+                            x: slot_pos.x,
+                            y: slot_pos.y,
+                        },
+                        size: macroquad::math::Vec2 {
+                            x: 40.,
+                            y: 40.,
+                        },
+                        offset: None,
+                        rotation: None,
+                        color: None,
+                    }
+                )
             );
 
             // slightly offset the item to be more centered
@@ -329,20 +340,27 @@ impl Player {
 
             match item {
                 Some(item_slot) => {
-                    item_slot.item.draw_preview(textures, 30., item_preview_pos, Some(item_color), 0.);
+                    item_slot.item.draw_preview(ctx, 30., item_preview_pos, Some(item_color), 0.);
 
                     if item_slot.quantity > 1 {
-                        draw_text_ex(
-                            &item_slot.quantity.to_string(),
-                            item_preview_pos.x,
-                            item_preview_pos.y + 24.,
-                            TextParams {
-                                font: Some(&fonts.get(PathBuf::from("assets/fonts/CutePixel.ttf"))),
-                                font_size: 24,
-                                color: WHITE,
-                                ..Default::default()
-                            }
+
+                        ctx.add_draw_command(
+                            1,
+                            DrawCommand::DrawText(
+                                DrawTextParameters {
+                                    text: item_slot.quantity.to_string().clone(),
+                                    position: macroquad::math::Vec2 {
+                                        x: item_preview_pos.x,
+                                        y: item_preview_pos.y + 24.,
+                                    },
+                                    font_size: Some(24),
+                                    color: Some(WHITE),
+                                    font: Some(PathBuf::from("assets/fonts/CutePixel.ttf")),
+                                    rotation: None,
+                                }
+                            )
                         );
+          
                     }
                 },
                 None => {
@@ -942,10 +960,10 @@ impl Player {
     }
 
 
-    pub async fn draw_selected_item(&self, space: &Space, textures: &ClientTextureLoader) {
+    pub fn draw_selected_item(&self, ctx: &mut TickContext, space: &Space) {
         match &self.inventory.items[self.selected_item] {
             Some(item_slot) => {
-                item_slot.item.draw_active(textures);
+                item_slot.item.draw_active(ctx, space);
             },
             None => {},
         }
@@ -1112,7 +1130,7 @@ impl Player {
             
             let then = web_time::Instant::now();
             let distance = prop_shape.distance_to_point(prop_pose, our_player_translation, true).abs();
-            log::debug!("{:?}", then.elapsed());
+          
             //let distance = (prop_body.translation() - our_player_body.translation()).length();
 
             distances.insert(prop.id(), (self.id, distance));
@@ -1264,6 +1282,25 @@ impl Player {
             owner: self.owner.clone(),
             items
         }
+    }
+
+    pub fn draw(&mut self, ctx: &mut TickContext, space: &Space) {
+
+        let flip_x = match self.facing {
+            Facing::Right => false,
+            Facing::Left => true,
+        };
+
+        self.body.draw(ctx, space, flip_x);
+        self.head.draw(ctx, space, flip_x);
+
+        self.draw_selected_item(ctx, space);
+        self.draw_inventory(ctx, space);
+
+        let pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation;
+
+       // draw_text(&format!("{:?}", pos), draw_context.camera_rect.x + 40., draw_context.camera_rect.y + 40., 20., WHITE);
+ 
     }
 }
 

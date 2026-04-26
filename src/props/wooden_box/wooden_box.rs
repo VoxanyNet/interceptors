@@ -9,20 +9,13 @@ use rapier2d::prelude::{ColliderHandle, RigidBodyHandle};
 pub struct WoodenBox {
     pub base_prop: BaseProp
 }
-#[async_trait]
-impl Drawable for WoodenBox {
-    async fn draw(&mut self, draw_context: &crate::drawable::DrawContext) {
-        self.base_prop.draw(draw_context).await
-    }
 
-    fn draw_layer(&self) -> u32 {
-        self.base_prop.layer
-    }
-}
 
 impl Prop for WoodenBox {
     delegate! {
         to self.base_prop {
+            fn layer(&self) -> u32;
+            fn draw(&mut self, ctx: &mut TickContext, space: &mut Space);
             fn set_name(&mut self, name: &str);
             fn set_material(&mut self, new_material: Material);
             fn name(&self) -> String;

@@ -23,7 +23,7 @@ pub struct BasePropSave {
     pub material: Material,
     #[serde(default = "default_prop_name")]
     pub name: String,
-    #[serde(default)]
+    #[serde(default="default_layer")]
     pub layer: u32,
     // only provide voxels if they have been modified from what the image would generate
     #[serde(default)]
@@ -302,4 +302,8 @@ fn default_body_type() -> RigidBodyType {
 
 fn default_prop_name() -> String {
     "Unnamed Prop".to_string()
+}
+
+fn default_layer() -> u32 {
+    1
 }

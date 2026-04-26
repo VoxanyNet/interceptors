@@ -1,7 +1,7 @@
 use std::{fs::read_to_string, path::PathBuf, str::FromStr};
 
 use glamx::Pose2;
-use interceptors_lib::{area::Area, background::{Background, BackgroundSave}, base_prop::BaseProp, base_prop_save::BasePropSave, button::Button, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}};
+use interceptors_lib::{EditorTickContext, TickContext, area::Area, background::{Background, BackgroundSave}, base_prop::BaseProp, base_prop_save::BasePropSave, button::Button, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, prop::Prop, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}};
 use macroquad::{color::{GREEN, LIGHTGRAY, WHITE}, input::{MouseButton, is_mouse_button_released, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle_lines, text::draw_text};
 use strum::IntoEnumIterator;
 
@@ -252,12 +252,9 @@ impl Spawner {
         }
     }
 
-    pub async fn draw_preview_spawn(
+    pub fn draw_preview_spawn(
         &mut self, 
-        draw_context: &DrawContext<'_>, 
-        cursor: macroquad::math::Vec2, 
-        rapier_cursor: glamx::Vec2,
-        textures: &ClientTextureLoader
+        ctx: &mut TickContext, 
     ) {
 
         
@@ -267,37 +264,25 @@ impl Spawner {
             SpawnerCategory::Decoration => {
                 let decoration_save: DecorationSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
                 let mut decoration: Decoration = Decoration::from_save(decoration_save);
-                decoration.pos = cursor;
-                decoration.draw(&draw_context).await  
+                decoration.pos = ctx.cursor();
+                decoration.draw(ctx)  
             },
             SpawnerCategory::Background => {
                 let background_save: BackgroundSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
                 let mut background = Background::from_save(background_save);
-                background.pos = cursor;
-                background.draw(&draw_context).await
+                background.pos = ctx.cursor();
+                background.draw(ctx);
             },
 
             SpawnerCategory::Prop => {
-                let generic_physics_prop_save: BasePropSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
-                let mut generic_physics_prop = BaseProp::from_save(generic_physics_prop_save.clone(), &mut self.preview_space, textures.into());
-                generic_physics_prop.set_pos(Pose2::new(glamx::vec2(rapier_cursor.x, rapier_cursor.y), 0.), &mut self.preview_space);
-                
-                // need to swap the draw context's space for the spawner 'preview space'
-                let draw_context = DrawContext {
-                    space: &self.preview_space,
-                    textures: draw_context.textures,
-                    prefabs: draw_context.prefabs,
-                    fonts: draw_context.fonts,
-                    camera_rect: draw_context.camera_rect,
-                    tiles: draw_context.tiles,
-                    elapsed_time: draw_context.elapsed_time,
-                    default_camera: draw_context.default_camera,
-                    editor: true,
-                    materials: draw_context.materials,
-                    id: draw_context.id
-                };
 
-                generic_physics_prop.draw(&draw_context).await;
+        
+                let generic_physics_prop_save: BasePropSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
+                let mut generic_physics_prop = BaseProp::from_save(generic_physics_prop_save.clone(), &mut self.preview_space, ctx.textures().into());
+                generic_physics_prop.set_pos(Pose2::new(glamx::vec2(ctx.rapier_cursor().x, ctx.rapier_cursor().y), 0.), &mut self.preview_space);
+    
+
+                generic_physics_prop.draw(ctx, &mut self.preview_space);
                 // need to immedietly remove the rigid bodies from space because this is a temporary object
                 self.preview_space.rigid_body_set.remove(generic_physics_prop.rigid_body_handle, &mut self.preview_space.island_manager, &mut self.preview_space.collider_set,&mut self.preview_space.impulse_joint_set, &mut self.preview_space.multibody_joint_set, true);
                  
@@ -305,12 +290,14 @@ impl Spawner {
             SpawnerCategory::Tile => {
                 let tile_save: TileSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
 
-                let x_index = (rapier_cursor.x / 50.) as usize;
-                let y_index = ((rapier_cursor.y +25.) / 50.) as usize;
+                let x_index = (ctx.rapier_cursor().x / 50.) as usize;
+                let y_index = ((ctx.rapier_cursor().y +25.) / 50.) as usize;
 
                 let tile: Tile = Tile::from_save(tile_save);
 
-                tile.draw(draw_context.textures, (x_index * 50, y_index * 50));
+                todo!()
+
+                //tile.draw(ctx.textures().into(), (x_index * 50, y_index * 50));
             }
         }
     }

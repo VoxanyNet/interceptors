@@ -18,9 +18,9 @@ pub enum SelectableObject<'a> {
 impl<'a> SelectableObject<'a> {
     pub fn get_layer(&self) -> u32 {
         match self {
-            SelectableObject::Decoration(decoration) => decoration.draw_layer(),
+            SelectableObject::Decoration(decoration) => decoration.layer,
             SelectableObject::Tile(_tile) => 0,
-            SelectableObject::Prop(prop) => prop.draw_layer(),
+            SelectableObject::Prop(prop) => prop.layer(),
             SelectableObject::Clip(clip) => clip.layer
         }
     }

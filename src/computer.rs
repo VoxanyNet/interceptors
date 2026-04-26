@@ -1,10 +1,10 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use derive_more::From;
 use macroquad::{camera::{set_camera, Camera2D}, color::{Color, BLACK, GRAY, WHITE}, math::{Rect, Vec2}, shapes::draw_line, text::{draw_text_ex, TextParams}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::clear_background};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, base_prop::BaseProp, base_prop_save::BasePropSave, button::Button, drawable::{DrawContext, Drawable}, font_loader::FontLoader, items::{Item, prop::prop_item::PropItem}, mouse_world_pos, player::Player, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, weapons::weapon_type_save::WeaponTypeSave};
+use crate::{ClearBackgroundParameters, ClientTickContext, DrawCommand, DrawLineParameters, DrawTextParameters, DrawTextureDirectParameters, DrawTextureParameters, Owner, Prefabs, SetCameraParameters, TextureLoader, TickContext, base_prop::BaseProp, base_prop_save::BasePropSave, button::Button, drawable::{DrawContext, Drawable}, font_loader::FontLoader, items::{Item, prop::prop_item::PropItem}, mouse_world_pos, player::Player, prop::Prop, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, weapons::weapon_type_save::WeaponTypeSave};
 
 // #[derive(PartialEq, Clone, Debug, From)]
 // pub enum Item {
@@ -74,8 +74,8 @@ pub struct StoreItem {
 }
 
 impl StoreItem {
-    pub fn draw(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
-        self.item.draw_preview(textures, size, draw_pos, color, rotation);
+    pub fn draw(&self, ctx: &mut TickContext, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32) {
+        self.item.draw_preview(ctx, size, draw_pos, color, rotation);
     }
 
 }
@@ -111,7 +111,7 @@ impl CategoryTab {
         self.button.update(mouse_pos);
     }
 
-    pub fn draw(&self, fonts: &FontLoader) {
+    pub fn draw(&self, ctx: &mut TickContext) {
 
         // draw_rectangle(self.button.rect.x, self.button.rect.y, self.button.rect.w, self.button.rect.h, Color {
         //     r: 1.,
@@ -136,20 +136,44 @@ impl CategoryTab {
 
         let text_length = self.text.len() as f32;
 
-        draw_text_ex(
-            &self.text, 
-            self.button.rect.x, 
-            self.button.rect.y + 20., 
-            TextParams {
-                font: Some(&fonts.get(self.font.clone())),
-                font_size: 32,
-                color,
-                ..Default::default()
-            }
+        ctx.add_draw_command(
+            1, 
+            DrawCommand::DrawText(
+                DrawTextParameters {
+                    text: self.text.clone(),
+                    position: Vec2 {
+                        x: self.button.rect.x,
+                        y: self.button.rect.y + 20.,
+                    },
+                    font_size: Some(32),
+                    color: Some(color),
+                    font: Some(self.font.clone()),
+                    rotation: None,
+                }
+            )
         );
 
+
         if self.active {
-            draw_line(self.button.rect.left(), self.button.rect.bottom() + 3., self.button.rect.left() + text_length * 13. + 3., self.button.rect.bottom() + 3., 2., color);
+
+            ctx.add_draw_command(
+                1, 
+                DrawCommand::DrawLine(
+                    DrawLineParameters {
+                        start: Vec2 {
+                            x: self.button.rect.left(),
+                            y: self.button.rect.bottom() + 3.,
+                        },
+                        end: Vec2 {
+                            x: self.button.rect.left() + text_length * 13. + 3.,
+                            y: self.button.rect.bottom() + 3.,
+                        },
+                        thickness: 2.,
+                        color,
+                    }
+                )
+            );
+
         }
         
     }
@@ -199,7 +223,7 @@ impl StoreCategory {
         }
     }
 
-    pub fn draw(&self, textures: &ClientTextureLoader, prefabs: &Prefabs, fonts: &FontLoader) {
+    pub fn draw(&self, ctx: &mut TickContext) {
 
         let _hovered_button_color = Color::new(0.78, 0.78, 0.78, 0.5);
 
@@ -216,26 +240,32 @@ impl StoreCategory {
             };
 
             item.draw(
-                textures, 
+                ctx,
                 36., 
                 draw_pos, 
-                prefabs,
                 Some(color),
                 0.
             );
 
             if let Some(quantity) = item.quantity {
-                draw_text_ex(
-                    &quantity.to_string(), 
-                    draw_pos.x, 
-                    draw_pos.y + 24., 
-                    TextParams {
-                        font: Some(&fonts.get(PathBuf::from("assets/fonts/CutePixel.ttf"))),
-                        font_size: 24,
-                        color: WHITE,
-                        ..Default::default()
-                    }
+
+                ctx.add_draw_command(
+                    1, 
+                    DrawCommand::DrawText(
+                        DrawTextParameters {
+                            text: quantity.to_string(),
+                            position: Vec2 {
+                                x: draw_pos.x,
+                                y: draw_pos.y + 24.,
+                            },
+                            font_size: Some(24),
+                            color: Some(WHITE),
+                            font: Some(PathBuf::from("assets/fonts/CutePixel.ttf")),
+                            rotation: None,
+                        }
+                    )
                 );
+ 
             };
         }
     }
@@ -461,7 +491,93 @@ impl Computer {
 
         // IN THE FUTURE IF THE RENDER TARGET DOES NOT MATCH THE DESTINATION SIZE THESE COORDS NEED TO MULTIPLIED BY THAT RATIO
     }
+
+    pub fn draw(&mut self, ctx: &mut TickContext, space: &mut Space) {
+        self.prop.draw(ctx, space);
+
+        let _prop_pos = space.rigid_body_set.get(self.prop.rigid_body_handle).unwrap().position();
+
+        let mut color = BLACK;
+
+        color.a = 0.25;
+
+        let render_target = match &self.render_target {
+            Some(render_target) => render_target.clone(),
+            None => {
+                self.render_target = Some(render_target(320, 180));
+                self.render_target.clone().unwrap()
+            },
+        };
+
+        let camera_rect = Rect::new(0., 0., 320., 180.);
+
+        ctx.add_draw_command(
+            self.prop.layer, 
+            DrawCommand::SetCamera(
+                SetCameraParameters {
+                    rect: camera_rect,
+                    render_target: Some(render_target.clone()),
+                }
+            )
+        );
+
+    
+        ctx.add_draw_command(
+            self.prop.layer, 
+            DrawCommand::ClearBackground(
+                ClearBackgroundParameters {
+                    color,
+                }
+            )
+        );
+      
+
+        //draw_rectangle(0., 0., 20., 20., RED);
+
+        // draw_text_ex("STORE", 0., 20., TextParams {
+        //     font: Some(&font),
+        //     font_size: 32,
+        //     color: WHITE,
+        //     ..Default::default()
+            
+        // });
+
+        for category_tab in &self.category_tabs {
+            category_tab.draw(ctx);
+        }
+
+        let selected_item_category = self.item_categories.get(self.selected_category).unwrap();
+
+        selected_item_category.draw(ctx);
+        
+        ctx.add_draw_command(
+            self.prop.layer, 
+            DrawCommand::ResetToDefaultCamera
+        );
+
+        ctx.add_draw_command(
+            self.prop.layer, 
+            DrawCommand::DrawTextureDirect(
+                DrawTextureDirectParameters {
+                    texture: render_target.texture.clone(),
+                    position: Vec2 {
+                        x: self.screen_pos.x,
+                        y: self.screen_pos.y,
+                    },
+                    color: WHITE,
+                    params: DrawTextureParams {
+                        dest_size: Some(self.screen_size),
+                        ..Default::default()
+                    },
+                }
+            )
+        );
+
+
+    }
 }
+
+
 
 // #[async_trait::async_trait]
 // impl Drawable for Computer {

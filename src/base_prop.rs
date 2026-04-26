@@ -4,11 +4,11 @@ use std::{collections::HashSet, fs::read_to_string, path::PathBuf};
 use async_trait::async_trait;
 use glamx::{IVec2, Pose2, vec2};
 use image::{GenericImageView, Pixel};
-use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, BLUE, Color, GREEN, RED, VIOLET, WHITE}, math::{Rect, Vec2}, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{draw_circle, draw_rectangle}, text::{TextParams, draw_text, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex, render_target}, window::clear_background};
+use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, BLUE, Color, GREEN, RED, VIOLET, WHITE}, input::{KeyCode, is_key_pressed}, math::{Rect, Vec2}, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{draw_circle, draw_rectangle}, text::{TextParams, draw_text, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex, render_target}, window::clear_background};
 use rapier2d::prelude::{AxisMask, ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyType, RigidBodyVelocity, SharedShape, VoxelData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
-use crate::{ClientId, ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::{Area, AreaContext, AreaId}, base_prop_save::BasePropSave, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, prop::Prop, prop_save::PropSave, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
+use crate::{ClearBackgroundParameters, ClientId, ClientTickContext, DrawCommand, DrawRectangleParameters, DrawTextureParameters, Owner, Prefabs, SetCameraParameters, SetMaterialTextureParameters, TextureLoader, TickContext, UseMaterialParameters, area::{Area, AreaContext, AreaId}, base_prop_save::BasePropSave, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, prop::Prop, prop_save::PropSave, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
 
 
@@ -94,6 +94,201 @@ pub struct BaseProp {
 }
 
 impl Prop for BaseProp {
+
+    fn layer(&self) -> u32 {
+        self.layer
+    }
+
+    fn draw(&mut self, ctx: &mut TickContext, space: &mut Space) {
+
+    
+        
+        if self.despawn {
+            return;
+        }
+        
+        // this is majorly stupid
+        let (texture, material) = if let TickContext::Client(client_ctx) = ctx {
+            let texture = client_ctx.textures.get(&self.sprite_path);
+            let material = client_ctx.material_loader.get("materials/destruction");
+            (texture, material)
+        } else if let TickContext::Editor(editor_ctx) = ctx {
+
+            let texture = editor_ctx.textures.get(&self.sprite_path);
+            let material = editor_ctx.material_loader.get("materials/destruction");
+            (texture, material)
+
+        } else {
+            todo!()
+        };
+
+
+        self.draw_mask(ctx, texture);
+
+        let mask = self.mask.as_ref().unwrap();
+        
+        ctx.add_draw_command(
+            self.layer, 
+            DrawCommand::SetMaterialTexture(
+                SetMaterialTextureParameters {
+                    material: material.clone(),
+                    texture_name: "Mask".to_string(),
+                    texture: mask.texture.clone(),
+                }
+            )
+        );
+        
+        let body = space.rigid_body_set.get(self.rigid_body_handle).unwrap();
+        let collider = space.collider_set.get(self.collider_handle).unwrap();
+        let macroquad_pos = rapier_to_macroquad(body.translation());
+        let size = Vec2::new(texture.width() * self.scale, texture.height() * self.scale);
+        let pivot = Vec2::new(size.x , size.y);
+        let mut color = WHITE;
+        if let Some(lifespan) = self.lifespan {
+            // if (lifespan - self.spawned.elapsed()).as_secs() <= 5 {
+
+            //     //color.a = (lifespan.as_secs_f32() - self.spawned.elapsed().as_secs_f32()) / 5.
+            // }
+        }
+
+        ctx.add_draw_command(
+            self.layer, 
+            DrawCommand::UseMaterial(
+                UseMaterialParameters {
+                    material: material.clone(),
+                }
+            )
+        );
+
+        //gl_use_material(material);
+
+        ctx.add_draw_command(
+            self.layer, 
+            DrawCommand::DrawTexture(
+                DrawTextureParameters {
+                    texture: self.sprite_path.clone(),
+                    position: Vec2 { 
+                        x: macroquad_pos.x, 
+                        y: macroquad_pos.y - pivot.y
+                    },
+                    color,
+                    params: DrawTextureParams {
+                        dest_size: Some(size),
+                        rotation: body.rotation().angle() * -1.,
+                        pivot: Some(macroquad_pos),
+                        ..Default::default()
+                    },
+                }
+            )
+        );
+
+   
+
+
+        if let RigidBodyType::KinematicPositionBased = space.rigid_body_set.get(self.rigid_body_handle).unwrap().body_type() {
+
+            let mut color = RED;
+
+            color.a = 1. - (self.last_received_position_update.elapsed().as_secs_f32() / 1.);
+
+            ctx.add_draw_command(
+                self.layer, 
+                DrawCommand::DrawTexture(
+                    DrawTextureParameters {
+                        texture: self.sprite_path.clone(),
+                        position: Vec2 {
+                            x: macroquad_pos.x,
+                            y: macroquad_pos.y - pivot.y,
+                        },
+                        color,
+                        params: DrawTextureParams {
+                            dest_size: Some(size),
+                            rotation: body.rotation().angle() * -1.,
+                            pivot: Some(macroquad_pos),
+                            ..Default::default()
+                        },
+                    }
+                )
+            );
+        }
+
+        let mut color = GREEN;
+
+        color.a = 1. - (self.last_sent_position_update.elapsed().as_secs_f32() / 1.);
+
+
+        // draw_texture_ex(
+        //     texture,
+        //     macroquad_pos.x,
+        //     macroquad_pos.y - pivot.y,
+        //     color,
+        //     DrawTextureParams {
+        //         dest_size: Some(size),
+        //         rotation: body.rotation().angle() * -1.,
+        //         pivot: Some(macroquad_pos),
+        //         ..Default::default()
+        //     }
+
+        // );
+        // if let Some(owner) = self.owner {
+        //     if let Owner::ClientId(owner) = owner {
+        //         if owner == draw_context.id {
+        //             draw_texture_ex(
+        //                 texture,
+        //                 macroquad_pos.x,
+        //                 macroquad_pos.y - pivot.y,
+        //                 RED,
+        //                 DrawTextureParams {
+        //                     dest_size: Some(size),
+        //                     rotation: body.rotation().angle() * -1.,
+        //                     pivot: Some(macroquad_pos),
+        //                     ..Default::default()
+        //                 }
+
+        //             );
+        //         }
+        //     }
+        // }
+
+        //draw_text(&format!("{:?}", self.owner), macroquad_pos.x, macroquad_pos.y, 20., WHITE);
+
+
+
+        //gl_use_default_material();
+
+        ctx.add_draw_command(
+            self.layer, 
+            DrawCommand::UseDefaultMaterial
+        );
+
+        let mut color = WHITE;
+        color.a = 0.5;
+
+
+
+        // for voxel in collider.shape().as_voxels().unwrap().voxels() {
+
+        //     let pos = collider.shape().as_voxels().unwrap().voxel_center(voxel.grid_coords);
+        //     let macroquad_pos = rapier_to_macroquad(pos);
+        //     draw_rectangle(macroquad_pos.x - (2. * self.scale), macroquad_pos.y - (2. * self.scale), 4. * self.scale, 4. * self.scale, color);
+
+        // }
+        // for voxel in self.get_voxel_world_positions(draw_context.space) {
+
+        //     let mut color = match collider.shape().as_voxels().unwrap().voxel_state(voxel.0.grid_coords).unwrap().voxel_type() {
+        //         rapier2d::prelude::VoxelType::Empty => RED,
+        //         rapier2d::prelude::VoxelType::Vertex => GREEN,
+        //         rapier2d::prelude::VoxelType::Face => BLUE,
+        //         rapier2d::prelude::VoxelType::Interior => VIOLET,
+        //     };
+
+        //     color.a = 0.5;
+        //     let macroquad_pos = rapier_to_macroquad(voxel.1);
+        //     draw_rectangle(macroquad_pos.x - (4.), macroquad_pos.y - (4.), 8., 8., color);
+
+        // }
+
+    }
 
     fn set_name(&mut self, name: &str) {
         self.name = name.into()
@@ -250,8 +445,8 @@ impl BaseProp {
         );
     }
 
-    pub fn draw_preview(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, _prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
-        draw_preview(textures, size, draw_pos, color, rotation, &self.sprite_path);
+    pub fn draw_preview(&self, ctx: &mut TickContext, size: f32, draw_pos: Vec2, _prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
+        draw_preview(ctx, size, draw_pos, color, rotation, &self.sprite_path, self.layer);
     }
 
     pub fn get_preview_resolution(&self, size: f32, _prefabs: &Prefabs, textures: &ClientTextureLoader) -> Vec2 {
@@ -758,6 +953,7 @@ impl BaseProp {
         ctx: &mut TickContext,
     ) {
 
+        log::debug!("Running");
         if self.despawn {
             return;
         }
@@ -769,6 +965,14 @@ impl BaseProp {
                 self.owner_tick(ctx, area_context.space, *area_context.id, area_context.dissolved_pixels);
             }
         }
+
+        if is_key_pressed(KeyCode::U) {
+            self.layer = 0;
+        }
+        if is_key_pressed(KeyCode::I) {
+            self.layer = 1;
+        }
+
 
         let current_velocity = *area_context.space.rigid_body_set.get(self.rigid_body_handle).unwrap().vels();
 
@@ -1164,7 +1368,7 @@ impl BaseProp {
 
     fn draw_mask(
         &mut self,
-        draw_context: &crate::drawable::DrawContext,
+        ctx: &mut TickContext,
         texture: &Texture2D
     ) {
 
@@ -1174,21 +1378,30 @@ impl BaseProp {
             )
         }
 
+
+
         let mask = self.mask.as_mut().unwrap();
 
-        let _then = web_time::Instant::now();
-        let mut camera = Camera2D::from_display_rect(
-            Rect::new(0., 0., mask.texture.width(), mask.texture.height())
+        ctx.add_draw_command(
+            self.layer, 
+            DrawCommand::SetCamera(
+                SetCameraParameters {
+                    rect: Rect::new(0., 0., mask.texture.width(), mask.texture.height()),
+                    render_target: Some(mask.clone()),
+                }
+            )
         );
-
-        camera.render_target = Some(mask.clone());
-        camera.zoom.y = -camera.zoom.y;
+    
 
 
-        set_camera(&camera);
-
-        // clear the mask
-        clear_background(WHITE);
+        ctx.add_draw_command(
+            self.layer, 
+            DrawCommand::ClearBackground(
+                ClearBackgroundParameters {
+                    color: WHITE,
+                }
+            )
+        );
 
 
 
@@ -1196,17 +1409,40 @@ impl BaseProp {
 
             // THIS MASK TEXTURE IS SCALED ALONGSIDE THE REAL TEXTURE SO THE VOXEL SIZE NEEDS TO BE DIVIDED TO KEEP IT CONSTANT
             //log::debug!("drawing masked voxel at x: {}, y: {}", removed_voxel.x * 8, removed_voxel.y * 8);
-            draw_rectangle(
-                (removed_voxel.x as f32 * (8. / self.scale)),
-                ((((removed_voxel.y as f32 * (8. / self.scale)) * -1.) + texture.height()) - (8. / self.scale)),
-                8. / self.scale,
-                8. / self.scale,
-                BLACK
+            // draw_rectangle(
+            //     (removed_voxel.x as f32 * (8. / self.scale)),
+            //     ((((removed_voxel.y as f32 * (8. / self.scale)) * -1.) + texture.height()) - (8. / self.scale)),
+            //     8. / self.scale,
+            //     8. / self.scale,
+            //     BLACK
+            // );
+
+            ctx.add_draw_command(
+                self.layer, 
+                DrawCommand::DrawRectangle(
+                    DrawRectangleParameters {
+                        position: Vec2 { 
+                            x: (removed_voxel.x as f32 * (8. / self.scale)), 
+                            y: ((((removed_voxel.y as f32 * (8. / self.scale)) * -1.) + texture.height()) - (8. / self.scale)) 
+                        },
+                        size: Vec2 { 
+                            x: 8. / self.scale, 
+                            y: 8. / self.scale
+                        },
+                        offset: None,
+                        rotation: None,
+                        color: Some(BLACK),
+                    }
+                )
             );
 
         }
 
-        set_camera(draw_context.default_camera);
+        ctx.add_draw_command(
+            self.layer, 
+            DrawCommand::ResetToDefaultCamera
+        );
+        
     }
 
     fn get_voxel_world_positions(
@@ -1286,175 +1522,7 @@ impl EditorContextMenu for BaseProp {
 
 
 }
-#[async_trait]
-impl Drawable for BaseProp {
-    async fn draw(&mut self, draw_context: &crate::drawable::DrawContext) {
 
-    
-
-        if self.despawn {
-            return;
-        }
-
-        let texture = draw_context.textures.get(&self.sprite_path);
-
-        self.draw_mask(draw_context, texture);
-
-        let mask = self.mask.as_ref().unwrap();
-
-        let then = web_time::Instant::now();
-        let material = draw_context.materials.get("materials/destruction");
-        material.set_texture("Mask", mask.texture.clone());
-        //log::debug!("Loading material: {:?}", then.elapsed());
-
-        let body = draw_context.space.rigid_body_set.get(self.rigid_body_handle).unwrap();
-        let collider = draw_context.space.collider_set.get(self.collider_handle).unwrap();
-
-
-        //let center_of_mass_macroquad_pos = rapier_to_macroquad(body.center_of_mass());
-        let macroquad_pos = rapier_to_macroquad(body.translation());
-
-
-
-        let size = Vec2::new(texture.width() * self.scale, texture.height() * self.scale);
-
-        let pivot = Vec2::new(size.x , size.y);
-
-        let mut color = WHITE;
-        if let Some(lifespan) = self.lifespan {
-            // if (lifespan - self.spawned.elapsed()).as_secs() <= 5 {
-
-            //     //color.a = (lifespan.as_secs_f32() - self.spawned.elapsed().as_secs_f32()) / 5.
-            // }
-        }
-
-        
-
-
-
-        gl_use_material(material);
-        draw_texture_ex(
-            texture,
-            macroquad_pos.x,
-            macroquad_pos.y - pivot.y,
-            color,
-            DrawTextureParams {
-                dest_size: Some(size),
-                rotation: body.rotation().angle() * -1.,
-                pivot: Some(macroquad_pos),
-                ..Default::default()
-            }
-
-        );
-
-
-
-
-        if let RigidBodyType::KinematicPositionBased = draw_context.space.rigid_body_set.get(self.rigid_body_handle).unwrap().body_type() {
-
-            let mut color = RED;
-
-            color.a = 1. - (self.last_received_position_update.elapsed().as_secs_f32() / 1.);
-
-
-            draw_texture_ex(
-                texture,
-                macroquad_pos.x,
-                macroquad_pos.y - pivot.y,
-                color,
-                DrawTextureParams {
-                    dest_size: Some(size),
-                    rotation: body.rotation().angle() * -1.,
-                    pivot: Some(macroquad_pos),
-                    ..Default::default()
-                }
-
-            );
-        }
-
-        let mut color = GREEN;
-
-        color.a = 1. - (self.last_sent_position_update.elapsed().as_secs_f32() / 1.);
-
-
-        // draw_texture_ex(
-        //     texture,
-        //     macroquad_pos.x,
-        //     macroquad_pos.y - pivot.y,
-        //     color,
-        //     DrawTextureParams {
-        //         dest_size: Some(size),
-        //         rotation: body.rotation().angle() * -1.,
-        //         pivot: Some(macroquad_pos),
-        //         ..Default::default()
-        //     }
-
-        // );
-        // if let Some(owner) = self.owner {
-        //     if let Owner::ClientId(owner) = owner {
-        //         if owner == draw_context.id {
-        //             draw_texture_ex(
-        //                 texture,
-        //                 macroquad_pos.x,
-        //                 macroquad_pos.y - pivot.y,
-        //                 RED,
-        //                 DrawTextureParams {
-        //                     dest_size: Some(size),
-        //                     rotation: body.rotation().angle() * -1.,
-        //                     pivot: Some(macroquad_pos),
-        //                     ..Default::default()
-        //                 }
-
-        //             );
-        //         }
-        //     }
-        // }
-
-        draw_text(&format!("{:?}", self.owner), macroquad_pos.x, macroquad_pos.y, 20., WHITE);
-
-
-
-        gl_use_default_material();
-
-        let mut color = WHITE;
-        color.a = 0.5;
-
-
-        // for voxel in collider.shape().as_voxels().unwrap().voxels() {
-
-        //     let pos = collider.shape().as_voxels().unwrap().voxel_center(voxel.grid_coords);
-        //     let macroquad_pos = rapier_to_macroquad(pos);
-        //     draw_rectangle(macroquad_pos.x - (2. * self.scale), macroquad_pos.y - (2. * self.scale), 4. * self.scale, 4. * self.scale, color);
-
-        // }
-        // for voxel in self.get_voxel_world_positions(draw_context.space) {
-
-        //     let mut color = match collider.shape().as_voxels().unwrap().voxel_state(voxel.0.grid_coords).unwrap().voxel_type() {
-        //         rapier2d::prelude::VoxelType::Empty => RED,
-        //         rapier2d::prelude::VoxelType::Vertex => GREEN,
-        //         rapier2d::prelude::VoxelType::Face => BLUE,
-        //         rapier2d::prelude::VoxelType::Interior => VIOLET,
-        //     };
-
-        //     color.a = 0.5;
-        //     let macroquad_pos = rapier_to_macroquad(voxel.1);
-        //     draw_rectangle(macroquad_pos.x - (4.), macroquad_pos.y - (4.), 8., 8., color);
-
-        // }
-
-
-
-
-
-
-    }
-
-
-
-    fn draw_layer(&self) -> u32 {
-        self.layer
-    }
-}
 
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default, Copy, PartialEq, Hash, Eq)]

@@ -3,7 +3,7 @@ use macroquad::{color::WHITE, math::Vec2};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{Prefabs, TextureLoader, area::AreaId, drawable::{DrawContext, Drawable}, items::{Item, item_save::ItemSave}, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, uuid_u64};
+use crate::{Prefabs, TextureLoader, TickContext, area::AreaId, drawable::{DrawContext, Drawable}, items::{Item, item_save::ItemSave}, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, uuid_u64};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct DroppedItemId {
@@ -116,7 +116,7 @@ impl DroppedItem {
 
         let rigid_body = space.rigid_body_set.insert(
             RigidBodyBuilder::dynamic()
-                .position(pos)
+                .pose(pos)
                 .linvel(vel.linvel)
                 .angvel(vel.angvel)
         );
@@ -138,49 +138,49 @@ impl DroppedItem {
             despawn: false
         }
     }
+
+    pub fn draw(&self, ctx: &mut TickContext, space: &Space) {
+        if self.despawn == true {
+            return;
+        }
+
+        let body = space.rigid_body_set.get(self.body).unwrap();
+
+        let pos = body.position();
+
+        let half_extents = space.collider_set.get(self.collider).unwrap().shape().as_cuboid().unwrap().half_extents;
+
+        // preview uses macroquad coords
+        let macroquad_pos = rapier_to_macroquad(pos.translation);
+
+        let macroquad_rotation = pos.rotation.angle() * -1.;
+
+        // this is stupid
+        let size = match self.size.x >= self.size.y {
+            true => self.size.x * 2.,
+            false => self.size.y * 2.,
+        };
+
+        // i need to find a better way to do this????
+        let textures = match ctx.textures() {
+            TextureLoader::Client(client_texture_loader) => client_texture_loader,
+            TextureLoader::Server(server_texture_loader) => panic!(),
+        };
+
+        self.item.draw_preview(
+            ctx, 
+            size, 
+            Vec2 {
+                x: macroquad_pos.x - half_extents.x,
+                y: macroquad_pos.y - half_extents.y,
+            },
+            Some(WHITE),
+            macroquad_rotation
+        );
+    }
 }
 
-// #[async_trait::async_trait]
-// impl Drawable for DroppedItem {
-//     async fn draw(&mut self, draw_context: &DrawContext) {
-//         if self.despawn == true {
-//             return;
-//         }
 
-//         let body = draw_context.space.rigid_body_set.get(self.body).unwrap();
-
-//         let pos = body.position();
-
-//         let half_extents = draw_context.space.collider_set.get(self.collider).unwrap().shape().as_cuboid().unwrap().half_extents;
-
-//         // preview uses macroquad coords
-//         let macroquad_pos = rapier_to_macroquad(pos.translation);
-
-//         let macroquad_rotation = pos.rotation.angle() * -1.;
-
-//         // this is stupid
-
-//         let size = match self.size.x >= self.size.y {
-//             true => self.size.x * 2.,
-//             false => self.size.y * 2.,
-//         };
-
-//         self.item.draw_preview(
-//             draw_context.textures, 
-//             size, 
-//             Vec2 {
-//                 x: macroquad_pos.x - half_extents.x,
-//                 y: macroquad_pos.y - half_extents.y,
-//             },
-//             Some(WHITE),
-//             macroquad_rotation
-//         );
-//     }
-
-//     fn draw_layer(&self) -> u32 {
-//         1
-//     }
-// }
 #[derive(Serialize, Deserialize, Clone)]
 pub struct DroppedItemSave {
     pos: Pose2,

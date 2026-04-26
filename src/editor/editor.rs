@@ -1,7 +1,7 @@
-use std::{fs::{self, read_to_string}, path::PathBuf, process::exit, time::Duration};
+use std::{collections::HashMap, fs::{self, read_to_string}, path::PathBuf, process::exit, time::Duration};
 
 use glamx::{Pose2, Vec2, vec2};
-use interceptors_lib::{ClientId, EditorTickContext, Prefabs, area::{Area, AreaSave}, clip::Clip, decoration::Decoration, drawable::{DrawContext, Drawable}, editor_context_menu::EditorContextMenu, font_loader::FontLoader, load_assets, macroquad_to_rapier, material_loader::MaterialLoader, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, texture_loader::ClientTextureLoader};
+use interceptors_lib::{ClientId, DrawCommand, DrawCommands, EditorMode, EditorTickContext, Prefabs, TickContext, area::{Area, AreaSave}, clip::Clip, decoration::Decoration, drawable::{DrawContext, Drawable}, editor_context_menu::EditorContextMenu, font_loader::FontLoader, load_assets, macroquad_to_rapier, material_loader::MaterialLoader, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, texture_loader::ClientTextureLoader};
 use log::info;
 use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, RED, WHITE}, input::{KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel}, math::{Rect}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, time::draw_fps, window::{next_frame, screen_height, screen_width}};
 use rapier2d::{prelude::{ColliderBuilder, PointQuery, RigidBodyBuilder, RigidBodyVelocity}};
@@ -13,13 +13,6 @@ use crate::{editor_input_context::EditorInputContext, editor_mode_select_ui::Edi
 
 
 
-#[derive(Display, PartialEq, Clone, Copy)]
-pub enum EditorMode {
-    PrefabPlacement,
-    SetSpawnPoint,
-    TilePlacement,
-    Select
-}
 
 
 
@@ -53,6 +46,7 @@ pub struct AreaEditor {
     last_area_save: AreaSave,
     current_area_path: PathBuf,
     material_loader: MaterialLoader,
+    draw_commands: DrawCommands,
 }
 
 impl AreaEditor {
@@ -95,7 +89,7 @@ impl AreaEditor {
         }
 
         for prop in &self.area.props {
-            if disabled_layers.contains(&prop.draw_layer()) {continue;}
+            if disabled_layers.contains(&prop.layer()) {continue;}
 
             let prop_collider = self.area.space.collider_set.get(prop.collider_handle()).unwrap();
 
@@ -366,7 +360,8 @@ impl AreaEditor {
             last_undo: web_time::Instant::now(),
             last_area_save: area_save,
             current_area_path: PathBuf::from(area_path),
-            material_loader: assets.material_loader
+            material_loader: assets.material_loader,
+            draw_commands: DrawCommands::new()
         }
     }
 
@@ -639,41 +634,39 @@ impl AreaEditor {
 
         set_camera(&camera);
 
-        self.area.draw(
-            &mut self.textures,
-            &self.camera_rect,
-            &self.prefab_data,
-            &camera,
-            &self.fonts,
-            &self.material_loader,
-            self.start.elapsed(),
-            self.layer_toggle_ui.get_invisible_layers(),
-            true,
-            ClientId::new()
-        ).await;
+        let current_mode = self.current_mode().clone();
+        let rapier_cursor = self.rapier_cursor();
 
-
-
-        let draw_context = DrawContext {
-            space: &self.area.space,
+        let mut ctx: TickContext = EditorTickContext {
+            e: &false,
+            camera_rect: &mut self.camera_rect,
+            current_mode: &current_mode,
+            cursor: &mut self.cursor,
+            rapier_cursor: &rapier_cursor,
             textures: &self.textures,
-            prefabs: &self.prefab_data,
-            fonts: &self.fonts,
-            camera_rect: &self.camera_rect,
-            tiles: &self.area.tiles,
-            elapsed_time: &self.start.elapsed(),
-            default_camera: &camera,
-            editor: true,
-            materials: &self.material_loader,
-            id: ClientId::new()
-        };
+            draw_commands: &mut self.draw_commands,
+            material_loader: &self.material_loader,
+            fonts: &self.fonts
+            
+            
+            
+        }.into();
 
-        if self.current_mode() == EditorMode::PrefabPlacement {
+        self.area.draw(
+            &mut ctx,
+        );
 
-            let rapier_cursor = self.rapier_cursor();
+        if current_mode == EditorMode::PrefabPlacement {
 
-            self.spawner.draw_preview_spawn(&draw_context, self.cursor, rapier_cursor, &self.textures).await;
+            self.spawner.draw_preview_spawn(&mut ctx);
+
+            
         }
+
+        // need to move everything over to the new drawing system eventually!
+        self.draw_commands.render(&self.textures, &camera, &self.fonts, &self.material_loader).await;
+
+        self.draw_commands.clear();
 
         self.draw_cursor();
         self.draw_clip_points();
@@ -683,22 +676,14 @@ impl AreaEditor {
         self.highlight_selected_object();
         self.step_space();
 
-
         set_default_camera();
         self.ui.draw(&self.textures);
         self.layer_toggle_ui.draw(&self.fonts, &self.textures);
-
         self.draw_context_menus();
-
         if self.current_mode() == EditorMode::PrefabPlacement {
             self.spawner.draw_menu(&self.camera_rect, &mut self.textures, self.cursor).await;
         }
-
-
-
-
         self.draw_selected_mode();
-
         self.draw_coords(self.cursor);
 
         draw_fps();
@@ -897,7 +882,7 @@ impl AreaEditor {
 
     pub fn step_space(&mut self) {
 
-        self.area.space.step(web_time::Duration::from_secs_f64(0.016));
+        self.area.space.step(web_time::Duration::from_secs_f64(0.16));
 
     }
 
@@ -984,7 +969,8 @@ impl AreaEditor {
 
         self.update_input_context();
         self.ui.update(&mut EditorUITickContext { selected_mode: &mut self.selected_mode, input_context: self.input_context, simulate_space: &mut self.simulate_space });
-        self.layer_toggle_ui.update(self.area.get_drawable_objects_self());
+        
+        self.layer_toggle_ui.update(self.draw_commands.get_layers());
         self.editor_mode_tick();
 
         self.update_cursor();
@@ -993,10 +979,24 @@ impl AreaEditor {
         self.update_context_menus();
         self.update_active_layer_to_selected_object();
 
+        
+
+        let current_mode = self.current_mode();
+        let rapier_cursor = self.rapier_cursor();
         let editor_context = EditorTickContext {
-            e: &false
+            e: &false,
+            camera_rect: &mut self.camera_rect,
+            current_mode: &current_mode,
+            cursor: &mut self.cursor,
+            rapier_cursor: &rapier_cursor,
+            textures: &self.textures,
+            draw_commands: &mut self.draw_commands,
+            material_loader: &self.material_loader,
+            fonts: &self.fonts
+            
         };
-        self.area.despawn_entities(&mut editor_context.into());
+
+     
         self.create_clip();
 
         if is_key_down(KeyCode::LeftControl) {

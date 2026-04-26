@@ -20,7 +20,7 @@ pub trait Item: Downcast {
     fn save(&self, space: &Space) -> Box<dyn ItemSave>;
     fn draw_preview(
         &self, 
-        textures: &ClientTextureLoader, 
+        ctx: &mut TickContext,
         size: f32,
         draw_pos: Vec2,
         color: Option<Color>,
@@ -49,7 +49,7 @@ pub trait Item: Downcast {
     ) -> Vec2;
 
     
-    fn draw_active(&self, textures: &ClientTextureLoader);
+    fn draw_active(&self, tick_context: &mut TickContext, space: &Space);
 
     fn name(&self) -> String;
 

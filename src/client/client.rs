@@ -1,7 +1,7 @@
 use std::{collections::HashMap, process::exit};
 
 use image::codecs::webp;
-use interceptors_lib::{Assets, ClientIO, ClientId, ClientTickContext, Owner, Prefabs, area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, material_loader::MaterialLoader, player::{ItemSlot, Player}, base_prop::BaseProp, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::ClientTextureLoader, updates::{NetworkPacket, Ping}, world::World};
+use interceptors_lib::{Assets, ClientIO, ClientId, ClientTickContext, DrawCommand, DrawCommands, Owner, Prefabs, TickContext, area::Area, base_prop::BaseProp, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, material_loader::MaterialLoader, player::{ItemSlot, Player}, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::ClientTextureLoader, updates::{NetworkPacket, Ping}, world::World};
 use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, WHITE}, input::{KeyCode, is_key_released, show_mouse}, math::{Rect, vec2}, prelude::{Material, ShaderSource, gl_use_default_material, load_material}, text::draw_text, texture::{DrawTextureParams, RenderTarget, draw_texture_ex, render_target}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
 use rapier2d::{math::Vector, prelude::{ColliderBuilder, SharedShape}};
 
@@ -31,7 +31,8 @@ pub struct Client {
     spawned: bool,
     fonts: FontLoader,
     test_button: Button,
-    material_loader: MaterialLoader
+    material_loader: MaterialLoader,
+    draw_commands: DrawCommands
 }
 
 impl Client {
@@ -144,7 +145,7 @@ impl Client {
 
         log::debug!("Connected to server!");
         Self {
-
+            draw_commands: DrawCommands::new(),
             packets_sent: 0,
             network_io: server,
             pings: HashMap::new(),
@@ -644,6 +645,9 @@ impl Client {
         self.ping();
 
         let ctx = ClientTickContext {
+            start: &self.start,
+            draw_commands: &mut self.draw_commands,
+            material_loader: &mut self.material_loader,
             network_io: &mut self.network_io,
             last_tick_duration: &self.last_tick_duration,
             client_id: &self.client_id,
@@ -652,7 +656,8 @@ impl Client {
             screen_shake: &mut self.screen_shake,
             sounds: &mut self.sounds,
             textures: &self.textures,
-            camera: &self.camera
+            camera: &self.camera,
+            fonts: &self.fonts
 
         };
 
@@ -736,16 +741,31 @@ impl Client {
 
         clear_background(BLACK);
 
+        self.draw_commands.clear();
+
+        let mut ctx: TickContext = TickContext::Client(
+            ClientTickContext {
+                material_loader: &mut self.material_loader,
+                draw_commands: &mut self.draw_commands,
+                start: &self.start,
+                network_io: &mut self.network_io,
+                last_tick_duration: &mut self.last_tick_duration,
+                client_id: &mut self.client_id,
+                camera_rect: &mut self.camera_rect,
+                prefabs: &mut self.prefab_data,
+                screen_shake: &mut self.screen_shake,
+                sounds: &mut self.sounds,
+                textures: &mut self.textures,
+                camera: &mut self.camera,
+                fonts: &self.fonts
+            }
+        ).into();
+
         self.world.draw(
-            &mut self.textures,
-            &self.material_loader,
-            &self.camera_rect,
-            &self.prefab_data,
-            &self.camera,
-            &self.fonts,
-            self.start.elapsed(),
-            self.client_id
-        ).await;
+            &mut ctx
+        );
+
+        self.draw_commands.render(&self.textures, &self.camera, &self.fonts, &self.material_loader).await;
 
         //self.phone.draw(&self.textures, &self.camera_rect);
 

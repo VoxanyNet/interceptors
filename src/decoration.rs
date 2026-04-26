@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use macroquad::{color::WHITE, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams}};
 use serde::{Deserialize, Serialize};
 
-use crate::{drawable::Drawable, editor_context_menu::{DataEditorContext, EditorContextMenu, EditorContextMenuData}, space::Space};
+use crate::{DrawCommand, DrawTextureParameters, TickContext, drawable::Drawable, editor_context_menu::{DataEditorContext, EditorContextMenu, EditorContextMenuData}, space::Space};
 
 // literally just a sprite with position and size
 #[derive(Clone, PartialEq)]
@@ -19,6 +19,48 @@ pub struct Decoration {
 }
 
 impl Decoration {
+
+    pub fn draw(
+        &self, 
+        ctx: &mut TickContext, 
+
+    ) {
+        let sprite_path = match &self.frame_duration {
+            Some(frame_duration) => {
+                let current_frame = (
+                    (
+                        ctx.start().elapsed().as_secs_f32() % (frame_duration.as_secs_f32() * self.animated_sprite_paths.as_ref().unwrap().len() as f32)
+                    ) / frame_duration.as_secs_f32()
+                ) as usize;
+
+                &self.animated_sprite_paths.as_ref().unwrap()[current_frame]
+            },
+            None => {
+                self.sprite_path.as_ref().unwrap()
+            },
+        };
+
+        ctx.add_draw_command(
+            self.layer,
+            DrawCommand::DrawTexture(
+                DrawTextureParameters {
+                    texture: sprite_path.clone(),
+                    position: self.pos,
+                    color: WHITE,
+                    params: DrawTextureParams {
+                        dest_size: Some(self.size),
+                        source: None,
+                        rotation: 0.,
+                        flip_x: false,
+                        flip_y: false,
+                        pivot: None,
+                    }
+                }
+            )
+        );
+
+    
+    }
 
     pub fn editor_draw(&self) {
         
@@ -110,46 +152,7 @@ impl EditorContextMenu for Decoration {
     }
 }
 
-#[async_trait::async_trait]
-impl Drawable for Decoration {
-    async fn draw(&mut self, draw_context: &crate::drawable::DrawContext) {
-        let sprite_path = match &self.frame_duration {
-            Some(frame_duration) => {
-                let current_frame = (
-                    (
-                        draw_context.elapsed_time.as_secs_f32() % (frame_duration.as_secs_f32() * self.animated_sprite_paths.as_ref().unwrap().len() as f32)
-                    ) / frame_duration.as_secs_f32()
-                ) as usize;
 
-                &self.animated_sprite_paths.as_ref().unwrap()[current_frame]
-            },
-            None => {
-                self.sprite_path.as_ref().unwrap()
-            },
-        };
-
-        let texture = draw_context.textures.get(sprite_path);
-
-        draw_texture_ex(
-            texture, 
-            self.pos.x, 
-            self.pos.y, 
-            WHITE, 
-            DrawTextureParams {
-                dest_size: Some(self.size),
-                source: None,
-                rotation: 0.,
-                flip_x: false,
-                flip_y: false,
-                pivot: None,
-            }
-        );
-    }
-
-    fn draw_layer(&self) -> u32 {
-        self.layer
-    }
-}
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct DecorationSave {
     pub pos: Vec2,

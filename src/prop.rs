@@ -8,7 +8,8 @@ use crate::{Owner, TickContext, area::AreaContext, base_prop::{Material, PropId}
 
 
 impl_downcast!(Prop);
-pub trait Prop: Downcast + Drawable {
+pub trait Prop: Downcast {
+    fn layer(&self) -> u32;
     fn name(&self) -> String;
     fn rigid_body_handle(&self) -> RigidBodyHandle;
     fn collider_handle(&self) -> ColliderHandle;
@@ -47,4 +48,5 @@ pub trait Prop: Downcast + Drawable {
     fn set_mass(&self, space: &mut Space, new_mass: f32);
     fn set_material(&mut self, new_material: Material);
     fn set_name(&mut self, name: &str);
+    fn draw(&mut self, ctx: &mut TickContext, space: &mut Space);
 }

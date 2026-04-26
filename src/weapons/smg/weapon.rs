@@ -81,7 +81,7 @@ impl Item for SMG {
             fn save(&self, space: &Space) -> Box<dyn ItemSave>;
             fn draw_preview(
                 &self, 
-                textures: &ClientTextureLoader, 
+                ctx: &mut TickContext, 
                 size: f32,
                 draw_pos: Vec2,
                 color: Option<Color>,
@@ -94,7 +94,7 @@ impl Item for SMG {
             ) -> Vec2;
 
             
-            fn draw_active(&self, textures: &ClientTextureLoader);
+            fn draw_active(&self, ctx: &mut TickContext, space: &Space);
 
             fn name(&self) -> String;
 

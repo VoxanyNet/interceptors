@@ -677,13 +677,13 @@ impl Item for BaseWeapon {
 
     fn draw_preview(
         &self, 
-        textures: &ClientTextureLoader, 
+        ctx: &mut TickContext,
         size: f32,
         draw_pos: Vec2,
         color: Option<Color>,
         rotation: f32
     ) {
-        draw_preview(textures, size, draw_pos, color, rotation, &self.sprite);
+        draw_preview(ctx, size, draw_pos, color, rotation, &self.sprite, 1);
     }
 
     fn get_preview_resolution(
@@ -694,8 +694,34 @@ impl Item for BaseWeapon {
         get_preview_resolution(size, textures, &self.sprite)
     }
 
-    fn draw_active(&self, textures: &ClientTextureLoader) {
-        todo!()
+    fn draw_active(&self, ctx: &mut TickContext, space: &Space) {
+        // dont draw if unequipped
+        let rigid_body = match self.rigid_body {
+            Some(rigid_body) => rigid_body,
+            None => return ,
+        };
+
+        let collider = match self.collider {
+            Some(collider) => collider,
+            None => return ,
+        };
+
+        let flip_x = match self.facing {
+            Facing::Right => false,
+            Facing::Left => true,
+        };
+
+        draw_texture_onto_physics_body(
+            ctx,
+            1,
+            rigid_body, 
+            collider, 
+            space, 
+            &self.sprite, 
+            flip_x, 
+            false, 
+            0.,
+        );
     }
 
     fn name(&self) -> String {
@@ -791,32 +817,7 @@ impl Item for BaseWeapon {
 impl Drawable for BaseWeapon {
     async fn draw(&mut self, draw_context: &DrawContext) {
 
-        // dont draw if unequipped
-        let rigid_body = match self.rigid_body {
-            Some(rigid_body) => rigid_body,
-            None => return ,
-        };
-
-        let collider = match self.collider {
-            Some(collider) => collider,
-            None => return ,
-        };
-
-        let flip_x = match self.facing {
-            Facing::Right => false,
-            Facing::Left => true,
-        };
-
-        draw_texture_onto_physics_body(
-            rigid_body, 
-            collider, 
-            draw_context.space, 
-            &self.sprite, 
-            draw_context.textures, 
-            flip_x, 
-            false, 
-            0.,
-        ).await;
+        
 
         
     }

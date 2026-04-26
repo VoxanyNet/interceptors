@@ -5,7 +5,7 @@ use macroquad::{color::{GRAY, WHITE}, math::Vec2, texture::{draw_texture_ex, Dra
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 
-use crate::{rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, uuid_u64};
+use crate::{TextureLoader, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, uuid_u64};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default, Copy, PartialEq)]
 pub struct TileId {
@@ -81,6 +81,7 @@ impl Tile {
 
     pub fn draw(&self, textures: &ClientTextureLoader, position: (usize, usize)) {
 
+     
         let texture = textures.get(&self.sprite_path);
 
         let macroquad_pos = rapier_to_macroquad(glamx::Vec2::new(position.0 as f32, position.1 as f32));

@@ -1,0 +1,3086 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index 625e0c8..0fdb957 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -42,6 +42,15 @@ dependencies = [
+  "web-sys",
+ ]
+ 
++[[package]]
++name = "addr2line"
++version = "0.25.1"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "1b5d307320b3181d6d7954e663bd7c774a838b8220fe0593c86d9fb09f498b4b"
++dependencies = [
++ "gimli",
++]
++
+ [[package]]
+ name = "adler2"
+ version = "2.0.1"
+@@ -259,6 +268,21 @@ dependencies = [
+  "arrayvec",
+ ]
+ 
++[[package]]
++name = "backtrace"
++version = "0.3.76"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "bb531853791a215d7c62a30daf0dde835f381ab5de4589cfe7c649d2cbe92bd6"
++dependencies = [
++ "addr2line",
++ "cfg-if",
++ "libc",
++ "miniz_oxide",
++ "object",
++ "rustc-demangle",
++ "windows-link",
++]
++
+ [[package]]
+ name = "bit-vec"
+ version = "0.8.0"
+@@ -577,6 +601,22 @@ dependencies = [
+  "syn",
+ ]
+ 
++[[package]]
++name = "dhat"
++version = "0.3.3"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "98cd11d84628e233de0ce467de10b8633f4ddaecafadefc86e13b84b8739b827"
++dependencies = [
++ "backtrace",
++ "lazy_static",
++ "mintex",
++ "parking_lot",
++ "rustc-hash 1.1.0",
++ "serde",
++ "serde_json",
++ "thousands",
++]
++
+ [[package]]
+ name = "digest"
+ version = "0.10.7"
+@@ -853,6 +893,12 @@ dependencies = [
+  "weezl",
+ ]
+ 
++[[package]]
++name = "gimli"
++version = "0.32.3"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "e629b9b98ef3dd8afe6ca2bd0f89306cec16d43d907889945bc5d6687f2f13c7"
++
+ [[package]]
+ name = "glam"
+ version = "0.14.0"
+@@ -1136,6 +1182,7 @@ dependencies = [
+  "cs-utils",
+  "delegate",
+  "derive_more",
++ "dhat",
+  "downcast-rs",
+  "dyn-clone",
+  "env_logger 0.11.8",
+@@ -1256,6 +1303,12 @@ dependencies = [
+  "wasm-bindgen",
+ ]
+ 
++[[package]]
++name = "lazy_static"
++version = "1.5.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
++
+ [[package]]
+ name = "lebe"
+ version = "0.5.3"
+@@ -1301,6 +1354,15 @@ version = "0.4.2"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "f5e54036fe321fd421e10d732f155734c4e4afd610dd556d9a82833ab3ee0bed"
+ 
++[[package]]
++name = "lock_api"
++version = "0.4.14"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "224399e74b87b5f3557511d98dff8b14089b3dadafcab6bb93eab67d3aace965"
++dependencies = [
++ "scopeguard",
++]
++
+ [[package]]
+ name = "log"
+ version = "0.4.29"
+@@ -1400,6 +1462,12 @@ dependencies = [
+  "simd-adler32",
+ ]
+ 
++[[package]]
++name = "mintex"
++version = "0.1.4"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "c505b3e17ed6b70a7ed2e67fbb2c560ee327353556120d6e72f5232b6880d536"
++
+ [[package]]
+ name = "moxcms"
+ version = "0.7.11"
+@@ -1562,6 +1630,15 @@ dependencies = [
+  "malloc_buf",
+ ]
+ 
++[[package]]
++name = "object"
++version = "0.37.3"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "ff76201f031d8863c38aa7f905eca4f53abbfa15f609db4277d44cd8938f33fe"
++dependencies = [
++ "memchr",
++]
++
+ [[package]]
+ name = "ogg"
+ version = "0.7.1"
+@@ -1592,6 +1669,29 @@ dependencies = [
+  "num-traits",
+ ]
+ 
++[[package]]
++name = "parking_lot"
++version = "0.12.5"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "93857453250e3077bd71ff98b6a65ea6621a19bb0f559a85248955ac12c45a1a"
++dependencies = [
++ "lock_api",
++ "parking_lot_core",
++]
++
++[[package]]
++name = "parking_lot_core"
++version = "0.9.12"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "2621685985a2ebf1c516881c026032ac7deafcda1a2c9b7850dc81e3dfcb64c1"
++dependencies = [
++ "cfg-if",
++ "libc",
++ "redox_syscall",
++ "smallvec 1.15.1",
++ "windows-link",
++]
++
+ [[package]]
+ name = "parry2d"
+ version = "0.26.0"
+@@ -1875,7 +1975,7 @@ dependencies = [
+  "parry2d",
+  "profiling",
+  "rayon",
+- "rustc-hash",
++ "rustc-hash 2.1.1",
+  "serde",
+  "simba",
+  "static_assertions",
+@@ -1960,6 +2060,15 @@ dependencies = [
+  "crossbeam-utils",
+ ]
+ 
++[[package]]
++name = "redox_syscall"
++version = "0.5.18"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "ed2bf2547551a7053d6fdfafda3f938979645c44812fbfcda098faae3f1a362d"
++dependencies = [
++ "bitflags 2.9.1",
++]
++
+ [[package]]
+ name = "regex"
+ version = "1.12.2"
+@@ -2001,6 +2110,18 @@ version = "1.2.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "4e27ee8bb91ca0adcf0ecb116293afa12d393f9c2b9b9cd54d33e8078fe19839"
+ 
++[[package]]
++name = "rustc-demangle"
++version = "0.1.27"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "b50b8869d9fc858ce7266cce0194bd74df58b9d0e3f6df3a9fc8eb470d95c09d"
++
++[[package]]
++name = "rustc-hash"
++version = "1.1.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
++
+ [[package]]
+ name = "rustc-hash"
+ version = "2.1.1"
+@@ -2037,6 +2158,12 @@ dependencies = [
+  "bytemuck",
+ ]
+ 
++[[package]]
++name = "scopeguard"
++version = "1.2.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
++
+ [[package]]
+ name = "semver"
+ version = "1.0.27"
+@@ -2283,6 +2410,12 @@ dependencies = [
+  "syn",
+ ]
+ 
++[[package]]
++name = "thousands"
++version = "0.2.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "3bf63baf9f5039dadc247375c29eb13706706cfde997d0330d05aa63a77d8820"
++
+ [[package]]
+ name = "tiff"
+ version = "0.10.3"
+diff --git a/Cargo.toml b/Cargo.toml
+index 1b8d0fb..e905e53 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -36,6 +36,7 @@ downcast-rs = "2.0.2"
+ delegate = "0.13.5"
+ typetag = "0.2.21"
+ dyn-clone = "1.0.20"
++dhat = "0.3.3"
+ #rhai = "1.23.6"
+ #gilrs = "0.11.0"
+ #web-sys = { version = "0.3.72", features = ["console"] }
+@@ -68,3 +69,10 @@ opt-level = 3
+ discord = []
+ no-sound = []
+ nightly = []
++dhat-heap = []    # if you are doing heap profiling
++dhat-ad-hoc = []  # if you are doing ad hoc profiling
++
++[profile.release]
++debug = 1
++strip = "none"
++
+diff --git a/src/area.rs b/src/area.rs
+index 09e0943..cba9be8 100644
+--- a/src/area.rs
++++ b/src/area.rs
+@@ -3,10 +3,10 @@ use std::{collections::VecDeque, path::PathBuf, str::FromStr};
+ use glamx::{Pose2, Vec2, vec2};
+ use macroquad::{camera::Camera2D, color::{RED, WHITE}, input::{KeyCode, is_key_released}, math::Rect, prelude::{gl_use_default_material, gl_use_material}, shapes::{draw_circle, draw_rectangle}, time::get_time, window::{clear_background, screen_height, screen_width}};
+ use noise::{NoiseFn, Perlin};
+-use serde::{Deserialize, Serialize};
++use serde::{Deserialize, Serialize, de};
+ 
+ use crate::{
+-    ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TextureLoader, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, base_prop::{BaseProp, NewProp, PropId}, base_prop_save::BasePropSave, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::Computer, decoration::{Decoration, DecorationSave}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, material_loader::MaterialLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::Prop, prop_save::PropSave, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, smg::weapon::SMG, weapon::weapon::WeaponOwner}};
++    ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TextureLoader, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{self, Background, BackgroundSave}, base_prop::{BaseProp, NewProp, PropId}, base_prop_save::BasePropSave, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::Computer, decoration::{Decoration, DecorationSave}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, material_loader::MaterialLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::Prop, prop_save::PropSave, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, smg::weapon::SMG, weapon::weapon::WeaponOwner}};
+ 
+ macro_rules! test {
+     ($s:ident) => {
+@@ -86,7 +86,7 @@ impl Area {
+     
+     pub fn tick(&mut self, ctx: &mut TickContext) {
+ 
+-        log::debug!("{}", self.props.len());
++
+ 
+         self.space.step(ctx.last_tick_duration());
+ 
+@@ -120,55 +120,40 @@ impl Area {
+     }
+ 
+     
+-    pub async fn draw(
++    pub fn draw(
+         &mut self, 
+-        textures: &mut ClientTextureLoader, 
+-        camera_rect: &Rect, 
+-        prefabs: &Prefabs, 
+-        camera: &Camera2D, 
+-        fonts: &FontLoader, 
+-        materials: &MaterialLoader,
+-        elapsed: web_time::Duration,
+-        exclude_layers: Vec<u32>,
+-        editor: bool,
+-        id: ClientId
++        ctx: &mut TickContext
+     ) {
+ 
++        for decoration in &self.decorations {
++            decoration.draw(ctx)
++        }
+ 
+-        let mut drawable_objects = Self::get_drawable_objects_mut(
+-            &mut self.decorations, 
+-            &mut self.props, 
+-            &mut self.dropped_items, 
+-            &mut self.computer, 
+-            &mut self.players, 
+-            &mut self.enemies, 
+-            &mut self.dissolved_pixels, 
+-            &mut self.bullet_trails, 
+-            &mut self.clips
+-        );
+ 
+-        drawable_objects.sort_by_key(|o| o.draw_layer());
+-
+-        let draw_context = DrawContext {
+-            space: &self.space,
+-            textures: &textures,
+-            prefabs,
+-            fonts,
+-            camera_rect,
+-            tiles: &self.tiles,
+-            elapsed_time: &elapsed,
+-            default_camera: camera,
+-            editor,
+-            materials,
+-            id,
+-            
+-        };
++        for prop in &mut self.props {
++            prop.draw(ctx, &mut self.space)
++        }
+ 
+-        // backgrounds are handled seperately because they are always drawn below everything and dont have a layer
+         for background in &mut self.backgrounds {
+-            background.draw(&draw_context).await
++            background.draw(ctx);
++        }
++
++        for dropped_item in &self.dropped_items {
++            dropped_item.draw(ctx, &mut self.space);
++        }
++
++        if let Some(computer) = &mut self.computer {
++            computer.draw(ctx, &mut self.space);
+         }
+ 
++        for player in &mut self.players {
++            player.draw(ctx, &self.space);
++        }
++
++        //self.computer.draw()
++
++        // backgrounds are handled seperately because they are always drawn below everything and dont have a layer
++
+         // let material = draw_context.materials.get("materials/stars");
+         // material.set_uniform("Time", get_time() as f32);
+         // material.set_uniform("Resolution", vec2(500., 500.));
+@@ -177,14 +162,6 @@ impl Area {
+         // draw_rectangle(0., 0., 5000., 5000., WHITE);
+         // gl_use_default_material();
+ 
+-        for object in drawable_objects {
+-
+-            if exclude_layers.contains(&object.draw_layer()) {
+-                
+-                continue;
+-            }
+-            object.draw(&draw_context).await;
+-        }
+ 
+         for impact_point in &self.impact_points {
+             let m_pos = rapier_to_macroquad(*impact_point);
+@@ -482,113 +459,113 @@ impl Area {
+         }
+     }
+ 
+-    pub fn get_drawable_objects_self(&self) -> Vec<&dyn Drawable> {
+-        // there are some situations in which we need to maintain ownership of self so thats why these methods are split
+-        Self::get_drawable_objects(
+-            &self.backgrounds, 
+-            &self.decorations, 
+-            &self.props, 
+-            &self.dropped_items, 
+-            &self.computer, 
+-            &self.players, 
+-            &self.enemies, 
+-            &self.dissolved_pixels, 
+-            &self.bullet_trails,
+-            &self.clips
+-        )
+-    }
+-    pub fn get_drawable_objects<'a> (
+-        backgrounds: &'a Vec<Background>,
+-        decorations: &'a Vec<Decoration>,
+-        props: &'a Vec<Box<dyn Prop>>,
+-        dropped_items: &'a Vec<DroppedItem>,
+-        computer: &'a Option<Computer>,
+-        players: &'a Vec<Player>,
+-        enemies: &'a Vec<Enemy>,
+-        dissolved_pixels: &'a Vec<DissolvedPixel>,
+-        bullet_trails: &'a Vec<BulletTrail>,
+-        clips: &'a Vec<Clip>
+-    ) -> Vec<&'a dyn Drawable> {
+-        let mut drawable_objects: Vec<&dyn Drawable> = vec![];
++    // pub fn get_drawable_objects_self(&self) -> Vec<&dyn Drawable> {
++    //     // there are some situations in which we need to maintain ownership of self so thats why these methods are split
++    //     Self::get_drawable_objects(
++    //         &self.backgrounds, 
++    //         &self.decorations, 
++    //         &self.props, 
++    //         &self.dropped_items, 
++    //         &self.computer, 
++    //         &self.players, 
++    //         &self.enemies, 
++    //         &self.dissolved_pixels, 
++    //         &self.bullet_trails,
++    //         &self.clips
++    //     )
++    // }
++    // pub fn get_drawable_objects<'a> (
++    //     backgrounds: &'a Vec<Background>,
++    //     decorations: &'a Vec<Decoration>,
++    //     props: &'a Vec<Box<dyn Prop>>,
++    //     dropped_items: &'a Vec<DroppedItem>,
++    //     computer: &'a Option<Computer>,
++    //     players: &'a Vec<Player>,
++    //     enemies: &'a Vec<Enemy>,
++    //     dissolved_pixels: &'a Vec<DissolvedPixel>,
++    //     bullet_trails: &'a Vec<BulletTrail>,
++    //     clips: &'a Vec<Clip>
++    // ) -> Vec<&'a dyn Drawable> {
++    //     let mut drawable_objects: Vec<&dyn Drawable> = vec![];
+         
+-        for background in backgrounds {
+-            drawable_objects.push(background);
+-        }
+-        for decoration in decorations {
+-            drawable_objects.push(decoration);
+-        }
+-        for prop in props {
+-            drawable_objects.push(prop.as_ref() as &dyn Drawable); // need to learn why this works
+-        }
+-        // for dropped_item in dropped_items {
+-        //     drawable_objects.push(dropped_item);
+-        // }
+-        // if let Some(computer) = computer {
+-        //     drawable_objects.push(computer);
+-        // }
+-        // for player in players {
+-        //     drawable_objects.push(player);
+-        // }
+-        // for enemy in enemies {
+-        //     drawable_objects.push(enemy);
+-        // }
+-        for pixel in dissolved_pixels {
+-            drawable_objects.push(pixel);
+-        }
+-        for bullet_trail in bullet_trails {
+-            drawable_objects.push(bullet_trail);
+-        }
+-        for clip in clips {
+-            drawable_objects.push(clip);
+-        }
++    //     for background in backgrounds {
++    //         drawable_objects.push(background);
++    //     }
++    //     for decoration in decorations {
++    //         drawable_objects.push(decoration);
++    //     }
++    //     for prop in props {
++    //         drawable_objects.push(prop.as_ref() as &dyn Drawable); // need to learn why this works
++    //     }
++    //     // for dropped_item in dropped_items {
++    //     //     drawable_objects.push(dropped_item);
++    //     // }
++    //     // if let Some(computer) = computer {
++    //     //     drawable_objects.push(computer);
++    //     // }
++    //     // for player in players {
++    //     //     drawable_objects.push(player);
++    //     // }
++    //     // for enemy in enemies {
++    //     //     drawable_objects.push(enemy);
++    //     // }
++    //     for pixel in dissolved_pixels {
++    //         drawable_objects.push(pixel);
++    //     }
++    //     for bullet_trail in bullet_trails {
++    //         drawable_objects.push(bullet_trail);
++    //     }
++    //     for clip in clips {
++    //         drawable_objects.push(clip);
++    //     }
+ 
+-        drawable_objects
+-    }
+-    pub fn get_drawable_objects_mut<'a> (
+-        decorations: &'a mut Vec<Decoration>,
+-        props: &'a mut Vec<Box<dyn Prop>>,
+-        dropped_items: &'a mut Vec<DroppedItem>,
+-        computer: &'a mut Option<Computer>,
+-        players: &'a mut Vec<Player>,
+-        enemies: &'a mut Vec<Enemy>,
+-        dissolved_pixels: &'a mut Vec<DissolvedPixel>,
+-        bullet_trails: &'a mut Vec<BulletTrail>,
+-        clips: &'a mut Vec<Clip>
+-    ) -> Vec<&'a mut dyn Drawable> {
+-        let mut drawable_objects: Vec<&mut dyn Drawable> = vec![];
++    //     drawable_objects
++    // }
++    // pub fn get_drawable_objects_mut<'a> (
++    //     decorations: &'a mut Vec<Decoration>,
++    //     props: &'a mut Vec<Box<dyn Prop>>,
++    //     dropped_items: &'a mut Vec<DroppedItem>,
++    //     computer: &'a mut Option<Computer>,
++    //     players: &'a mut Vec<Player>,
++    //     enemies: &'a mut Vec<Enemy>,
++    //     dissolved_pixels: &'a mut Vec<DissolvedPixel>,
++    //     bullet_trails: &'a mut Vec<BulletTrail>,
++    //     clips: &'a mut Vec<Clip>
++    // ) -> Vec<&'a mut dyn Drawable> {
++    //     let mut drawable_objects: Vec<&mut dyn Drawable> = vec![];
+         
+-        for decoration in decorations {
+-            drawable_objects.push(decoration);
+-        }
+-        for prop in props {
+-            drawable_objects.push(prop.as_mut() as &mut dyn Drawable);
+-        }
+-        // for dropped_item in dropped_items {
+-        //     drawable_objects.push(dropped_item);
+-        // }
+-        // if let Some(computer) = computer {
+-        //     drawable_objects.push(computer);
+-        // }
+-        // for player in players {
+-        //     drawable_objects.push(player);
++    //     for decoration in decorations {
++    //         drawable_objects.push(decoration);
++    //     }
++    //     for prop in props {
++    //         drawable_objects.push(prop.as_mut() as &mut dyn Drawable);
++    //     }
++    //     // for dropped_item in dropped_items {
++    //     //     drawable_objects.push(dropped_item);
++    //     // }
++    //     // if let Some(computer) = computer {
++    //     //     drawable_objects.push(computer);
++    //     // }
++    //     // for player in players {
++    //     //     drawable_objects.push(player);
+             
+             
+-        // }
+-        // for enemy in enemies {
+-        //     drawable_objects.push(enemy);
+-        // }
+-        for pixel in dissolved_pixels {
+-            drawable_objects.push(pixel);
+-        }
+-        for bullet_trail in bullet_trails {
+-            drawable_objects.push(bullet_trail);
+-        }
+-        for clip in clips {
+-            drawable_objects.push(clip);
+-        }
++    //     // }
++    //     // for enemy in enemies {
++    //     //     drawable_objects.push(enemy);
++    //     // }
++    //     for pixel in dissolved_pixels {
++    //         drawable_objects.push(pixel);
++    //     }
++    //     for bullet_trail in bullet_trails {
++    //         drawable_objects.push(bullet_trail);
++    //     }
++    //     for clip in clips {
++    //         drawable_objects.push(clip);
++    //     }
+ 
+-        drawable_objects
+-    }
++    //     drawable_objects
++    // }
+ 
+ 
+     // pub fn designate_master(&mut self, server_io: &mut ServerIO) {
+diff --git a/src/background.rs b/src/background.rs
+index 6e864e0..7ae4762 100644
+--- a/src/background.rs
++++ b/src/background.rs
+@@ -3,7 +3,7 @@ use std::path::PathBuf;
+ use macroquad::{color::WHITE, math::Vec2, texture::{draw_texture_ex, DrawTextureParams}};
+ use serde::{Deserialize, Serialize};
+ 
+-use crate::drawable::{DrawContext, Drawable};
++use crate::{DrawCommand, DrawTextureParameters, TickContext, drawable::{DrawContext, Drawable}};
+ 
+ #[derive(Clone)]
+ pub struct Background {
+@@ -37,6 +37,64 @@ impl Background {
+             parallax: save.parallax
+         }
+     }
++
++    pub fn draw(&mut self, ctx: &mut TickContext) {
++        ctx.add_draw_command(
++            0, 
++            DrawCommand::DrawTexture(
++                DrawTextureParameters {
++                    texture: self.sprite_path.clone(),
++                    position: Vec2 {
++                        x: self.pos.x + ctx.camera_rect().x * self.parallax,
++                        y: self.pos.y * self.parallax,
++                    },
++                    color: WHITE,
++                    params: DrawTextureParams {
++                        dest_size: Some(self.size),
++                        source: None,
++                        rotation: 0.,
++                        flip_x: false,
++                        flip_y: false,
++                        pivot: None,
++                    },
++                }
++            )
++        );
++
++        if self.repeat {
++            for x in -20..20 {
++
++                for y in -5..5 {
++
++                    ctx.add_draw_command(
++                        0, 
++                        DrawCommand::DrawTexture(
++                            DrawTextureParameters {
++                                texture: self.sprite_path.clone(),
++                                position: Vec2 {
++                                    x: (self.pos.x + (x as f32 * self.size.x)) + ctx.camera_rect().x * self.parallax,
++                                    y: (self.pos.y + (y as f32 * self.size.y)) + ctx.camera_rect().y * self.parallax,
++                                },
++                                color: WHITE,
++                                params: DrawTextureParams {
++                                    dest_size: Some(self.size),
++                                    source: None,
++                                    rotation: 0.,
++                                    flip_x: false,
++                                    flip_y: false,
++                                    pivot: None,
++                                }
++                            }
++                        )
++                    );
++            
++                }
++                
++
++                
++            }
++        }
++    }
+ }
+ 
+ #[async_trait::async_trait]
+diff --git a/src/base_prop.rs b/src/base_prop.rs
+index d0ac3ee..de2f6c7 100644
+--- a/src/base_prop.rs
++++ b/src/base_prop.rs
+@@ -8,7 +8,7 @@ use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{
+ use rapier2d::prelude::{AxisMask, ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyType, RigidBodyVelocity, SharedShape, VoxelData};
+ use serde::{Deserialize, Serialize};
+ use strum::{Display, EnumIter};
+-use crate::{ClientId, ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, area::{Area, AreaContext, AreaId}, base_prop_save::BasePropSave, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, prop::Prop, prop_save::PropSave, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
++use crate::{ClearBackgroundParameters, ClientId, ClientTickContext, DrawCommand, DrawRectangleParameters, DrawTextureParameters, Owner, Prefabs, SetCameraParameters, SetMaterialTextureParameters, TextureLoader, TickContext, UseMaterialParameters, area::{Area, AreaContext, AreaId}, base_prop_save::BasePropSave, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, prop::Prop, prop_save::PropSave, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
+ 
+ 
+ 
+@@ -95,6 +95,199 @@ pub struct BaseProp {
+ 
+ impl Prop for BaseProp {
+ 
++    fn layer(&self) -> u32 {
++        self.layer
++    }
++
++    fn draw(&mut self, ctx: &mut TickContext, space: &mut Space) {
++
++        
++        if self.despawn {
++            return;
++        }
++        
++        // this is majorly stupid
++        let (texture, material) = if let TickContext::Client(client_ctx) = ctx {
++            let texture = client_ctx.textures.get(&self.sprite_path);
++            let material = client_ctx.material_loader.get("materials/destruction");
++            (texture, material)
++        } else if let TickContext::Editor(editor_ctx) = ctx {
++
++            let texture = editor_ctx.textures.get(&self.sprite_path);
++            let material = editor_ctx.material_loader.get("materials/destruction");
++            (texture, material)
++
++        } else {
++            todo!()
++        };
++
++
++        self.draw_mask(ctx, texture);
++
++        let mask = self.mask.as_ref().unwrap();
++        
++        ctx.add_draw_command(
++            self.layer, 
++            DrawCommand::SetMaterialTexture(
++                SetMaterialTextureParameters {
++                    material: material.clone(),
++                    texture_name: "Mask".to_string(),
++                    texture: mask.texture.clone(),
++                }
++            )
++        );
++        
++        let body = space.rigid_body_set.get(self.rigid_body_handle).unwrap();
++        let collider = space.collider_set.get(self.collider_handle).unwrap();
++        let macroquad_pos = rapier_to_macroquad(body.translation());
++        let size = Vec2::new(texture.width() * self.scale, texture.height() * self.scale);
++        let pivot = Vec2::new(size.x , size.y);
++        let mut color = WHITE;
++        if let Some(lifespan) = self.lifespan {
++            // if (lifespan - self.spawned.elapsed()).as_secs() <= 5 {
++
++            //     //color.a = (lifespan.as_secs_f32() - self.spawned.elapsed().as_secs_f32()) / 5.
++            // }
++        }
++
++        ctx.add_draw_command(
++            self.layer, 
++            DrawCommand::UseMaterial(
++                UseMaterialParameters {
++                    material: material.clone(),
++                }
++            )
++        );
++
++        //gl_use_material(material);
++
++        ctx.add_draw_command(
++            self.layer, 
++            DrawCommand::DrawTexture(
++                DrawTextureParameters {
++                    texture: self.sprite_path.clone(),
++                    position: Vec2 { 
++                        x: macroquad_pos.x, 
++                        y: macroquad_pos.y - pivot.y
++                    },
++                    color,
++                    params: DrawTextureParams {
++                        dest_size: Some(size),
++                        rotation: body.rotation().angle() * -1.,
++                        pivot: Some(macroquad_pos),
++                        ..Default::default()
++                    },
++                }
++            )
++        );
++
++   
++
++
++        if let RigidBodyType::KinematicPositionBased = space.rigid_body_set.get(self.rigid_body_handle).unwrap().body_type() {
++
++            let mut color = RED;
++
++            color.a = 1. - (self.last_received_position_update.elapsed().as_secs_f32() / 1.);
++
++            ctx.add_draw_command(
++                self.layer, 
++                DrawCommand::DrawTexture(
++                    DrawTextureParameters {
++                        texture: self.sprite_path.clone(),
++                        position: Vec2 {
++                            x: macroquad_pos.x,
++                            y: macroquad_pos.y - pivot.y,
++                        },
++                        color,
++                        params: DrawTextureParams {
++                            dest_size: Some(size),
++                            rotation: body.rotation().angle() * -1.,
++                            pivot: Some(macroquad_pos),
++                            ..Default::default()
++                        },
++                    }
++                )
++            );
++        }
++
++        let mut color = GREEN;
++
++        color.a = 1. - (self.last_sent_position_update.elapsed().as_secs_f32() / 1.);
++
++
++        // draw_texture_ex(
++        //     texture,
++        //     macroquad_pos.x,
++        //     macroquad_pos.y - pivot.y,
++        //     color,
++        //     DrawTextureParams {
++        //         dest_size: Some(size),
++        //         rotation: body.rotation().angle() * -1.,
++        //         pivot: Some(macroquad_pos),
++        //         ..Default::default()
++        //     }
++
++        // );
++        // if let Some(owner) = self.owner {
++        //     if let Owner::ClientId(owner) = owner {
++        //         if owner == draw_context.id {
++        //             draw_texture_ex(
++        //                 texture,
++        //                 macroquad_pos.x,
++        //                 macroquad_pos.y - pivot.y,
++        //                 RED,
++        //                 DrawTextureParams {
++        //                     dest_size: Some(size),
++        //                     rotation: body.rotation().angle() * -1.,
++        //                     pivot: Some(macroquad_pos),
++        //                     ..Default::default()
++        //                 }
++
++        //             );
++        //         }
++        //     }
++        // }
++
++        //draw_text(&format!("{:?}", self.owner), macroquad_pos.x, macroquad_pos.y, 20., WHITE);
++
++
++
++        //gl_use_default_material();
++
++        ctx.add_draw_command(
++            0, 
++            DrawCommand::UseDefaultMaterial
++        );
++
++        let mut color = WHITE;
++        color.a = 0.5;
++
++
++        // for voxel in collider.shape().as_voxels().unwrap().voxels() {
++
++        //     let pos = collider.shape().as_voxels().unwrap().voxel_center(voxel.grid_coords);
++        //     let macroquad_pos = rapier_to_macroquad(pos);
++        //     draw_rectangle(macroquad_pos.x - (2. * self.scale), macroquad_pos.y - (2. * self.scale), 4. * self.scale, 4. * self.scale, color);
++
++        // }
++        // for voxel in self.get_voxel_world_positions(draw_context.space) {
++
++        //     let mut color = match collider.shape().as_voxels().unwrap().voxel_state(voxel.0.grid_coords).unwrap().voxel_type() {
++        //         rapier2d::prelude::VoxelType::Empty => RED,
++        //         rapier2d::prelude::VoxelType::Vertex => GREEN,
++        //         rapier2d::prelude::VoxelType::Face => BLUE,
++        //         rapier2d::prelude::VoxelType::Interior => VIOLET,
++        //     };
++
++        //     color.a = 0.5;
++        //     let macroquad_pos = rapier_to_macroquad(voxel.1);
++        //     draw_rectangle(macroquad_pos.x - (4.), macroquad_pos.y - (4.), 8., 8., color);
++
++        // }
++
++    }
++
+     fn set_name(&mut self, name: &str) {
+         self.name = name.into()
+     }
+@@ -250,8 +443,8 @@ impl BaseProp {
+         );
+     }
+ 
+-    pub fn draw_preview(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, _prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
+-        draw_preview(textures, size, draw_pos, color, rotation, &self.sprite_path);
++    pub fn draw_preview(&self, ctx: &mut TickContext, size: f32, draw_pos: Vec2, _prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
++        draw_preview(ctx, size, draw_pos, color, rotation, &self.sprite_path, self.layer);
+     }
+ 
+     pub fn get_preview_resolution(&self, size: f32, _prefabs: &Prefabs, textures: &ClientTextureLoader) -> Vec2 {
+@@ -1164,7 +1357,7 @@ impl BaseProp {
+ 
+     fn draw_mask(
+         &mut self,
+-        draw_context: &crate::drawable::DrawContext,
++        ctx: &mut TickContext,
+         texture: &Texture2D
+     ) {
+ 
+@@ -1176,19 +1369,26 @@ impl BaseProp {
+ 
+         let mask = self.mask.as_mut().unwrap();
+ 
+-        let _then = web_time::Instant::now();
+-        let mut camera = Camera2D::from_display_rect(
+-            Rect::new(0., 0., mask.texture.width(), mask.texture.height())
++        ctx.add_draw_command(
++            self.layer, 
++            DrawCommand::SetCamera(
++                SetCameraParameters {
++                    rect: Rect::new(0., 0., mask.texture.width(), mask.texture.height()),
++                    render_target: Some(mask.clone()),
++                }
++            )
+         );
++    
+ 
+-        camera.render_target = Some(mask.clone());
+-        camera.zoom.y = -camera.zoom.y;
+-
+-
+-        set_camera(&camera);
+ 
+-        // clear the mask
+-        clear_background(WHITE);
++        ctx.add_draw_command(
++            self.layer, 
++            DrawCommand::ClearBackground(
++                ClearBackgroundParameters {
++                    color: WHITE,
++                }
++            )
++        );
+ 
+ 
+ 
+@@ -1196,17 +1396,40 @@ impl BaseProp {
+ 
+             // THIS MASK TEXTURE IS SCALED ALONGSIDE THE REAL TEXTURE SO THE VOXEL SIZE NEEDS TO BE DIVIDED TO KEEP IT CONSTANT
+             //log::debug!("drawing masked voxel at x: {}, y: {}", removed_voxel.x * 8, removed_voxel.y * 8);
+-            draw_rectangle(
+-                (removed_voxel.x as f32 * (8. / self.scale)),
+-                ((((removed_voxel.y as f32 * (8. / self.scale)) * -1.) + texture.height()) - (8. / self.scale)),
+-                8. / self.scale,
+-                8. / self.scale,
+-                BLACK
++            // draw_rectangle(
++            //     (removed_voxel.x as f32 * (8. / self.scale)),
++            //     ((((removed_voxel.y as f32 * (8. / self.scale)) * -1.) + texture.height()) - (8. / self.scale)),
++            //     8. / self.scale,
++            //     8. / self.scale,
++            //     BLACK
++            // );
++
++            ctx.add_draw_command(
++                self.layer, 
++                DrawCommand::DrawRectangle(
++                    DrawRectangleParameters {
++                        position: Vec2 { 
++                            x: (removed_voxel.x as f32 * (8. / self.scale)), 
++                            y: ((((removed_voxel.y as f32 * (8. / self.scale)) * -1.) + texture.height()) - (8. / self.scale)) 
++                        },
++                        size: Vec2 { 
++                            x: 8. / self.scale, 
++                            y: 8. / self.scale
++                        },
++                        offset: None,
++                        rotation: None,
++                        color: Some(BLACK),
++                    }
++                )
+             );
+ 
+         }
+ 
+-        set_camera(draw_context.default_camera);
++        ctx.add_draw_command(
++            self.layer, 
++            DrawCommand::ResetToDefaultCamera
++        );
++        
+     }
+ 
+     fn get_voxel_world_positions(
+@@ -1286,175 +1509,7 @@ impl EditorContextMenu for BaseProp {
+ 
+ 
+ }
+-#[async_trait]
+-impl Drawable for BaseProp {
+-    async fn draw(&mut self, draw_context: &crate::drawable::DrawContext) {
+-
+-    
+-
+-        if self.despawn {
+-            return;
+-        }
+-
+-        let texture = draw_context.textures.get(&self.sprite_path);
+-
+-        self.draw_mask(draw_context, texture);
+-
+-        let mask = self.mask.as_ref().unwrap();
+-
+-        let then = web_time::Instant::now();
+-        let material = draw_context.materials.get("materials/destruction");
+-        material.set_texture("Mask", mask.texture.clone());
+-        //log::debug!("Loading material: {:?}", then.elapsed());
+-
+-        let body = draw_context.space.rigid_body_set.get(self.rigid_body_handle).unwrap();
+-        let collider = draw_context.space.collider_set.get(self.collider_handle).unwrap();
+-
+-
+-        //let center_of_mass_macroquad_pos = rapier_to_macroquad(body.center_of_mass());
+-        let macroquad_pos = rapier_to_macroquad(body.translation());
+-
+-
+-
+-        let size = Vec2::new(texture.width() * self.scale, texture.height() * self.scale);
+-
+-        let pivot = Vec2::new(size.x , size.y);
+-
+-        let mut color = WHITE;
+-        if let Some(lifespan) = self.lifespan {
+-            // if (lifespan - self.spawned.elapsed()).as_secs() <= 5 {
+-
+-            //     //color.a = (lifespan.as_secs_f32() - self.spawned.elapsed().as_secs_f32()) / 5.
+-            // }
+-        }
+ 
+-        
+-
+-
+-
+-        gl_use_material(material);
+-        draw_texture_ex(
+-            texture,
+-            macroquad_pos.x,
+-            macroquad_pos.y - pivot.y,
+-            color,
+-            DrawTextureParams {
+-                dest_size: Some(size),
+-                rotation: body.rotation().angle() * -1.,
+-                pivot: Some(macroquad_pos),
+-                ..Default::default()
+-            }
+-
+-        );
+-
+-
+-
+-
+-        if let RigidBodyType::KinematicPositionBased = draw_context.space.rigid_body_set.get(self.rigid_body_handle).unwrap().body_type() {
+-
+-            let mut color = RED;
+-
+-            color.a = 1. - (self.last_received_position_update.elapsed().as_secs_f32() / 1.);
+-
+-
+-            draw_texture_ex(
+-                texture,
+-                macroquad_pos.x,
+-                macroquad_pos.y - pivot.y,
+-                color,
+-                DrawTextureParams {
+-                    dest_size: Some(size),
+-                    rotation: body.rotation().angle() * -1.,
+-                    pivot: Some(macroquad_pos),
+-                    ..Default::default()
+-                }
+-
+-            );
+-        }
+-
+-        let mut color = GREEN;
+-
+-        color.a = 1. - (self.last_sent_position_update.elapsed().as_secs_f32() / 1.);
+-
+-
+-        // draw_texture_ex(
+-        //     texture,
+-        //     macroquad_pos.x,
+-        //     macroquad_pos.y - pivot.y,
+-        //     color,
+-        //     DrawTextureParams {
+-        //         dest_size: Some(size),
+-        //         rotation: body.rotation().angle() * -1.,
+-        //         pivot: Some(macroquad_pos),
+-        //         ..Default::default()
+-        //     }
+-
+-        // );
+-        // if let Some(owner) = self.owner {
+-        //     if let Owner::ClientId(owner) = owner {
+-        //         if owner == draw_context.id {
+-        //             draw_texture_ex(
+-        //                 texture,
+-        //                 macroquad_pos.x,
+-        //                 macroquad_pos.y - pivot.y,
+-        //                 RED,
+-        //                 DrawTextureParams {
+-        //                     dest_size: Some(size),
+-        //                     rotation: body.rotation().angle() * -1.,
+-        //                     pivot: Some(macroquad_pos),
+-        //                     ..Default::default()
+-        //                 }
+-
+-        //             );
+-        //         }
+-        //     }
+-        // }
+-
+-        draw_text(&format!("{:?}", self.owner), macroquad_pos.x, macroquad_pos.y, 20., WHITE);
+-
+-
+-
+-        gl_use_default_material();
+-
+-        let mut color = WHITE;
+-        color.a = 0.5;
+-
+-
+-        // for voxel in collider.shape().as_voxels().unwrap().voxels() {
+-
+-        //     let pos = collider.shape().as_voxels().unwrap().voxel_center(voxel.grid_coords);
+-        //     let macroquad_pos = rapier_to_macroquad(pos);
+-        //     draw_rectangle(macroquad_pos.x - (2. * self.scale), macroquad_pos.y - (2. * self.scale), 4. * self.scale, 4. * self.scale, color);
+-
+-        // }
+-        // for voxel in self.get_voxel_world_positions(draw_context.space) {
+-
+-        //     let mut color = match collider.shape().as_voxels().unwrap().voxel_state(voxel.0.grid_coords).unwrap().voxel_type() {
+-        //         rapier2d::prelude::VoxelType::Empty => RED,
+-        //         rapier2d::prelude::VoxelType::Vertex => GREEN,
+-        //         rapier2d::prelude::VoxelType::Face => BLUE,
+-        //         rapier2d::prelude::VoxelType::Interior => VIOLET,
+-        //     };
+-
+-        //     color.a = 0.5;
+-        //     let macroquad_pos = rapier_to_macroquad(voxel.1);
+-        //     draw_rectangle(macroquad_pos.x - (4.), macroquad_pos.y - (4.), 8., 8., color);
+-
+-        // }
+-
+-
+-
+-
+-
+-
+-    }
+-
+-
+-
+-    fn draw_layer(&self) -> u32 {
+-        self.layer
+-    }
+-}
+ 
+ 
+ #[derive(Serialize, Deserialize, Debug, Clone, Default, Copy, PartialEq, Hash, Eq)]
+diff --git a/src/body_part.rs b/src/body_part.rs
+index 3a1676a..0eb9e40 100644
+--- a/src/body_part.rs
++++ b/src/body_part.rs
+@@ -2,7 +2,7 @@ use std::path::PathBuf;
+ 
+ use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle};
+ 
+-use crate::{Owner, draw_texture_onto_physics_body, space::Space, texture_loader::ClientTextureLoader};
++use crate::{Owner, TickContext, draw_texture_onto_physics_body, space::Space, texture_loader::ClientTextureLoader};
+ 
+ #[derive(Debug, Clone)]
+ pub struct BodyPart {
+@@ -58,17 +58,23 @@ impl BodyPart {
+ 
+     }
+ 
+-    pub async fn draw(&self, textures: &ClientTextureLoader, space: &Space, flip_x: bool) {
++    pub fn draw(
++        &self, 
++        ctx: &mut TickContext,
++        space: &Space, 
++        flip_x: bool
++    ) {
+         draw_texture_onto_physics_body(
++            ctx,
++            1,
+             self.body_handle, 
+             self.collider_handle, 
+             &space, 
+             &self.sprite_path, 
+-            textures, 
+             flip_x, 
+             false, 
+             0.,
+-        ).await
++        )
+     }
+ 
+ }
+diff --git a/src/client/client.rs b/src/client/client.rs
+index 0038fa0..1367f6c 100644
+--- a/src/client/client.rs
++++ b/src/client/client.rs
+@@ -1,7 +1,7 @@
+ use std::{collections::HashMap, process::exit};
+ 
+ use image::codecs::webp;
+-use interceptors_lib::{Assets, ClientIO, ClientId, ClientTickContext, Owner, Prefabs, area::Area, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, material_loader::MaterialLoader, player::{ItemSlot, Player}, base_prop::BaseProp, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::ClientTextureLoader, updates::{NetworkPacket, Ping}, world::World};
++use interceptors_lib::{Assets, ClientIO, ClientId, ClientTickContext, DrawCommand, DrawCommands, Owner, Prefabs, TickContext, area::Area, base_prop::BaseProp, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, material_loader::MaterialLoader, player::{ItemSlot, Player}, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::ClientTextureLoader, updates::{NetworkPacket, Ping}, world::World};
+ use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, WHITE}, input::{KeyCode, is_key_released, show_mouse}, math::{Rect, vec2}, prelude::{Material, ShaderSource, gl_use_default_material, load_material}, text::draw_text, texture::{DrawTextureParams, RenderTarget, draw_texture_ex, render_target}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
+ use rapier2d::{math::Vector, prelude::{ColliderBuilder, SharedShape}};
+ 
+@@ -31,7 +31,8 @@ pub struct Client {
+     spawned: bool,
+     fonts: FontLoader,
+     test_button: Button,
+-    material_loader: MaterialLoader
++    material_loader: MaterialLoader,
++    draw_commands: DrawCommands
+ }
+ 
+ impl Client {
+@@ -144,7 +145,7 @@ impl Client {
+ 
+         log::debug!("Connected to server!");
+         Self {
+-
++            draw_commands: DrawCommands::new(),
+             packets_sent: 0,
+             network_io: server,
+             pings: HashMap::new(),
+@@ -644,6 +645,9 @@ impl Client {
+         self.ping();
+ 
+         let ctx = ClientTickContext {
++            start: &self.start,
++            draw_commands: &mut self.draw_commands,
++            material_loader: &mut self.material_loader,
+             network_io: &mut self.network_io,
+             last_tick_duration: &self.last_tick_duration,
+             client_id: &self.client_id,
+@@ -652,7 +656,8 @@ impl Client {
+             screen_shake: &mut self.screen_shake,
+             sounds: &mut self.sounds,
+             textures: &self.textures,
+-            camera: &self.camera
++            camera: &self.camera,
++            fonts: &self.fonts
+ 
+         };
+ 
+@@ -736,16 +741,31 @@ impl Client {
+ 
+         clear_background(BLACK);
+ 
++        self.draw_commands.clear();
++
++        let mut ctx: TickContext = TickContext::Client(
++            ClientTickContext {
++                material_loader: &mut self.material_loader,
++                draw_commands: &mut self.draw_commands,
++                start: &self.start,
++                network_io: &mut self.network_io,
++                last_tick_duration: &mut self.last_tick_duration,
++                client_id: &mut self.client_id,
++                camera_rect: &mut self.camera_rect,
++                prefabs: &mut self.prefab_data,
++                screen_shake: &mut self.screen_shake,
++                sounds: &mut self.sounds,
++                textures: &mut self.textures,
++                camera: &mut self.camera,
++                fonts: &self.fonts
++            }
++        ).into();
++
+         self.world.draw(
+-            &mut self.textures,
+-            &self.material_loader,
+-            &self.camera_rect,
+-            &self.prefab_data,
+-            &self.camera,
+-            &self.fonts,
+-            self.start.elapsed(),
+-            self.client_id
+-        ).await;
++            &mut ctx
++        );
++
++        self.draw_commands.render(&self.textures, &self.camera, &self.fonts, &self.material_loader).await;
+ 
+         //self.phone.draw(&self.textures, &self.camera_rect);
+ 
+diff --git a/src/computer.rs b/src/computer.rs
+index 3506003..3088348 100644
+--- a/src/computer.rs
++++ b/src/computer.rs
+@@ -1,10 +1,10 @@
+-use std::path::PathBuf;
++use std::path::{Path, PathBuf};
+ 
+ use derive_more::From;
+ use macroquad::{camera::{set_camera, Camera2D}, color::{Color, BLACK, GRAY, WHITE}, math::{Rect, Vec2}, shapes::draw_line, text::{draw_text_ex, TextParams}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::clear_background};
+ use serde::{Deserialize, Serialize};
+ 
+-use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, base_prop::BaseProp, base_prop_save::BasePropSave, button::Button, drawable::{DrawContext, Drawable}, font_loader::FontLoader, items::{Item, prop::prop_item::PropItem}, mouse_world_pos, player::Player, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, weapons::weapon_type_save::WeaponTypeSave};
++use crate::{ClearBackgroundParameters, ClientTickContext, DrawCommand, DrawLineParameters, DrawTextParameters, DrawTextureDirectParameters, DrawTextureParameters, Owner, Prefabs, SetCameraParameters, TextureLoader, TickContext, base_prop::BaseProp, base_prop_save::BasePropSave, button::Button, drawable::{DrawContext, Drawable}, font_loader::FontLoader, items::{Item, prop::prop_item::PropItem}, mouse_world_pos, player::Player, prop::Prop, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, weapons::weapon_type_save::WeaponTypeSave};
+ 
+ // #[derive(PartialEq, Clone, Debug, From)]
+ // pub enum Item {
+@@ -74,8 +74,8 @@ pub struct StoreItem {
+ }
+ 
+ impl StoreItem {
+-    pub fn draw(&self, textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, prefabs: &Prefabs, color: Option<Color>, rotation: f32) {
+-        self.item.draw_preview(textures, size, draw_pos, color, rotation);
++    pub fn draw(&self, ctx: &mut TickContext, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32) {
++        self.item.draw_preview(ctx, size, draw_pos, color, rotation);
+     }
+ 
+ }
+@@ -111,7 +111,7 @@ impl CategoryTab {
+         self.button.update(mouse_pos);
+     }
+ 
+-    pub fn draw(&self, fonts: &FontLoader) {
++    pub fn draw(&self, ctx: &mut TickContext) {
+ 
+         // draw_rectangle(self.button.rect.x, self.button.rect.y, self.button.rect.w, self.button.rect.h, Color {
+         //     r: 1.,
+@@ -136,20 +136,44 @@ impl CategoryTab {
+ 
+         let text_length = self.text.len() as f32;
+ 
+-        draw_text_ex(
+-            &self.text, 
+-            self.button.rect.x, 
+-            self.button.rect.y + 20., 
+-            TextParams {
+-                font: Some(&fonts.get(self.font.clone())),
+-                font_size: 32,
+-                color,
+-                ..Default::default()
+-            }
++        ctx.add_draw_command(
++            1, 
++            DrawCommand::DrawText(
++                DrawTextParameters {
++                    text: self.text.clone(),
++                    position: Vec2 {
++                        x: self.button.rect.x,
++                        y: self.button.rect.y + 20.,
++                    },
++                    font_size: Some(32),
++                    color: Some(color),
++                    font: Some(self.font.clone()),
++                    rotation: None,
++                }
++            )
+         );
+ 
++
+         if self.active {
+-            draw_line(self.button.rect.left(), self.button.rect.bottom() + 3., self.button.rect.left() + text_length * 13. + 3., self.button.rect.bottom() + 3., 2., color);
++
++            ctx.add_draw_command(
++                1, 
++                DrawCommand::DrawLine(
++                    DrawLineParameters {
++                        start: Vec2 {
++                            x: self.button.rect.left(),
++                            y: self.button.rect.bottom() + 3.,
++                        },
++                        end: Vec2 {
++                            x: self.button.rect.left() + text_length * 13. + 3.,
++                            y: self.button.rect.bottom() + 3.,
++                        },
++                        thickness: 2.,
++                        color,
++                    }
++                )
++            );
++
+         }
+         
+     }
+@@ -199,7 +223,7 @@ impl StoreCategory {
+         }
+     }
+ 
+-    pub fn draw(&self, textures: &ClientTextureLoader, prefabs: &Prefabs, fonts: &FontLoader) {
++    pub fn draw(&self, ctx: &mut TickContext) {
+ 
+         let _hovered_button_color = Color::new(0.78, 0.78, 0.78, 0.5);
+ 
+@@ -216,26 +240,32 @@ impl StoreCategory {
+             };
+ 
+             item.draw(
+-                textures, 
++                ctx,
+                 36., 
+                 draw_pos, 
+-                prefabs,
+                 Some(color),
+                 0.
+             );
+ 
+             if let Some(quantity) = item.quantity {
+-                draw_text_ex(
+-                    &quantity.to_string(), 
+-                    draw_pos.x, 
+-                    draw_pos.y + 24., 
+-                    TextParams {
+-                        font: Some(&fonts.get(PathBuf::from("assets/fonts/CutePixel.ttf"))),
+-                        font_size: 24,
+-                        color: WHITE,
+-                        ..Default::default()
+-                    }
++
++                ctx.add_draw_command(
++                    1, 
++                    DrawCommand::DrawText(
++                        DrawTextParameters {
++                            text: quantity.to_string(),
++                            position: Vec2 {
++                                x: draw_pos.x,
++                                y: draw_pos.y + 24.,
++                            },
++                            font_size: Some(24),
++                            color: Some(WHITE),
++                            font: Some(PathBuf::from("assets/fonts/CutePixel.ttf")),
++                            rotation: None,
++                        }
++                    )
+                 );
++ 
+             };
+         }
+     }
+@@ -461,8 +491,94 @@ impl Computer {
+ 
+         // IN THE FUTURE IF THE RENDER TARGET DOES NOT MATCH THE DESTINATION SIZE THESE COORDS NEED TO MULTIPLIED BY THAT RATIO
+     }
++
++    pub fn draw(&mut self, ctx: &mut TickContext, space: &mut Space) {
++        self.prop.draw(ctx, space);
++
++        let _prop_pos = space.rigid_body_set.get(self.prop.rigid_body_handle).unwrap().position();
++
++        let mut color = BLACK;
++
++        color.a = 0.25;
++
++        let render_target = match &self.render_target {
++            Some(render_target) => render_target.clone(),
++            None => {
++                self.render_target = Some(render_target(320, 180));
++                self.render_target.clone().unwrap()
++            },
++        };
++
++        let camera_rect = Rect::new(0., 0., 320., 180.);
++
++        ctx.add_draw_command(
++            self.prop.layer, 
++            DrawCommand::SetCamera(
++                SetCameraParameters {
++                    rect: camera_rect,
++                    render_target: Some(render_target.clone()),
++                }
++            )
++        );
++
++    
++        ctx.add_draw_command(
++            self.prop.layer, 
++            DrawCommand::ClearBackground(
++                ClearBackgroundParameters {
++                    color,
++                }
++            )
++        );
++      
++
++        //draw_rectangle(0., 0., 20., 20., RED);
++
++        // draw_text_ex("STORE", 0., 20., TextParams {
++        //     font: Some(&font),
++        //     font_size: 32,
++        //     color: WHITE,
++        //     ..Default::default()
++            
++        // });
++
++        for category_tab in &self.category_tabs {
++            category_tab.draw(ctx);
++        }
++
++        let selected_item_category = self.item_categories.get(self.selected_category).unwrap();
++
++        selected_item_category.draw(ctx);
++        
++        ctx.add_draw_command(
++            self.prop.layer, 
++            DrawCommand::ResetToDefaultCamera
++        );
++
++        ctx.add_draw_command(
++            self.prop.layer, 
++            DrawCommand::DrawTextureDirect(
++                DrawTextureDirectParameters {
++                    texture: render_target.texture.clone(),
++                    position: Vec2 {
++                        x: self.screen_pos.x,
++                        y: self.screen_pos.y,
++                    },
++                    color: WHITE,
++                    params: DrawTextureParams {
++                        dest_size: Some(self.screen_size),
++                        ..Default::default()
++                    },
++                }
++            )
++        );
++
++
++    }
+ }
+ 
++
++
+ // #[async_trait::async_trait]
+ // impl Drawable for Computer {
+ //     async fn draw(&mut self, draw_context: &DrawContext) {
+diff --git a/src/decoration.rs b/src/decoration.rs
+index ee7331a..3082004 100644
+--- a/src/decoration.rs
++++ b/src/decoration.rs
+@@ -3,7 +3,7 @@ use std::path::PathBuf;
+ use macroquad::{color::WHITE, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams}};
+ use serde::{Deserialize, Serialize};
+ 
+-use crate::{drawable::Drawable, editor_context_menu::{DataEditorContext, EditorContextMenu, EditorContextMenuData}, space::Space};
++use crate::{DrawCommand, DrawTextureParameters, TickContext, drawable::Drawable, editor_context_menu::{DataEditorContext, EditorContextMenu, EditorContextMenuData}, space::Space};
+ 
+ // literally just a sprite with position and size
+ #[derive(Clone, PartialEq)]
+@@ -20,6 +20,48 @@ pub struct Decoration {
+ 
+ impl Decoration {
+ 
++    pub fn draw(
++        &self, 
++        ctx: &mut TickContext, 
++
++    ) {
++        let sprite_path = match &self.frame_duration {
++            Some(frame_duration) => {
++                let current_frame = (
++                    (
++                        ctx.start().elapsed().as_secs_f32() % (frame_duration.as_secs_f32() * self.animated_sprite_paths.as_ref().unwrap().len() as f32)
++                    ) / frame_duration.as_secs_f32()
++                ) as usize;
++
++                &self.animated_sprite_paths.as_ref().unwrap()[current_frame]
++            },
++            None => {
++                self.sprite_path.as_ref().unwrap()
++            },
++        };
++
++        ctx.add_draw_command(
++            self.layer,
++            DrawCommand::DrawTexture(
++                DrawTextureParameters {
++                    texture: sprite_path.clone(),
++                    position: self.pos,
++                    color: WHITE,
++                    params: DrawTextureParams {
++                        dest_size: Some(self.size),
++                        source: None,
++                        rotation: 0.,
++                        flip_x: false,
++                        flip_y: false,
++                        pivot: None,
++                    }
++                }
++            )
++        );
++
++    
++    }
++
+     pub fn editor_draw(&self) {
+         
+         self.draw_editor_context_menu();
+@@ -110,46 +152,7 @@ impl EditorContextMenu for Decoration {
+     }
+ }
+ 
+-#[async_trait::async_trait]
+-impl Drawable for Decoration {
+-    async fn draw(&mut self, draw_context: &crate::drawable::DrawContext) {
+-        let sprite_path = match &self.frame_duration {
+-            Some(frame_duration) => {
+-                let current_frame = (
+-                    (
+-                        draw_context.elapsed_time.as_secs_f32() % (frame_duration.as_secs_f32() * self.animated_sprite_paths.as_ref().unwrap().len() as f32)
+-                    ) / frame_duration.as_secs_f32()
+-                ) as usize;
+ 
+-                &self.animated_sprite_paths.as_ref().unwrap()[current_frame]
+-            },
+-            None => {
+-                self.sprite_path.as_ref().unwrap()
+-            },
+-        };
+-
+-        let texture = draw_context.textures.get(sprite_path);
+-
+-        draw_texture_ex(
+-            texture, 
+-            self.pos.x, 
+-            self.pos.y, 
+-            WHITE, 
+-            DrawTextureParams {
+-                dest_size: Some(self.size),
+-                source: None,
+-                rotation: 0.,
+-                flip_x: false,
+-                flip_y: false,
+-                pivot: None,
+-            }
+-        );
+-    }
+-
+-    fn draw_layer(&self) -> u32 {
+-        self.layer
+-    }
+-}
+ #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+ pub struct DecorationSave {
+     pub pos: Vec2,
+diff --git a/src/dropped_item.rs b/src/dropped_item.rs
+index b2dcd40..8ac7327 100644
+--- a/src/dropped_item.rs
++++ b/src/dropped_item.rs
+@@ -3,7 +3,7 @@ use macroquad::{color::WHITE, math::Vec2};
+ use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
+ use serde::{Deserialize, Serialize};
+ 
+-use crate::{Prefabs, TextureLoader, area::AreaId, drawable::{DrawContext, Drawable}, items::{Item, item_save::ItemSave}, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, uuid_u64};
++use crate::{Prefabs, TextureLoader, TickContext, area::AreaId, drawable::{DrawContext, Drawable}, items::{Item, item_save::ItemSave}, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, uuid_u64};
+ 
+ #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+ pub struct DroppedItemId {
+@@ -116,7 +116,7 @@ impl DroppedItem {
+ 
+         let rigid_body = space.rigid_body_set.insert(
+             RigidBodyBuilder::dynamic()
+-                .position(pos)
++                .pose(pos)
+                 .linvel(vel.linvel)
+                 .angvel(vel.angvel)
+         );
+@@ -138,49 +138,49 @@ impl DroppedItem {
+             despawn: false
+         }
+     }
+-}
+-
+-// #[async_trait::async_trait]
+-// impl Drawable for DroppedItem {
+-//     async fn draw(&mut self, draw_context: &DrawContext) {
+-//         if self.despawn == true {
+-//             return;
+-//         }
+-
+-//         let body = draw_context.space.rigid_body_set.get(self.body).unwrap();
+ 
+-//         let pos = body.position();
+-
+-//         let half_extents = draw_context.space.collider_set.get(self.collider).unwrap().shape().as_cuboid().unwrap().half_extents;
+-
+-//         // preview uses macroquad coords
+-//         let macroquad_pos = rapier_to_macroquad(pos.translation);
++    pub fn draw(&self, ctx: &mut TickContext, space: &Space) {
++        if self.despawn == true {
++            return;
++        }
+ 
+-//         let macroquad_rotation = pos.rotation.angle() * -1.;
++        let body = space.rigid_body_set.get(self.body).unwrap();
+ 
+-//         // this is stupid
++        let pos = body.position();
+ 
+-//         let size = match self.size.x >= self.size.y {
+-//             true => self.size.x * 2.,
+-//             false => self.size.y * 2.,
+-//         };
++        let half_extents = space.collider_set.get(self.collider).unwrap().shape().as_cuboid().unwrap().half_extents;
++
++        // preview uses macroquad coords
++        let macroquad_pos = rapier_to_macroquad(pos.translation);
++
++        let macroquad_rotation = pos.rotation.angle() * -1.;
++
++        // this is stupid
++        let size = match self.size.x >= self.size.y {
++            true => self.size.x * 2.,
++            false => self.size.y * 2.,
++        };
++
++        // i need to find a better way to do this????
++        let textures = match ctx.textures() {
++            TextureLoader::Client(client_texture_loader) => client_texture_loader,
++            TextureLoader::Server(server_texture_loader) => panic!(),
++        };
++
++        self.item.draw_preview(
++            ctx, 
++            size, 
++            Vec2 {
++                x: macroquad_pos.x - half_extents.x,
++                y: macroquad_pos.y - half_extents.y,
++            },
++            Some(WHITE),
++            macroquad_rotation
++        );
++    }
++}
+ 
+-//         self.item.draw_preview(
+-//             draw_context.textures, 
+-//             size, 
+-//             Vec2 {
+-//                 x: macroquad_pos.x - half_extents.x,
+-//                 y: macroquad_pos.y - half_extents.y,
+-//             },
+-//             Some(WHITE),
+-//             macroquad_rotation
+-//         );
+-//     }
+ 
+-//     fn draw_layer(&self) -> u32 {
+-//         1
+-//     }
+-// }
+ #[derive(Serialize, Deserialize, Clone)]
+ pub struct DroppedItemSave {
+     pos: Pose2,
+diff --git a/src/editor/editor.rs b/src/editor/editor.rs
+index 6dbd845..2875ceb 100644
+--- a/src/editor/editor.rs
++++ b/src/editor/editor.rs
+@@ -1,7 +1,7 @@
+-use std::{fs::{self, read_to_string}, path::PathBuf, process::exit, time::Duration};
++use std::{collections::HashMap, fs::{self, read_to_string}, path::PathBuf, process::exit, time::Duration};
+ 
+ use glamx::{Pose2, Vec2, vec2};
+-use interceptors_lib::{ClientId, EditorTickContext, Prefabs, area::{Area, AreaSave}, clip::Clip, decoration::Decoration, drawable::{DrawContext, Drawable}, editor_context_menu::EditorContextMenu, font_loader::FontLoader, load_assets, macroquad_to_rapier, material_loader::MaterialLoader, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, texture_loader::ClientTextureLoader};
++use interceptors_lib::{ClientId, DrawCommand, DrawCommands, EditorMode, EditorTickContext, Prefabs, TickContext, area::{Area, AreaSave}, clip::Clip, decoration::Decoration, drawable::{DrawContext, Drawable}, editor_context_menu::EditorContextMenu, font_loader::FontLoader, load_assets, macroquad_to_rapier, material_loader::MaterialLoader, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, texture_loader::ClientTextureLoader};
+ use log::info;
+ use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, GRAY, GREEN, RED, WHITE}, input::{KeyCode, MouseButton, is_key_down, is_key_released, is_mouse_button_down, is_mouse_button_released, mouse_delta_position, mouse_wheel}, math::{Rect}, shapes::{draw_rectangle, draw_rectangle_lines}, text::draw_text, time::draw_fps, window::{next_frame, screen_height, screen_width}};
+ use rapier2d::{prelude::{ColliderBuilder, PointQuery, RigidBodyBuilder, RigidBodyVelocity}};
+@@ -13,13 +13,6 @@ use crate::{editor_input_context::EditorInputContext, editor_mode_select_ui::Edi
+ 
+ 
+ 
+-#[derive(Display, PartialEq, Clone, Copy)]
+-pub enum EditorMode {
+-    PrefabPlacement,
+-    SetSpawnPoint,
+-    TilePlacement,
+-    Select
+-}
+ 
+ 
+ 
+@@ -53,6 +46,7 @@ pub struct AreaEditor {
+     last_area_save: AreaSave,
+     current_area_path: PathBuf,
+     material_loader: MaterialLoader,
++    draw_commands: DrawCommands
+ }
+ 
+ impl AreaEditor {
+@@ -95,7 +89,7 @@ impl AreaEditor {
+         }
+ 
+         for prop in &self.area.props {
+-            if disabled_layers.contains(&prop.draw_layer()) {continue;}
++            if disabled_layers.contains(&prop.layer()) {continue;}
+ 
+             let prop_collider = self.area.space.collider_set.get(prop.collider_handle()).unwrap();
+ 
+@@ -366,7 +360,8 @@ impl AreaEditor {
+             last_undo: web_time::Instant::now(),
+             last_area_save: area_save,
+             current_area_path: PathBuf::from(area_path),
+-            material_loader: assets.material_loader
++            material_loader: assets.material_loader,
++            draw_commands: DrawCommands::new()
+         }
+     }
+ 
+@@ -639,42 +634,40 @@ impl AreaEditor {
+ 
+         set_camera(&camera);
+ 
+-        self.area.draw(
+-            &mut self.textures,
+-            &self.camera_rect,
+-            &self.prefab_data,
+-            &camera,
+-            &self.fonts,
+-            &self.material_loader,
+-            self.start.elapsed(),
+-            self.layer_toggle_ui.get_invisible_layers(),
+-            true,
+-            ClientId::new()
+-        ).await;
+-
+-
++        let current_mode = self.current_mode().clone();
++        let rapier_cursor = self.rapier_cursor();
+ 
+-        let draw_context = DrawContext {
+-            space: &self.area.space,
++        let mut ctx: TickContext = EditorTickContext {
++            e: &false,
++            camera_rect: &mut self.camera_rect,
++            current_mode: &current_mode,
++            cursor: &mut self.cursor,
++            rapier_cursor: &rapier_cursor,
+             textures: &self.textures,
+-            prefabs: &self.prefab_data,
+-            fonts: &self.fonts,
+-            camera_rect: &self.camera_rect,
+-            tiles: &self.area.tiles,
+-            elapsed_time: &self.start.elapsed(),
+-            default_camera: &camera,
+-            editor: true,
+-            materials: &self.material_loader,
+-            id: ClientId::new()
+-        };
++            draw_commands: &mut self.draw_commands,
++            material_loader: &self.material_loader,
++            fonts: &self.fonts
++            
++            
++            
++        }.into();
+ 
+-        if self.current_mode() == EditorMode::PrefabPlacement {
++        self.area.draw(
++            &mut ctx,
++        );
++
++        if current_mode == EditorMode::PrefabPlacement {
+ 
+-            let rapier_cursor = self.rapier_cursor();
++            self.spawner.draw_preview_spawn(&mut ctx);
+ 
+-            self.spawner.draw_preview_spawn(&draw_context, self.cursor, rapier_cursor, &self.textures).await;
++            
+         }
+ 
++        // need to move everything over to the new drawing system eventually!
++        self.draw_commands.render(&self.textures, &camera, &self.fonts, &self.material_loader).await;
++
++        self.draw_commands.clear();
++
+         self.draw_cursor();
+         self.draw_clip_points();
+ 
+@@ -683,22 +676,14 @@ impl AreaEditor {
+         self.highlight_selected_object();
+         self.step_space();
+ 
+-
+         set_default_camera();
+         self.ui.draw(&self.textures);
+         self.layer_toggle_ui.draw(&self.fonts, &self.textures);
+-
+         self.draw_context_menus();
+-
+         if self.current_mode() == EditorMode::PrefabPlacement {
+             self.spawner.draw_menu(&self.camera_rect, &mut self.textures, self.cursor).await;
+         }
+-
+-
+-
+-
+         self.draw_selected_mode();
+-
+         self.draw_coords(self.cursor);
+ 
+         draw_fps();
+@@ -897,7 +882,7 @@ impl AreaEditor {
+ 
+     pub fn step_space(&mut self) {
+ 
+-        self.area.space.step(web_time::Duration::from_secs_f64(0.016));
++        self.area.space.step(web_time::Duration::from_secs_f64(0.000016));
+ 
+     }
+ 
+@@ -984,7 +969,8 @@ impl AreaEditor {
+ 
+         self.update_input_context();
+         self.ui.update(&mut EditorUITickContext { selected_mode: &mut self.selected_mode, input_context: self.input_context, simulate_space: &mut self.simulate_space });
+-        self.layer_toggle_ui.update(self.area.get_drawable_objects_self());
++        
++        self.layer_toggle_ui.update(self.draw_commands.get_layers());
+         self.editor_mode_tick();
+ 
+         self.update_cursor();
+@@ -993,8 +979,19 @@ impl AreaEditor {
+         self.update_context_menus();
+         self.update_active_layer_to_selected_object();
+ 
++        let current_mode = self.current_mode();
++        let rapier_cursor = self.rapier_cursor();
+         let editor_context = EditorTickContext {
+-            e: &false
++            e: &false,
++            camera_rect: &mut self.camera_rect,
++            current_mode: &current_mode,
++            cursor: &mut self.cursor,
++            rapier_cursor: &rapier_cursor,
++            textures: &self.textures,
++            draw_commands: &mut self.draw_commands,
++            material_loader: &self.material_loader,
++            fonts: &self.fonts
++            
+         };
+         self.area.despawn_entities(&mut editor_context.into());
+         self.create_clip();
+diff --git a/src/editor/layer_toggle_ui.rs b/src/editor/layer_toggle_ui.rs
+index 3b2e867..f981bde 100644
+--- a/src/editor/layer_toggle_ui.rs
++++ b/src/editor/layer_toggle_ui.rs
+@@ -91,15 +91,14 @@ impl LayerToggleUI {
+ 
+     }
+ 
+-    fn attempt_rebuild(&mut self, drawable_objects: Vec<&dyn Drawable>) {
+-        let object_layers = Self::get_object_layers(drawable_objects.clone());
++    fn attempt_rebuild(&mut self, active_layers: Vec<u32>) {
+ 
+-        if self.previous_update_layers != Self::get_object_layers(drawable_objects.clone()) {
++        if self.previous_update_layers != active_layers {
+ 
+-            self.rebuild(drawable_objects.clone());
++            self.rebuild(active_layers.clone());
+         }
+ 
+-        self.previous_update_layers = object_layers;
++        self.previous_update_layers = active_layers;
+     }
+ 
+     fn update_toggles(&mut self) {
+@@ -141,9 +140,9 @@ impl LayerToggleUI {
+             .collect()
+     }
+ 
+-    pub fn update(&mut self, drawable_objects: Vec<&dyn Drawable>) {
+-    
+-        self.attempt_rebuild(drawable_objects);
++    pub fn update(&mut self, active_layers: Vec<u32>) {
++        
++        self.attempt_rebuild(active_layers);
+         self.reposition_elements();
+         self.update_toggles();
+ 
+@@ -180,14 +179,13 @@ impl LayerToggleUI {
+         }
+     }
+ 
+-    fn rebuild(&mut self, drawable_objects: Vec<&dyn Drawable>) {
++    fn rebuild(&mut self, mut active_layers: Vec<u32>) {
+ 
+         self.toggles.clear();
+ 
+-        let mut layers = Self::get_object_layers(drawable_objects);
+-        layers.sort();
++        active_layers.sort();
+ 
+-        for (index, layer) in layers.iter().enumerate() {
++        for (index, layer) in active_layers.iter().enumerate() {
+             self.toggles.push(
+                 LayerToggle {
+                     layer: *layer,
+diff --git a/src/editor/main.rs b/src/editor/main.rs
+index 64e564f..6856384 100644
+--- a/src/editor/main.rs
++++ b/src/editor/main.rs
+@@ -15,6 +15,10 @@ pub mod editor_mode_select_ui;
+ pub mod editor_ui_tick_context;
+ pub mod layer_toggle_ui;
+ 
++#[cfg(feature = "dhat-heap")]
++#[global_allocator]
++static ALLOC: dhat::Alloc = dhat::Alloc;
++
+ pub fn list_dir_entries<P: AsRef<Path>>(path: P) -> std::io::Result<Vec<String>> {
+     let path = path.as_ref(); // keep the original path reference
+     let mut entries: Vec<String> = fs::read_dir(path)?
+@@ -61,6 +65,8 @@ struct EditorArgs {
+ 
+ #[macroquad::main(window_conf)]
+ async fn main() {   
++    #[cfg(feature = "dhat-heap")]
++    let _profiler = dhat::Profiler::new_heap();
+ 
+     pretty_env_logger::init();
+ 
+diff --git a/src/editor/spawner.rs b/src/editor/spawner.rs
+index f7f5283..0133275 100644
+--- a/src/editor/spawner.rs
++++ b/src/editor/spawner.rs
+@@ -1,7 +1,7 @@
+ use std::{fs::read_to_string, path::PathBuf, str::FromStr};
+ 
+ use glamx::Pose2;
+-use interceptors_lib::{area::Area, background::{Background, BackgroundSave}, base_prop::BaseProp, base_prop_save::BasePropSave, button::Button, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}};
++use interceptors_lib::{EditorTickContext, TickContext, area::Area, background::{Background, BackgroundSave}, base_prop::BaseProp, base_prop_save::BasePropSave, button::Button, decoration::{Decoration, DecorationSave}, drawable::{DrawContext, Drawable}, prop::Prop, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}};
+ use macroquad::{color::{GREEN, LIGHTGRAY, WHITE}, input::{MouseButton, is_mouse_button_released, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle_lines, text::draw_text};
+ use strum::IntoEnumIterator;
+ 
+@@ -252,12 +252,9 @@ impl Spawner {
+         }
+     }
+ 
+-    pub async fn draw_preview_spawn(
++    pub fn draw_preview_spawn(
+         &mut self, 
+-        draw_context: &DrawContext<'_>, 
+-        cursor: macroquad::math::Vec2, 
+-        rapier_cursor: glamx::Vec2,
+-        textures: &ClientTextureLoader
++        ctx: &mut TickContext, 
+     ) {
+ 
+         
+@@ -267,37 +264,25 @@ impl Spawner {
+             SpawnerCategory::Decoration => {
+                 let decoration_save: DecorationSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
+                 let mut decoration: Decoration = Decoration::from_save(decoration_save);
+-                decoration.pos = cursor;
+-                decoration.draw(&draw_context).await  
++                decoration.pos = ctx.cursor();
++                decoration.draw(ctx)  
+             },
+             SpawnerCategory::Background => {
+                 let background_save: BackgroundSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
+                 let mut background = Background::from_save(background_save);
+-                background.pos = cursor;
+-                background.draw(&draw_context).await
++                background.pos = ctx.cursor();
++                background.draw(ctx);
+             },
+ 
+             SpawnerCategory::Prop => {
++
++        
+                 let generic_physics_prop_save: BasePropSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
+-                let mut generic_physics_prop = BaseProp::from_save(generic_physics_prop_save.clone(), &mut self.preview_space, textures.into());
+-                generic_physics_prop.set_pos(Pose2::new(glamx::vec2(rapier_cursor.x, rapier_cursor.y), 0.), &mut self.preview_space);
+-                
+-                // need to swap the draw context's space for the spawner 'preview space'
+-                let draw_context = DrawContext {
+-                    space: &self.preview_space,
+-                    textures: draw_context.textures,
+-                    prefabs: draw_context.prefabs,
+-                    fonts: draw_context.fonts,
+-                    camera_rect: draw_context.camera_rect,
+-                    tiles: draw_context.tiles,
+-                    elapsed_time: draw_context.elapsed_time,
+-                    default_camera: draw_context.default_camera,
+-                    editor: true,
+-                    materials: draw_context.materials,
+-                    id: draw_context.id
+-                };
+-
+-                generic_physics_prop.draw(&draw_context).await;
++                let mut generic_physics_prop = BaseProp::from_save(generic_physics_prop_save.clone(), &mut self.preview_space, ctx.textures().into());
++                generic_physics_prop.set_pos(Pose2::new(glamx::vec2(ctx.rapier_cursor().x, ctx.rapier_cursor().y), 0.), &mut self.preview_space);
++    
++
++                generic_physics_prop.draw(ctx, &mut self.preview_space);
+                 // need to immedietly remove the rigid bodies from space because this is a temporary object
+                 self.preview_space.rigid_body_set.remove(generic_physics_prop.rigid_body_handle, &mut self.preview_space.island_manager, &mut self.preview_space.collider_set,&mut self.preview_space.impulse_joint_set, &mut self.preview_space.multibody_joint_set, true);
+                  
+@@ -305,12 +290,14 @@ impl Spawner {
+             SpawnerCategory::Tile => {
+                 let tile_save: TileSave = serde_json::from_str(&self.selected_prefab_json).unwrap();
+ 
+-                let x_index = (rapier_cursor.x / 50.) as usize;
+-                let y_index = ((rapier_cursor.y +25.) / 50.) as usize;
++                let x_index = (ctx.rapier_cursor().x / 50.) as usize;
++                let y_index = ((ctx.rapier_cursor().y +25.) / 50.) as usize;
+ 
+                 let tile: Tile = Tile::from_save(tile_save);
+ 
+-                tile.draw(draw_context.textures, (x_index * 50, y_index * 50));
++                todo!()
++
++                //tile.draw(ctx.textures().into(), (x_index * 50, y_index * 50));
+             }
+         }
+     }
+diff --git a/src/items/mod.rs b/src/items/mod.rs
+index bcc7391..82fe77f 100644
+--- a/src/items/mod.rs
++++ b/src/items/mod.rs
+@@ -20,7 +20,7 @@ pub trait Item: Downcast {
+     fn save(&self, space: &Space) -> Box<dyn ItemSave>;
+     fn draw_preview(
+         &self, 
+-        textures: &ClientTextureLoader, 
++        ctx: &mut TickContext,
+         size: f32,
+         draw_pos: Vec2,
+         color: Option<Color>,
+@@ -49,7 +49,7 @@ pub trait Item: Downcast {
+     ) -> Vec2;
+ 
+     
+-    fn draw_active(&self, textures: &ClientTextureLoader);
++    fn draw_active(&self, tick_context: &mut TickContext, space: &Space);
+ 
+     fn name(&self) -> String;
+ 
+diff --git a/src/items/prop/prop_item.rs b/src/items/prop/prop_item.rs
+index ff3604d..1e5bcf0 100644
+--- a/src/items/prop/prop_item.rs
++++ b/src/items/prop/prop_item.rs
+@@ -1,6 +1,6 @@
+ use serde::{Deserialize, Serialize};
+ 
+-use crate::{drawable::{DrawContext, Drawable}, items::{ConsumedStatus, Item, item_save::ItemSave}, prop::Prop, props::wooden_box::wooden_box::WoodenBox, weapons::ItemOwnerContext};
++use crate::{TickContext, drawable::{DrawContext, Drawable}, items::{ConsumedStatus, Item, item_save::ItemSave}, prop::Prop, props::wooden_box::wooden_box::WoodenBox, weapons::ItemOwnerContext};
+ 
+ 
+ 
+@@ -32,7 +32,7 @@ impl Item for PropItem {
+ 
+     fn draw_preview(
+         &self, 
+-        textures: &crate::texture_loader::ClientTextureLoader, 
++        ctx: &mut TickContext,
+         size: f32,
+         draw_pos: macroquad::prelude::Vec2,
+         color: Option<macroquad::prelude::Color>,
+@@ -57,7 +57,7 @@ impl Item for PropItem {
+         todo!()
+     }
+ 
+-    fn draw_active(&self, textures: &crate::texture_loader::ClientTextureLoader) {
++    fn draw_active(&self, ctx: &mut TickContext, space: &crate::space::Space) {
+         todo!()
+     }
+ 
+diff --git a/src/lib.rs b/src/lib.rs
+index e663ac2..4ddb2f8 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -3,9 +3,10 @@ use std::{collections::{HashMap, HashSet, VecDeque}, f32::consts::PI, fs::read_t
+ use derive_more::From;
+ use ewebsock::{WsReceiver, WsSender};
+ use glamx::IVec2;
+-use macroquad::{camera::Camera2D, color::{Color, WHITE}, input::{KeyCode, is_key_down, is_key_released, mouse_position}, math::{Rect, Vec2, vec2}, prelude::load_material, shapes::DrawRectangleParams, texture::{DrawTextureParams, draw_texture_ex}};
++use macroquad::{camera::{Camera2D, set_camera}, color::{Color, WHITE}, input::{KeyCode, is_key_down, is_key_released, mouse_position}, math::{Rect, Vec2, vec2}, prelude::{Material, gl_use_default_material, gl_use_material, glam, load_material}, shapes::{DrawRectangleParams, draw_line, draw_rectangle, draw_rectangle_ex}, text::{Font, TextParams, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex}, window::clear_background};
+ use rapier2d::{parry::query::Ray, prelude::{AxisMask, ColliderBuilder, ColliderHandle, QueryFilter, RigidBodyHandle, VoxelData, Voxels, VoxelsChunkRef}};
+ use serde::{Deserialize, Serialize};
++use strum::Display;
+ use tungstenite::WebSocket;
+ use include_dir::{Dir, include_dir};
+ 
+@@ -359,12 +360,13 @@ fn normalize_path(path: &PathBuf) -> PathBuf {
+ }
+ 
+ 
+-pub async fn draw_texture_onto_physics_body(
++pub fn draw_texture_onto_physics_body(
++    ctx: &mut TickContext,
++    layer: u32,
+     rigid_body_handle: RigidBodyHandle,
+     collider_handle: ColliderHandle,
+     space: &Space, 
+     texture_path: &PathBuf, 
+-    textures: &ClientTextureLoader, 
+     flip_x: bool, 
+     flip_y: bool, 
+     additional_rotation: f32
+@@ -381,21 +383,29 @@ pub async fn draw_texture_onto_physics_body(
+ 
+     let draw_pos = rapier_to_macroquad(position);
+ 
+-    draw_texture_ex(
+-        textures.get(texture_path), 
+-        draw_pos.x - shape.half_extents.x, 
+-        draw_pos.y - shape.half_extents.y, 
+-        WHITE, 
+-        DrawTextureParams {
+-            dest_size: Some(vec2(shape.half_extents.x * 2., shape.half_extents.y * 2.)),
+-            source: None,
+-            rotation: (body_rotation * -1.) + additional_rotation,
+-            flip_x,
+-            flip_y,
+-            pivot: None,
+-        }
++    ctx.add_draw_command(
++        layer, 
++        DrawCommand::DrawTexture(
++            DrawTextureParameters {
++                texture: texture_path.clone(),
++                position: Vec2 {
++                    x: draw_pos.x - shape.half_extents.x,
++                    y: draw_pos.y - shape.half_extents.y,
++                },
++                color: WHITE,
++                params: DrawTextureParams {
++                    dest_size: Some(vec2(shape.half_extents.x * 2., shape.half_extents.y * 2.)),
++                    source: None,
++                    rotation: (body_rotation * -1.) + additional_rotation,
++                    flip_x,
++                    flip_y,
++                    pivot: None,
++                },
++            }
++        )
+     );
+ 
++
+     
+ }
+ 
+@@ -552,13 +562,25 @@ impl ClientIO {
+ 
+ }
+ 
+-pub fn draw_preview(textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32, texture_path: &PathBuf) { 
++pub fn draw_preview(
++    ctx: &mut TickContext,
++    size: f32, 
++    draw_pos: Vec2, 
++    color: Option<Color>, 
++    rotation: f32, 
++    texture_path: &PathBuf,
++    layer: u32
++) { 
++
++    let textures = match ctx.textures() {
++        TextureLoader::Client(client_texture_loader) => client_texture_loader,
++        TextureLoader::Server(server_texture_loader) => panic!(),
++    };
++
+     let color = color.unwrap_or(WHITE);
+ 
+     let dest_size = get_preview_resolution(size, textures, texture_path);
+ 
+-    let texture = textures.get(&texture_path);
+-
+     let mut params = DrawTextureParams::default();
+ 
+     params.dest_size = Some(
+@@ -567,14 +589,22 @@ pub fn draw_preview(textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, c
+ 
+     params.rotation = rotation;
+ 
+-
+-    draw_texture_ex(
+-        texture, 
+-        draw_pos.x, 
+-        draw_pos.y + (size - dest_size.x), // sit on the bottom if that makes sense 
+-        color,
+-        params
++    ctx.add_draw_command(
++        layer, 
++        DrawCommand::DrawTexture(
++            DrawTextureParameters {
++                texture: texture_path.clone(),
++                position: Vec2 {
++                    x: draw_pos.x,
++                    y: draw_pos.y + (size - dest_size.x), // sit on the bottom if that makes sense ,
++                },
++                color,
++                params,
++            }
++        )
+     );
++
++
+ }
+ pub fn get_preview_resolution(size: f32, textures: &ClientTextureLoader, texture_path: &PathBuf) -> Vec2 {
+     let texture = textures.get(texture_path);
+@@ -803,6 +833,164 @@ impl ServerIO {
+ 
+ }
+ 
++pub struct DrawCommands {
++    commands: HashMap<u32, Vec<DrawCommand>>
++}
++
++impl DrawCommands {
++    pub fn new() -> Self {
++        Self {
++            commands: HashMap::new(),
++        }
++        
++    }
++
++    pub fn clear(&mut self) {
++        self.commands.clear();
++    }
++
++    pub fn add_draw_command(&mut self, layer: u32, command: DrawCommand) {
++        let layer = match self.commands.get_mut(&layer) {
++            Some(layer) => layer,
++            None => {
++                self.commands.insert(layer, vec![]);
++
++                self.commands.get_mut(&layer).unwrap()
++
++            },
++        };
++
++        layer.push(command);
++    }
++
++    pub fn get_layers(&self) -> Vec<u32> {
++
++        let mut commands: Vec<u32> = self.commands.keys().cloned().collect();
++
++        commands.sort();
++
++        commands
++        
++    }
++
++    pub async fn render(
++        &mut self, 
++        textures: &ClientTextureLoader, 
++        default_camera: &Camera2D,
++        fonts: &FontLoader,
++        materials: &MaterialLoader
++    ) {
++
++
++        let layers = self.get_layers();
++        
++
++
++        for layer in layers {
++        
++            let commands = self.commands.get(&layer).unwrap();
++
++            for command in commands {
++
++         
++                match command {
++                    DrawCommand::DrawTextureDirect(params) => {
++                        draw_texture_ex(
++                            &params.texture, 
++                            params.position.x, 
++                            params.position.y, 
++                            params.color, 
++                            params.params.clone()
++                        );
++                    }
++                    DrawCommand::SetMaterialTexture(params) => {
++                        params.material.set_texture(&params.texture_name, params.texture.clone());
++                    }
++                    DrawCommand::DrawTexture(params) => {
++
++                        let texture = textures.get(&params.texture);
++
++                        draw_texture_ex(
++                            texture, 
++                            params.position.x, 
++                            params.position.y, 
++                            params.color, 
++                            params.params.clone()
++                        );
++                    },
++                    DrawCommand::SetCamera(params) => {
++                        let mut camera = Camera2D::from_display_rect(params.rect);
++                        camera.render_target = params.render_target.clone();
++                        camera.zoom.y = -camera.zoom.y;                        
++                        set_camera(&camera);
++
++                    },
++                    DrawCommand::ClearBackground(params) => {
++                        clear_background(params.color);
++                    },
++                    DrawCommand::DrawRectangle(params) => {
++                        draw_rectangle_ex(
++                            params.position.x, 
++                            params.position.y, 
++                            params.size.x, 
++                            params.size.y, 
++                            DrawRectangleParams {
++                                offset: params.offset.unwrap_or_default(),
++                                rotation: params.rotation.unwrap_or_default(),
++                                color: params.color.unwrap_or_default(),
++                            }
++                        );
++                    },
++                    DrawCommand::ResetToDefaultCamera => {
++                        set_camera(default_camera);
++                    },
++                    DrawCommand::DrawLine(params) => {
++                        draw_line(
++                            params.start.x, 
++                            params.start.y, 
++                            params.end.x, 
++                            params.end.y, 
++                            params.thickness, 
++                            params.color
++                        );
++                    },
++                    DrawCommand::DrawText(params) => {
++
++                        let font: Option<Font> = if let Some(font_path) =  &params.font {
++
++                            Some(fonts.get(font_path.to_path_buf()))
++                        } else {
++                            None
++                        };
++
++                        draw_text_ex(
++                            &params.text, 
++                            params.position.x, 
++                            params.position.y, 
++                            TextParams {
++                                font: font.as_ref(),
++                                font_size: params.font_size.unwrap_or_default(),
++                                font_scale: 1.,
++                                font_scale_aspect: 1.,
++                                rotation: params.rotation.unwrap_or_default(),
++                                color: params.color.unwrap_or_default(),
++                            }
++                        );
++                    },
++                    DrawCommand::UseMaterial(params) => {
++                        
++                        gl_use_material(&params.material);
++                    },
++                    DrawCommand::UseDefaultMaterial => {
++                        gl_use_default_material();
++                    },
++                }
++            }
++        }
++
++    }
++}
++
+ pub struct ClientTickContext<'a> {
+     pub network_io: &'a mut ClientIO,
+     pub last_tick_duration: &'a web_time::Duration,
+@@ -812,7 +1000,11 @@ pub struct ClientTickContext<'a> {
+     pub screen_shake: &'a mut ScreenShakeParameters,
+     pub sounds: &'a mut SoundLoader,
+     pub textures: &'a ClientTextureLoader,
+-    pub camera: &'a Camera2D
++    pub camera: &'a Camera2D,
++    pub start: &'a web_time::Instant,
++    pub draw_commands: &'a mut DrawCommands,
++    pub material_loader: &'a MaterialLoader,
++    pub fonts: &'a FontLoader
+ }
+ 
+ 
+@@ -821,8 +1013,26 @@ pub struct ServerTickContext<'a> {
+     pub last_tick_duration: web_time::Duration
+ }
+ 
++
+ pub struct EditorTickContext<'a> {
+-    pub e: &'a bool
++    pub e: &'a bool,
++    pub camera_rect: &'a mut Rect,
++    pub current_mode: &'a EditorMode,
++    pub cursor: &'a mut glam::Vec2,
++    pub rapier_cursor: &'a glamx::Vec2,
++    pub textures: &'a ClientTextureLoader,
++    pub draw_commands: &'a mut DrawCommands,
++    pub material_loader: &'a MaterialLoader,
++    pub fonts: &'a FontLoader
++}
++
++
++#[derive(Display, PartialEq, Clone, Copy)]
++pub enum EditorMode {
++    PrefabPlacement,
++    SetSpawnPoint,
++    TilePlacement,
++    Select
+ }
+ 
+ /// This needs a better name
+@@ -849,6 +1059,69 @@ impl<'a> TickContext<'a> {
+         }
+     }
+ 
++    pub fn textures(&self) -> TextureLoader {
++        match self {
++            TickContext::Client(client_tick_context) => client_tick_context.textures.into(),
++            TickContext::Server(server_tick_context) => todo!(),
++            TickContext::Editor(editor_tick_context) => editor_tick_context.textures.into(),
++        }
++    }
++
++    pub fn cursor(&self) -> glam::Vec2 {
++        match self {
++            TickContext::Client(client_tick_context) => todo!(),
++            TickContext::Server(server_tick_context) => todo!(),
++            TickContext::Editor(editor_tick_context) => *editor_tick_context.cursor,
++        }
++    }
++
++    pub fn fonts(&self) -> &FontLoader {
++        match self {
++            TickContext::Client(client_tick_context) => client_tick_context.fonts,
++            TickContext::Server(server_tick_context) => unimplemented!(),
++            TickContext::Editor(editor_tick_context) => editor_tick_context.fonts,
++        }
++    }
++
++    pub fn rapier_cursor(&self) -> glamx::Vec2 {
++        match self {
++            TickContext::Client(client_tick_context) => todo!(),
++            TickContext::Server(server_tick_context) => todo!(),
++            TickContext::Editor(editor_tick_context) => *editor_tick_context.rapier_cursor,
++        }
++    }
++
++    pub fn camera_rect(&self) -> Rect {
++        match self {
++            TickContext::Client(client_tick_context) => *client_tick_context.camera_rect,
++            TickContext::Server(server_tick_context) => unimplemented!(),
++            TickContext::Editor(editor_tick_context) => *editor_tick_context.camera_rect,
++        }
++    }
++
++    pub fn add_draw_command(&mut self, layer: u32, draw_command: DrawCommand) {
++        match self {
++            TickContext::Client(client_tick_context) => {
++                client_tick_context.draw_commands.add_draw_command(layer, draw_command);
++            },
++            TickContext::Server(server_tick_context) => unimplemented!(),
++            TickContext::Editor(editor_tick_context) => {
++                editor_tick_context.draw_commands.add_draw_command(layer, draw_command);
++            },
++        }
++    }
++
++    pub fn start(&self) -> web_time::Instant {
++        match self {
++            TickContext::Client(client_tick_context) => {
++                *client_tick_context.start
++            },
++            TickContext::Server(server_tick_context) => todo!(),
++            TickContext::Editor(editor_tick_context) => todo!(),
++        }
++    }
++
++
+     /// Send all clients on server
+     pub fn send_network_packet(&mut self, packet: NetworkPacket) {
+         match self {
+@@ -1131,6 +1404,82 @@ pub enum TextureLoader<'a> {
+     Client(&'a ClientTextureLoader),
+     Server(&'a ServerTextureLoader)
+ }
++#[derive(Debug)]
++pub struct DrawTextureParameters {
++    texture: PathBuf,
++    position: Vec2,
++    color: Color,
++    params: DrawTextureParams
++}
++#[derive(Debug)]
++pub struct SetCameraParameters {
++    rect: Rect,
++    render_target: Option<RenderTarget>
++}
++#[derive(Debug)]
++pub struct ClearBackgroundParameters {
++    color: Color
++}
++
++#[derive(Debug)]
++pub struct DrawLineParameters {
++    start: Vec2,
++    end: Vec2,
++    thickness: f32,
++    color: Color
++}
++#[derive(Debug)]
++pub struct DrawRectangleParameters {
++    position: Vec2,
++    size: Vec2,
++    offset: Option<Vec2>,
++    rotation: Option<f32>,
++    color: Option<Color>
++}
++#[derive(Debug)]
++pub struct DrawTextParameters {
++    text: String,
++    position: Vec2,
++    font_size: Option<u16>,
++    color: Option<Color>,
++    font: Option<PathBuf>,
++    rotation: Option<f32>
++}
++#[derive(Debug)]
++pub struct UseMaterialParameters {
++    material: Material
++}
++#[derive(Debug)]
++pub struct SetMaterialTextureParameters {
++    material: Material,
++    texture_name: String,
++    texture: Texture2D
++}
++
++#[derive(Debug)]
++pub struct DrawTextureDirectParameters {
++    texture: Texture2D,
++    position: Vec2,
++    color: Color,
++    params: DrawTextureParams
++}
++
++#[derive(Debug)]
++pub enum DrawCommand {
++    DrawTexture(DrawTextureParameters),
++    SetCamera(SetCameraParameters),
++    ClearBackground(ClearBackgroundParameters),
++    DrawRectangle(DrawRectangleParameters),
++    ResetToDefaultCamera,
++    DrawLine(DrawLineParameters),
++    DrawText(DrawTextParameters),
++    UseMaterial(UseMaterialParameters),
++    UseDefaultMaterial,
++    SetMaterialTexture(SetMaterialTextureParameters),
++    DrawTextureDirect(DrawTextureDirectParameters)
++}
++
++
+ 
+ 
+ 
+diff --git a/src/player.rs b/src/player.rs
+index a71401b..873da6b 100644
+--- a/src/player.rs
++++ b/src/player.rs
+@@ -7,7 +7,7 @@ use macroquad::{camera::Camera2D, color::{BLACK, WHITE}, input::{KeyCode, is_key
+ use rapier2d::{parry::query::Ray, prelude::{ImpulseJointHandle, QueryFilter, RevoluteJointBuilder, RigidBody, RigidBodyVelocity}};
+ use serde::{Deserialize, Serialize};
+ 
+-use crate::{ClientTickContext, Owner, Prefabs, TextureLoader, TickContext, angle_weapon_to_mouse, area::{AreaContext, AreaId}, base_prop::{BaseProp, PropId, PropUpdateOwner}, body_part::BodyPart, bullet_trail::BulletTrail, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, items::{Item, item_save::ItemSave}, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
++use crate::{ClientTickContext, DrawCommand, DrawRectangleParameters, DrawTextParameters, Owner, Prefabs, TextureLoader, TickContext, angle_weapon_to_mouse, area::{AreaContext, AreaId}, base_prop::{BaseProp, PropId, PropUpdateOwner}, body_part::BodyPart, bullet_trail::BulletTrail, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, RemoveDroppedItemUpdate}, enemy::Enemy, font_loader::FontLoader, get_angle_between_rapier_points, inventory::Inventory, items::{Item, item_save::ItemSave}, mouse_world_pos, rapier_mouse_world_pos, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, tile::Tile, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, weapon::weapon::WeaponOwner, weapon_fire_context::WeaponFireContext, weapon_type_save::WeaponTypeSave}};
+ 
+ #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy, Hash, Eq)]
+ pub struct PlayerId {
+@@ -281,7 +281,7 @@ impl Player {
+ 
+     }
+ 
+-    pub fn draw_inventory(&self, textures: &ClientTextureLoader, space: &Space, prefabs: &Prefabs, fonts: &FontLoader) {
++    pub fn draw_inventory(&self, ctx: &mut TickContext, space: &Space) {
+ 
+         let pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation;
+ 
+@@ -313,12 +313,23 @@ impl Player {
+                 y: mpos.y - 80.
+             };
+ 
+-            draw_rectangle(
+-                slot_pos.x,
+-                slot_pos.y,
+-                40.,
+-                40.,
+-                slot_color
++            ctx.add_draw_command(
++                1, 
++                DrawCommand::DrawRectangle(
++                    DrawRectangleParameters {
++                        position: macroquad::math::Vec2 {
++                            x: slot_pos.x,
++                            y: slot_pos.y,
++                        },
++                        size: macroquad::math::Vec2 {
++                            x: 40.,
++                            y: 40.,
++                        },
++                        offset: None,
++                        rotation: None,
++                        color: None,
++                    }
++                )
+             );
+ 
+             // slightly offset the item to be more centered
+@@ -329,20 +340,27 @@ impl Player {
+ 
+             match item {
+                 Some(item_slot) => {
+-                    item_slot.item.draw_preview(textures, 30., item_preview_pos, Some(item_color), 0.);
++                    item_slot.item.draw_preview(ctx, 30., item_preview_pos, Some(item_color), 0.);
+ 
+                     if item_slot.quantity > 1 {
+-                        draw_text_ex(
+-                            &item_slot.quantity.to_string(),
+-                            item_preview_pos.x,
+-                            item_preview_pos.y + 24.,
+-                            TextParams {
+-                                font: Some(&fonts.get(PathBuf::from("assets/fonts/CutePixel.ttf"))),
+-                                font_size: 24,
+-                                color: WHITE,
+-                                ..Default::default()
+-                            }
++
++                        ctx.add_draw_command(
++                            1,
++                            DrawCommand::DrawText(
++                                DrawTextParameters {
++                                    text: item_slot.quantity.to_string().clone(),
++                                    position: macroquad::math::Vec2 {
++                                        x: item_preview_pos.x,
++                                        y: item_preview_pos.y + 24.,
++                                    },
++                                    font_size: Some(24),
++                                    color: Some(WHITE),
++                                    font: Some(PathBuf::from("assets/fonts/CutePixel.ttf")),
++                                    rotation: None,
++                                }
++                            )
+                         );
++          
+                     }
+                 },
+                 None => {
+@@ -942,10 +960,10 @@ impl Player {
+     }
+ 
+ 
+-    pub async fn draw_selected_item(&self, space: &Space, textures: &ClientTextureLoader) {
++    pub fn draw_selected_item(&self, ctx: &mut TickContext, space: &Space) {
+         match &self.inventory.items[self.selected_item] {
+             Some(item_slot) => {
+-                item_slot.item.draw_active(textures);
++                item_slot.item.draw_active(ctx, space);
+             },
+             None => {},
+         }
+@@ -1112,7 +1130,7 @@ impl Player {
+             
+             let then = web_time::Instant::now();
+             let distance = prop_shape.distance_to_point(prop_pose, our_player_translation, true).abs();
+-            log::debug!("{:?}", then.elapsed());
++          
+             //let distance = (prop_body.translation() - our_player_body.translation()).length();
+ 
+             distances.insert(prop.id(), (self.id, distance));
+@@ -1265,6 +1283,25 @@ impl Player {
+             items
+         }
+     }
++
++    pub fn draw(&mut self, ctx: &mut TickContext, space: &Space) {
++
++        let flip_x = match self.facing {
++            Facing::Right => false,
++            Facing::Left => true,
++        };
++
++        self.body.draw(ctx, space, flip_x);
++        self.head.draw(ctx, space, flip_x);
++
++        self.draw_selected_item(ctx, space);
++        self.draw_inventory(ctx, space);
++
++        let pos = space.rigid_body_set.get(self.body.body_handle).unwrap().position().translation;
++
++       // draw_text(&format!("{:?}", pos), draw_context.camera_rect.x + 40., draw_context.camera_rect.y + 40., 20., WHITE);
++ 
++    }
+ }
+ 
+ // #[async_trait::async_trait]
+diff --git a/src/prop.rs b/src/prop.rs
+index a3b44b4..9539895 100644
+--- a/src/prop.rs
++++ b/src/prop.rs
+@@ -8,7 +8,8 @@ use crate::{Owner, TickContext, area::AreaContext, base_prop::{Material, PropId}
+ 
+ 
+ impl_downcast!(Prop);
+-pub trait Prop: Downcast + Drawable {
++pub trait Prop: Downcast {
++    fn layer(&self) -> u32;
+     fn name(&self) -> String;
+     fn rigid_body_handle(&self) -> RigidBodyHandle;
+     fn collider_handle(&self) -> ColliderHandle;
+@@ -47,4 +48,5 @@ pub trait Prop: Downcast + Drawable {
+     fn set_mass(&self, space: &mut Space, new_mass: f32);
+     fn set_material(&mut self, new_material: Material);
+     fn set_name(&mut self, name: &str);
++    fn draw(&mut self, ctx: &mut TickContext, space: &mut Space);
+ }
+\ No newline at end of file
+diff --git a/src/props/wooden_box/wooden_box.rs b/src/props/wooden_box/wooden_box.rs
+index 6a26f0d..22f3277 100644
+--- a/src/props/wooden_box/wooden_box.rs
++++ b/src/props/wooden_box/wooden_box.rs
+@@ -9,20 +9,13 @@ use rapier2d::prelude::{ColliderHandle, RigidBodyHandle};
+ pub struct WoodenBox {
+     pub base_prop: BaseProp
+ }
+-#[async_trait]
+-impl Drawable for WoodenBox {
+-    async fn draw(&mut self, draw_context: &crate::drawable::DrawContext) {
+-        self.base_prop.draw(draw_context).await
+-    }
+ 
+-    fn draw_layer(&self) -> u32 {
+-        self.base_prop.layer
+-    }
+-}
+ 
+ impl Prop for WoodenBox {
+     delegate! {
+         to self.base_prop {
++            fn layer(&self) -> u32;
++            fn draw(&mut self, ctx: &mut TickContext, space: &mut Space);
+             fn set_name(&mut self, name: &str);
+             fn set_material(&mut self, new_material: Material);
+             fn name(&self) -> String;
+diff --git a/src/selectable_object_id.rs b/src/selectable_object_id.rs
+index 72c60d7..1b644fb 100644
+--- a/src/selectable_object_id.rs
++++ b/src/selectable_object_id.rs
+@@ -18,9 +18,9 @@ pub enum SelectableObject<'a> {
+ impl<'a> SelectableObject<'a> {
+     pub fn get_layer(&self) -> u32 {
+         match self {
+-            SelectableObject::Decoration(decoration) => decoration.draw_layer(),
++            SelectableObject::Decoration(decoration) => decoration.layer,
+             SelectableObject::Tile(_tile) => 0,
+-            SelectableObject::Prop(prop) => prop.draw_layer(),
++            SelectableObject::Prop(prop) => prop.layer(),
+             SelectableObject::Clip(clip) => clip.layer
+         }
+     }
+diff --git a/src/tile.rs b/src/tile.rs
+index fb1fa55..c805829 100644
+--- a/src/tile.rs
++++ b/src/tile.rs
+@@ -5,7 +5,7 @@ use macroquad::{color::{GRAY, WHITE}, math::Vec2, texture::{draw_texture_ex, Dra
+ use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle};
+ use serde::{Deserialize, Serialize};
+ 
+-use crate::{rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, uuid_u64};
++use crate::{TextureLoader, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, uuid_u64};
+ 
+ #[derive(Serialize, Deserialize, Debug, Clone, Default, Copy, PartialEq)]
+ pub struct TileId {
+@@ -81,6 +81,7 @@ impl Tile {
+ 
+     pub fn draw(&self, textures: &ClientTextureLoader, position: (usize, usize)) {
+ 
++     
+         let texture = textures.get(&self.sprite_path);
+ 
+         let macroquad_pos = rapier_to_macroquad(glamx::Vec2::new(position.0 as f32, position.1 as f32));
+diff --git a/src/weapons/lmg/weapon.rs b/src/weapons/lmg/weapon.rs
+index 53e3161..04e5706 100644
+--- a/src/weapons/lmg/weapon.rs
++++ b/src/weapons/lmg/weapon.rs
+@@ -20,7 +20,7 @@ impl Item for LMG {
+             fn save(&self, space: &Space) -> Box<dyn ItemSave>;
+             fn draw_preview(
+                 &self, 
+-                textures: &ClientTextureLoader, 
++                ctx: &mut TickContext, 
+                 size: f32,
+                 draw_pos: Vec2,
+                 color: Option<Color>,
+@@ -33,7 +33,7 @@ impl Item for LMG {
+             ) -> Vec2;
+ 
+             
+-            fn draw_active(&self, textures: &ClientTextureLoader);
++            fn draw_active(&self, ctx: &mut TickContext, space: &Space);
+ 
+             fn name(&self) -> String;
+ 
+diff --git a/src/weapons/smg/weapon.rs b/src/weapons/smg/weapon.rs
+index 77f6fd0..93f243f 100644
+--- a/src/weapons/smg/weapon.rs
++++ b/src/weapons/smg/weapon.rs
+@@ -81,7 +81,7 @@ impl Item for SMG {
+             fn save(&self, space: &Space) -> Box<dyn ItemSave>;
+             fn draw_preview(
+                 &self, 
+-                textures: &ClientTextureLoader, 
++                ctx: &mut TickContext, 
+                 size: f32,
+                 draw_pos: Vec2,
+                 color: Option<Color>,
+@@ -94,7 +94,7 @@ impl Item for SMG {
+             ) -> Vec2;
+ 
+             
+-            fn draw_active(&self, textures: &ClientTextureLoader);
++            fn draw_active(&self, ctx: &mut TickContext, space: &Space);
+ 
+             fn name(&self) -> String;
+ 
+diff --git a/src/weapons/weapon/weapon.rs b/src/weapons/weapon/weapon.rs
+index c5e6f52..8831798 100644
+--- a/src/weapons/weapon/weapon.rs
++++ b/src/weapons/weapon/weapon.rs
+@@ -677,13 +677,13 @@ impl Item for BaseWeapon {
+ 
+     fn draw_preview(
+         &self, 
+-        textures: &ClientTextureLoader, 
++        ctx: &mut TickContext,
+         size: f32,
+         draw_pos: Vec2,
+         color: Option<Color>,
+         rotation: f32
+     ) {
+-        draw_preview(textures, size, draw_pos, color, rotation, &self.sprite);
++        draw_preview(ctx, size, draw_pos, color, rotation, &self.sprite, 1);
+     }
+ 
+     fn get_preview_resolution(
+@@ -694,8 +694,34 @@ impl Item for BaseWeapon {
+         get_preview_resolution(size, textures, &self.sprite)
+     }
+ 
+-    fn draw_active(&self, textures: &ClientTextureLoader) {
+-        todo!()
++    fn draw_active(&self, ctx: &mut TickContext, space: &Space) {
++        // dont draw if unequipped
++        let rigid_body = match self.rigid_body {
++            Some(rigid_body) => rigid_body,
++            None => return ,
++        };
++
++        let collider = match self.collider {
++            Some(collider) => collider,
++            None => return ,
++        };
++
++        let flip_x = match self.facing {
++            Facing::Right => false,
++            Facing::Left => true,
++        };
++
++        draw_texture_onto_physics_body(
++            ctx,
++            1,
++            rigid_body, 
++            collider, 
++            space, 
++            &self.sprite, 
++            flip_x, 
++            false, 
++            0.,
++        );
+     }
+ 
+     fn name(&self) -> String {
+@@ -791,32 +817,7 @@ impl Item for BaseWeapon {
+ impl Drawable for BaseWeapon {
+     async fn draw(&mut self, draw_context: &DrawContext) {
+ 
+-        // dont draw if unequipped
+-        let rigid_body = match self.rigid_body {
+-            Some(rigid_body) => rigid_body,
+-            None => return ,
+-        };
+-
+-        let collider = match self.collider {
+-            Some(collider) => collider,
+-            None => return ,
+-        };
+-
+-        let flip_x = match self.facing {
+-            Facing::Right => false,
+-            Facing::Left => true,
+-        };
+-
+-        draw_texture_onto_physics_body(
+-            rigid_body, 
+-            collider, 
+-            draw_context.space, 
+-            &self.sprite, 
+-            draw_context.textures, 
+-            flip_x, 
+-            false, 
+-            0.,
+-        ).await;
++        
+ 
+         
+     }
+diff --git a/src/world.rs b/src/world.rs
+index 0fd1409..ac0fb09 100644
+--- a/src/world.rs
++++ b/src/world.rs
+@@ -1,7 +1,7 @@
+ 
+ use macroquad::{camera::Camera2D, math::Rect};
+ 
+-use crate::{ClientId, Prefabs, ServerIO, TickContext, area::Area, font_loader::FontLoader, material_loader::MaterialLoader, texture_loader::ClientTextureLoader};
++use crate::{ClientId, ClientTickContext, Prefabs, ServerIO, TickContext, area::Area, font_loader::FontLoader, material_loader::MaterialLoader, texture_loader::ClientTextureLoader};
+ 
+ pub struct World {
+     pub areas: Vec<Area>
+@@ -26,31 +26,15 @@ impl World {
+         }
+     }
+ 
+-    pub async fn draw(
++    pub fn draw(
+         &mut self, 
+-        textures: &mut ClientTextureLoader, 
+-        materials: &MaterialLoader,
+-        camera_rect: &Rect, 
+-        prefabs: &Prefabs, 
+-        camera: &Camera2D, 
+-        fonts: &FontLoader, 
+-        elapsed: web_time::Duration,
+-        id: ClientId
++        ctx: &mut TickContext
+     ) {
+-
++        
+         for area in &mut self.areas {
+             area.draw(
+-                textures, 
+-                camera_rect, 
+-                prefabs, 
+-                camera, 
+-                fonts, 
+-                materials,
+-                elapsed, 
+-                vec![], 
+-                false,
+-                id
+-            ).await
++                ctx
++            )
+         }
+     } 
+ }
+\ No newline at end of file

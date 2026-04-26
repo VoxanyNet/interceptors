@@ -36,6 +36,7 @@ downcast-rs = "2.0.2"
 delegate = "0.13.5"
 typetag = "0.2.21"
 dyn-clone = "1.0.20"
+dhat = "0.3.3"
 #rhai = "1.23.6"
 #gilrs = "0.11.0"
 #web-sys = { version = "0.3.72", features = ["console"] }
@@ -68,3 +69,10 @@ opt-level = 3
 discord = []
 no-sound = []
 nightly = []
+dhat-heap = []    # if you are doing heap profiling
+dhat-ad-hoc = []  # if you are doing ad hoc profiling
+
+[profile.release]
+debug = 1
+strip = "none"
+

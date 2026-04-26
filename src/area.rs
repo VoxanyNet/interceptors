@@ -3,10 +3,10 @@ use std::{collections::VecDeque, path::PathBuf, str::FromStr};
 use glamx::{Pose2, Vec2, vec2};
 use macroquad::{camera::Camera2D, color::{RED, WHITE}, input::{KeyCode, is_key_released}, math::Rect, prelude::{gl_use_default_material, gl_use_material}, shapes::{draw_circle, draw_rectangle}, time::get_time, window::{clear_background, screen_height, screen_width}};
 use noise::{NoiseFn, Perlin};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de};
 
 use crate::{
-    ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TextureLoader, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{Background, BackgroundSave}, base_prop::{BaseProp, NewProp, PropId}, base_prop_save::BasePropSave, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::Computer, decoration::{Decoration, DecorationSave}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, material_loader::MaterialLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::Prop, prop_save::PropSave, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, smg::weapon::SMG, weapon::weapon::WeaponOwner}};
+    ClientId, ClientTickContext, Owner, Prefabs, ServerIO, SwapIter, TextureLoader, TickContext, ambiance::{Ambiance, AmbianceSave}, background::{self, Background, BackgroundSave}, base_prop::{BaseProp, NewProp, PropId}, base_prop_save::BasePropSave, bullet_trail::BulletTrail, clip::{Clip, ClipSave}, compound_test::CompoundTest, computer::Computer, decoration::{Decoration, DecorationSave}, dissolved_pixel::DissolvedPixel, drawable::{DrawContext, Drawable}, dropped_item::{DroppedItem, DroppedItemSave}, enemy::{Enemy, EnemySave, NewEnemyUpdate}, font_loader::FontLoader, material_loader::MaterialLoader, player::{Facing, NewPlayer, Player, PlayerSave}, prop::Prop, prop_save::PropSave, rapier_mouse_world_pos, rapier_to_macroquad, selectable_object_id::{SelectableObject, SelectableObjectId}, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, tile::{Tile, TileSave}, updates::NetworkPacket, uuid_u64, weapons::{bullet_impact_data::BulletImpactData, smg::weapon::SMG, weapon::weapon::WeaponOwner}};
 
 macro_rules! test {
     ($s:ident) => {
@@ -86,7 +86,7 @@ impl Area {
     
     pub fn tick(&mut self, ctx: &mut TickContext) {
 
-        log::debug!("{}", self.props.len());
+
 
         self.space.step(ctx.last_tick_duration());
 
@@ -120,54 +120,40 @@ impl Area {
     }
 
     
-    pub async fn draw(
+    pub fn draw(
         &mut self, 
-        textures: &mut ClientTextureLoader, 
-        camera_rect: &Rect, 
-        prefabs: &Prefabs, 
-        camera: &Camera2D, 
-        fonts: &FontLoader, 
-        materials: &MaterialLoader,
-        elapsed: web_time::Duration,
-        exclude_layers: Vec<u32>,
-        editor: bool,
-        id: ClientId
+        ctx: &mut TickContext
     ) {
 
+        for decoration in &self.decorations {
+            decoration.draw(ctx)
+        }
 
-        let mut drawable_objects = Self::get_drawable_objects_mut(
-            &mut self.decorations, 
-            &mut self.props, 
-            &mut self.dropped_items, 
-            &mut self.computer, 
-            &mut self.players, 
-            &mut self.enemies, 
-            &mut self.dissolved_pixels, 
-            &mut self.bullet_trails, 
-            &mut self.clips
-        );
 
-        drawable_objects.sort_by_key(|o| o.draw_layer());
+        for prop in &mut self.props {
+            prop.draw(ctx, &mut self.space)
+        }
 
-        let draw_context = DrawContext {
-            space: &self.space,
-            textures: &textures,
-            prefabs,
-            fonts,
-            camera_rect,
-            tiles: &self.tiles,
-            elapsed_time: &elapsed,
-            default_camera: camera,
-            editor,
-            materials,
-            id,
-            
-        };
+        for background in &mut self.backgrounds {
+            background.draw(ctx);
+        }
+
+        for dropped_item in &self.dropped_items {
+            dropped_item.draw(ctx, &mut self.space);
+        }
+
+        if let Some(computer) = &mut self.computer {
+            computer.draw(ctx, &mut self.space);
+        }
+
+        for player in &mut self.players {
+            player.draw(ctx, &self.space);
+        }
+
+    
+        //self.computer.draw()
 
         // backgrounds are handled seperately because they are always drawn below everything and dont have a layer
-        for background in &mut self.backgrounds {
-            background.draw(&draw_context).await
-        }
 
         // let material = draw_context.materials.get("materials/stars");
         // material.set_uniform("Time", get_time() as f32);
@@ -177,14 +163,6 @@ impl Area {
         // draw_rectangle(0., 0., 5000., 5000., WHITE);
         // gl_use_default_material();
 
-        for object in drawable_objects {
-
-            if exclude_layers.contains(&object.draw_layer()) {
-                
-                continue;
-            }
-            object.draw(&draw_context).await;
-        }
 
         for impact_point in &self.impact_points {
             let m_pos = rapier_to_macroquad(*impact_point);
@@ -482,113 +460,113 @@ impl Area {
         }
     }
 
-    pub fn get_drawable_objects_self(&self) -> Vec<&dyn Drawable> {
-        // there are some situations in which we need to maintain ownership of self so thats why these methods are split
-        Self::get_drawable_objects(
-            &self.backgrounds, 
-            &self.decorations, 
-            &self.props, 
-            &self.dropped_items, 
-            &self.computer, 
-            &self.players, 
-            &self.enemies, 
-            &self.dissolved_pixels, 
-            &self.bullet_trails,
-            &self.clips
-        )
-    }
-    pub fn get_drawable_objects<'a> (
-        backgrounds: &'a Vec<Background>,
-        decorations: &'a Vec<Decoration>,
-        props: &'a Vec<Box<dyn Prop>>,
-        dropped_items: &'a Vec<DroppedItem>,
-        computer: &'a Option<Computer>,
-        players: &'a Vec<Player>,
-        enemies: &'a Vec<Enemy>,
-        dissolved_pixels: &'a Vec<DissolvedPixel>,
-        bullet_trails: &'a Vec<BulletTrail>,
-        clips: &'a Vec<Clip>
-    ) -> Vec<&'a dyn Drawable> {
-        let mut drawable_objects: Vec<&dyn Drawable> = vec![];
+    // pub fn get_drawable_objects_self(&self) -> Vec<&dyn Drawable> {
+    //     // there are some situations in which we need to maintain ownership of self so thats why these methods are split
+    //     Self::get_drawable_objects(
+    //         &self.backgrounds, 
+    //         &self.decorations, 
+    //         &self.props, 
+    //         &self.dropped_items, 
+    //         &self.computer, 
+    //         &self.players, 
+    //         &self.enemies, 
+    //         &self.dissolved_pixels, 
+    //         &self.bullet_trails,
+    //         &self.clips
+    //     )
+    // }
+    // pub fn get_drawable_objects<'a> (
+    //     backgrounds: &'a Vec<Background>,
+    //     decorations: &'a Vec<Decoration>,
+    //     props: &'a Vec<Box<dyn Prop>>,
+    //     dropped_items: &'a Vec<DroppedItem>,
+    //     computer: &'a Option<Computer>,
+    //     players: &'a Vec<Player>,
+    //     enemies: &'a Vec<Enemy>,
+    //     dissolved_pixels: &'a Vec<DissolvedPixel>,
+    //     bullet_trails: &'a Vec<BulletTrail>,
+    //     clips: &'a Vec<Clip>
+    // ) -> Vec<&'a dyn Drawable> {
+    //     let mut drawable_objects: Vec<&dyn Drawable> = vec![];
         
-        for background in backgrounds {
-            drawable_objects.push(background);
-        }
-        for decoration in decorations {
-            drawable_objects.push(decoration);
-        }
-        for prop in props {
-            drawable_objects.push(prop.as_ref() as &dyn Drawable); // need to learn why this works
-        }
-        // for dropped_item in dropped_items {
-        //     drawable_objects.push(dropped_item);
-        // }
-        // if let Some(computer) = computer {
-        //     drawable_objects.push(computer);
-        // }
-        // for player in players {
-        //     drawable_objects.push(player);
-        // }
-        // for enemy in enemies {
-        //     drawable_objects.push(enemy);
-        // }
-        for pixel in dissolved_pixels {
-            drawable_objects.push(pixel);
-        }
-        for bullet_trail in bullet_trails {
-            drawable_objects.push(bullet_trail);
-        }
-        for clip in clips {
-            drawable_objects.push(clip);
-        }
+    //     for background in backgrounds {
+    //         drawable_objects.push(background);
+    //     }
+    //     for decoration in decorations {
+    //         drawable_objects.push(decoration);
+    //     }
+    //     for prop in props {
+    //         drawable_objects.push(prop.as_ref() as &dyn Drawable); // need to learn why this works
+    //     }
+    //     // for dropped_item in dropped_items {
+    //     //     drawable_objects.push(dropped_item);
+    //     // }
+    //     // if let Some(computer) = computer {
+    //     //     drawable_objects.push(computer);
+    //     // }
+    //     // for player in players {
+    //     //     drawable_objects.push(player);
+    //     // }
+    //     // for enemy in enemies {
+    //     //     drawable_objects.push(enemy);
+    //     // }
+    //     for pixel in dissolved_pixels {
+    //         drawable_objects.push(pixel);
+    //     }
+    //     for bullet_trail in bullet_trails {
+    //         drawable_objects.push(bullet_trail);
+    //     }
+    //     for clip in clips {
+    //         drawable_objects.push(clip);
+    //     }
 
-        drawable_objects
-    }
-    pub fn get_drawable_objects_mut<'a> (
-        decorations: &'a mut Vec<Decoration>,
-        props: &'a mut Vec<Box<dyn Prop>>,
-        dropped_items: &'a mut Vec<DroppedItem>,
-        computer: &'a mut Option<Computer>,
-        players: &'a mut Vec<Player>,
-        enemies: &'a mut Vec<Enemy>,
-        dissolved_pixels: &'a mut Vec<DissolvedPixel>,
-        bullet_trails: &'a mut Vec<BulletTrail>,
-        clips: &'a mut Vec<Clip>
-    ) -> Vec<&'a mut dyn Drawable> {
-        let mut drawable_objects: Vec<&mut dyn Drawable> = vec![];
+    //     drawable_objects
+    // }
+    // pub fn get_drawable_objects_mut<'a> (
+    //     decorations: &'a mut Vec<Decoration>,
+    //     props: &'a mut Vec<Box<dyn Prop>>,
+    //     dropped_items: &'a mut Vec<DroppedItem>,
+    //     computer: &'a mut Option<Computer>,
+    //     players: &'a mut Vec<Player>,
+    //     enemies: &'a mut Vec<Enemy>,
+    //     dissolved_pixels: &'a mut Vec<DissolvedPixel>,
+    //     bullet_trails: &'a mut Vec<BulletTrail>,
+    //     clips: &'a mut Vec<Clip>
+    // ) -> Vec<&'a mut dyn Drawable> {
+    //     let mut drawable_objects: Vec<&mut dyn Drawable> = vec![];
         
-        for decoration in decorations {
-            drawable_objects.push(decoration);
-        }
-        for prop in props {
-            drawable_objects.push(prop.as_mut() as &mut dyn Drawable);
-        }
-        // for dropped_item in dropped_items {
-        //     drawable_objects.push(dropped_item);
-        // }
-        // if let Some(computer) = computer {
-        //     drawable_objects.push(computer);
-        // }
-        // for player in players {
-        //     drawable_objects.push(player);
+    //     for decoration in decorations {
+    //         drawable_objects.push(decoration);
+    //     }
+    //     for prop in props {
+    //         drawable_objects.push(prop.as_mut() as &mut dyn Drawable);
+    //     }
+    //     // for dropped_item in dropped_items {
+    //     //     drawable_objects.push(dropped_item);
+    //     // }
+    //     // if let Some(computer) = computer {
+    //     //     drawable_objects.push(computer);
+    //     // }
+    //     // for player in players {
+    //     //     drawable_objects.push(player);
             
             
-        // }
-        // for enemy in enemies {
-        //     drawable_objects.push(enemy);
-        // }
-        for pixel in dissolved_pixels {
-            drawable_objects.push(pixel);
-        }
-        for bullet_trail in bullet_trails {
-            drawable_objects.push(bullet_trail);
-        }
-        for clip in clips {
-            drawable_objects.push(clip);
-        }
+    //     // }
+    //     // for enemy in enemies {
+    //     //     drawable_objects.push(enemy);
+    //     // }
+    //     for pixel in dissolved_pixels {
+    //         drawable_objects.push(pixel);
+    //     }
+    //     for bullet_trail in bullet_trails {
+    //         drawable_objects.push(bullet_trail);
+    //     }
+    //     for clip in clips {
+    //         drawable_objects.push(clip);
+    //     }
 
-        drawable_objects
-    }
+    //     drawable_objects
+    // }
 
 
     // pub fn designate_master(&mut self, server_io: &mut ServerIO) {

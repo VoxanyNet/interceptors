@@ -1,0 +1,48 @@
+{
+  "spawn_point": [
+    0.0,
+    0.0
+  ],
+  "decorations": [],
+  "clips": [],
+  "players": [],
+  "backgrounds": [
+    {
+      "repeat": true,
+      "pos": [
+        569.3125,
+        263.8125
+      ],
+      "sprite_path": "assets/checkerboard.png",
+      "size": [
+        1000.0,
+        650.0
+      ],
+      "parallax": 0.25
+    },
+    {
+      "repeat": true,
+      "pos": [
+        609.1875,
+        118.062515
+      ],
+      "sprite_path": "assets/checkerboard.png",
+      "size": [
+        1000.0,
+        650.0
+      ],
+      "parallax": 0.25
+    }
+  ],
+  "generic_physics_props": [],
+  "enemies": [],
+  "computer_pos": null,
+  "dropped_items": [],
+  "max_camera_y": 0.0,
+  "minimum_camera_width": 1920.0,
+  "minimum_camera_height": 1080.0,
+  "despawn_y": 0.0,
+  "master": null,
+  "ambiance": [],
+  "tiles": []
+}

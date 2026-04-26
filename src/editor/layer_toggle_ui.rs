@@ -91,15 +91,14 @@ impl LayerToggleUI {
 
     }
 
-    fn attempt_rebuild(&mut self, drawable_objects: Vec<&dyn Drawable>) {
-        let object_layers = Self::get_object_layers(drawable_objects.clone());
+    fn attempt_rebuild(&mut self, active_layers: Vec<u32>) {
 
-        if self.previous_update_layers != Self::get_object_layers(drawable_objects.clone()) {
+        if self.previous_update_layers != active_layers {
 
-            self.rebuild(drawable_objects.clone());
+            self.rebuild(active_layers.clone());
         }
 
-        self.previous_update_layers = object_layers;
+        self.previous_update_layers = active_layers;
     }
 
     fn update_toggles(&mut self) {
@@ -141,9 +140,9 @@ impl LayerToggleUI {
             .collect()
     }
 
-    pub fn update(&mut self, drawable_objects: Vec<&dyn Drawable>) {
-    
-        self.attempt_rebuild(drawable_objects);
+    pub fn update(&mut self, active_layers: Vec<u32>) {
+        
+        self.attempt_rebuild(active_layers);
         self.reposition_elements();
         self.update_toggles();
 
@@ -180,14 +179,13 @@ impl LayerToggleUI {
         }
     }
 
-    fn rebuild(&mut self, drawable_objects: Vec<&dyn Drawable>) {
+    fn rebuild(&mut self, mut active_layers: Vec<u32>) {
 
         self.toggles.clear();
 
-        let mut layers = Self::get_object_layers(drawable_objects);
-        layers.sort();
+        active_layers.sort();
 
-        for (index, layer) in layers.iter().enumerate() {
+        for (index, layer) in active_layers.iter().enumerate() {
             self.toggles.push(
                 LayerToggle {
                     layer: *layer,

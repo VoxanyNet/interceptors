@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{drawable::{DrawContext, Drawable}, items::{ConsumedStatus, Item, item_save::ItemSave}, prop::Prop, props::wooden_box::wooden_box::WoodenBox, weapons::ItemOwnerContext};
+use crate::{TickContext, drawable::{DrawContext, Drawable}, items::{ConsumedStatus, Item, item_save::ItemSave}, prop::Prop, props::wooden_box::wooden_box::WoodenBox, weapons::ItemOwnerContext};
 
 
 
@@ -32,7 +32,7 @@ impl Item for PropItem {
 
     fn draw_preview(
         &self, 
-        textures: &crate::texture_loader::ClientTextureLoader, 
+        ctx: &mut TickContext,
         size: f32,
         draw_pos: macroquad::prelude::Vec2,
         color: Option<macroquad::prelude::Color>,
@@ -57,7 +57,7 @@ impl Item for PropItem {
         todo!()
     }
 
-    fn draw_active(&self, textures: &crate::texture_loader::ClientTextureLoader) {
+    fn draw_active(&self, ctx: &mut TickContext, space: &crate::space::Space) {
         todo!()
     }
 

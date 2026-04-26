@@ -1,11 +1,12 @@
-use std::{collections::{HashMap, HashSet, VecDeque}, f32::consts::PI, fs::read_to_string, marker::PhantomData, net::{TcpListener, TcpStream}, path::{Path, PathBuf}, process::exit, str::FromStr};
+use std::{collections::{HashMap, HashSet, VecDeque}, f32::consts::PI, fs::read_to_string, marker::PhantomData, net::{TcpListener, TcpStream}, path::{Path, PathBuf}, process::exit, str::FromStr, time::Duration};
 
 use derive_more::From;
 use ewebsock::{WsReceiver, WsSender};
 use glamx::IVec2;
-use macroquad::{camera::Camera2D, color::{Color, WHITE}, input::{KeyCode, is_key_down, is_key_released, mouse_position}, math::{Rect, Vec2, vec2}, prelude::load_material, shapes::DrawRectangleParams, texture::{DrawTextureParams, draw_texture_ex}};
+use macroquad::{camera::{Camera2D, set_camera}, color::{Color, WHITE}, input::{KeyCode, is_key_down, is_key_released, mouse_position}, math::{Rect, Vec2, vec2}, prelude::{Material, gl_use_default_material, gl_use_material, glam, load_material}, shapes::{DrawRectangleParams, draw_line, draw_rectangle, draw_rectangle_ex}, text::{Font, TextParams, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex}, window::clear_background};
 use rapier2d::{parry::query::Ray, prelude::{AxisMask, ColliderBuilder, ColliderHandle, QueryFilter, RigidBodyHandle, VoxelData, Voxels, VoxelsChunkRef}};
 use serde::{Deserialize, Serialize};
+use strum::Display;
 use tungstenite::WebSocket;
 use include_dir::{Dir, include_dir};
 
@@ -359,12 +360,13 @@ fn normalize_path(path: &PathBuf) -> PathBuf {
 }
 
 
-pub async fn draw_texture_onto_physics_body(
+pub fn draw_texture_onto_physics_body(
+    ctx: &mut TickContext,
+    layer: u32,
     rigid_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,
     space: &Space, 
     texture_path: &PathBuf, 
-    textures: &ClientTextureLoader, 
     flip_x: bool, 
     flip_y: bool, 
     additional_rotation: f32
@@ -381,20 +383,28 @@ pub async fn draw_texture_onto_physics_body(
 
     let draw_pos = rapier_to_macroquad(position);
 
-    draw_texture_ex(
-        textures.get(texture_path), 
-        draw_pos.x - shape.half_extents.x, 
-        draw_pos.y - shape.half_extents.y, 
-        WHITE, 
-        DrawTextureParams {
-            dest_size: Some(vec2(shape.half_extents.x * 2., shape.half_extents.y * 2.)),
-            source: None,
-            rotation: (body_rotation * -1.) + additional_rotation,
-            flip_x,
-            flip_y,
-            pivot: None,
-        }
+    ctx.add_draw_command(
+        layer, 
+        DrawCommand::DrawTexture(
+            DrawTextureParameters {
+                texture: texture_path.clone(),
+                position: Vec2 {
+                    x: draw_pos.x - shape.half_extents.x,
+                    y: draw_pos.y - shape.half_extents.y,
+                },
+                color: WHITE,
+                params: DrawTextureParams {
+                    dest_size: Some(vec2(shape.half_extents.x * 2., shape.half_extents.y * 2.)),
+                    source: None,
+                    rotation: (body_rotation * -1.) + additional_rotation,
+                    flip_x,
+                    flip_y,
+                    pivot: None,
+                },
+            }
+        )
     );
+
 
     
 }
@@ -552,12 +562,24 @@ impl ClientIO {
 
 }
 
-pub fn draw_preview(textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, color: Option<Color>, rotation: f32, texture_path: &PathBuf) { 
+pub fn draw_preview(
+    ctx: &mut TickContext,
+    size: f32, 
+    draw_pos: Vec2, 
+    color: Option<Color>, 
+    rotation: f32, 
+    texture_path: &PathBuf,
+    layer: u32
+) { 
+
+    let textures = match ctx.textures() {
+        TextureLoader::Client(client_texture_loader) => client_texture_loader,
+        TextureLoader::Server(server_texture_loader) => panic!(),
+    };
+
     let color = color.unwrap_or(WHITE);
 
     let dest_size = get_preview_resolution(size, textures, texture_path);
-
-    let texture = textures.get(&texture_path);
 
     let mut params = DrawTextureParams::default();
 
@@ -567,14 +589,22 @@ pub fn draw_preview(textures: &ClientTextureLoader, size: f32, draw_pos: Vec2, c
 
     params.rotation = rotation;
 
-
-    draw_texture_ex(
-        texture, 
-        draw_pos.x, 
-        draw_pos.y + (size - dest_size.x), // sit on the bottom if that makes sense 
-        color,
-        params
+    ctx.add_draw_command(
+        layer, 
+        DrawCommand::DrawTexture(
+            DrawTextureParameters {
+                texture: texture_path.clone(),
+                position: Vec2 {
+                    x: draw_pos.x,
+                    y: draw_pos.y + (size - dest_size.x), // sit on the bottom if that makes sense ,
+                },
+                color,
+                params,
+            }
+        )
     );
+
+
 }
 pub fn get_preview_resolution(size: f32, textures: &ClientTextureLoader, texture_path: &PathBuf) -> Vec2 {
     let texture = textures.get(texture_path);
@@ -803,6 +833,164 @@ impl ServerIO {
 
 }
 
+pub struct DrawCommands {
+    commands: HashMap<u32, Vec<DrawCommand>>
+}
+
+impl DrawCommands {
+    pub fn new() -> Self {
+        Self {
+            commands: HashMap::new(),
+        }
+        
+    }
+
+    pub fn clear(&mut self) {
+        self.commands.clear();
+    }
+
+    pub fn add_draw_command(&mut self, layer: u32, command: DrawCommand) {
+        let layer = match self.commands.get_mut(&layer) {
+            Some(layer) => layer,
+            None => {
+                self.commands.insert(layer, vec![]);
+
+                self.commands.get_mut(&layer).unwrap()
+
+            },
+        };
+
+        layer.push(command);
+    }
+
+    pub fn get_layers(&self) -> Vec<u32> {
+
+        let mut commands: Vec<u32> = self.commands.keys().cloned().collect();
+
+        commands.sort();
+
+        commands
+        
+    }
+
+    pub async fn render(
+        &mut self, 
+        textures: &ClientTextureLoader, 
+        default_camera: &Camera2D,
+        fonts: &FontLoader,
+        materials: &MaterialLoader
+    ) {
+
+
+        let layers = self.get_layers();
+        
+
+
+        for layer in layers {
+        
+            let commands = self.commands.get(&layer).unwrap();
+
+            for command in commands {
+
+         
+                match command {
+                    DrawCommand::DrawTextureDirect(params) => {
+                        draw_texture_ex(
+                            &params.texture, 
+                            params.position.x, 
+                            params.position.y, 
+                            params.color, 
+                            params.params.clone()
+                        );
+                    }
+                    DrawCommand::SetMaterialTexture(params) => {
+                        params.material.set_texture(&params.texture_name, params.texture.clone());
+                    }
+                    DrawCommand::DrawTexture(params) => {
+
+                        let texture = textures.get(&params.texture);
+
+                        draw_texture_ex(
+                            texture, 
+                            params.position.x, 
+                            params.position.y, 
+                            params.color, 
+                            params.params.clone()
+                        );
+                    },
+                    DrawCommand::SetCamera(params) => {
+                        let mut camera = Camera2D::from_display_rect(params.rect);
+                        camera.render_target = params.render_target.clone();
+                        camera.zoom.y = -camera.zoom.y;                        
+                        set_camera(&camera);
+
+                    },
+                    DrawCommand::ClearBackground(params) => {
+                        clear_background(params.color);
+                    },
+                    DrawCommand::DrawRectangle(params) => {
+                        draw_rectangle_ex(
+                            params.position.x, 
+                            params.position.y, 
+                            params.size.x, 
+                            params.size.y, 
+                            DrawRectangleParams {
+                                offset: params.offset.unwrap_or_default(),
+                                rotation: params.rotation.unwrap_or_default(),
+                                color: params.color.unwrap_or_default(),
+                            }
+                        );
+                    },
+                    DrawCommand::ResetToDefaultCamera => {
+                        set_camera(default_camera);
+                    },
+                    DrawCommand::DrawLine(params) => {
+                        draw_line(
+                            params.start.x, 
+                            params.start.y, 
+                            params.end.x, 
+                            params.end.y, 
+                            params.thickness, 
+                            params.color
+                        );
+                    },
+                    DrawCommand::DrawText(params) => {
+
+                        let font: Option<Font> = if let Some(font_path) =  &params.font {
+
+                            Some(fonts.get(font_path.to_path_buf()))
+                        } else {
+                            None
+                        };
+
+                        draw_text_ex(
+                            &params.text, 
+                            params.position.x, 
+                            params.position.y, 
+                            TextParams {
+                                font: font.as_ref(),
+                                font_size: params.font_size.unwrap_or_default(),
+                                font_scale: 1.,
+                                font_scale_aspect: 1.,
+                                rotation: params.rotation.unwrap_or_default(),
+                                color: params.color.unwrap_or_default(),
+                            }
+                        );
+                    },
+                    DrawCommand::UseMaterial(params) => {
+                        
+                        gl_use_material(&params.material);
+                    },
+                    DrawCommand::UseDefaultMaterial => {
+                        gl_use_default_material();
+                    },
+                }
+            }
+        }
+
+    }
+}
+
 pub struct ClientTickContext<'a> {
     pub network_io: &'a mut ClientIO,
     pub last_tick_duration: &'a web_time::Duration,
@@ -812,7 +1000,11 @@ pub struct ClientTickContext<'a> {
     pub screen_shake: &'a mut ScreenShakeParameters,
     pub sounds: &'a mut SoundLoader,
     pub textures: &'a ClientTextureLoader,
-    pub camera: &'a Camera2D
+    pub camera: &'a Camera2D,
+    pub start: &'a web_time::Instant,
+    pub draw_commands: &'a mut DrawCommands,
+    pub material_loader: &'a MaterialLoader,
+    pub fonts: &'a FontLoader
 }
 
 
@@ -821,8 +1013,26 @@ pub struct ServerTickContext<'a> {
     pub last_tick_duration: web_time::Duration
 }
 
+
 pub struct EditorTickContext<'a> {
-    pub e: &'a bool
+    pub e: &'a bool,
+    pub camera_rect: &'a mut Rect,
+    pub current_mode: &'a EditorMode,
+    pub cursor: &'a mut glam::Vec2,
+    pub rapier_cursor: &'a glamx::Vec2,
+    pub textures: &'a ClientTextureLoader,
+    pub draw_commands: &'a mut DrawCommands,
+    pub material_loader: &'a MaterialLoader,
+    pub fonts: &'a FontLoader,
+}
+
+
+#[derive(Display, PartialEq, Clone, Copy)]
+pub enum EditorMode {
+    PrefabPlacement,
+    SetSpawnPoint,
+    TilePlacement,
+    Select
 }
 
 /// This needs a better name
@@ -848,6 +1058,69 @@ impl<'a> TickContext<'a> {
             TickContext::Editor(_) => Owner::Editor
         }
     }
+
+    pub fn textures(&self) -> TextureLoader {
+        match self {
+            TickContext::Client(client_tick_context) => client_tick_context.textures.into(),
+            TickContext::Server(server_tick_context) => todo!(),
+            TickContext::Editor(editor_tick_context) => editor_tick_context.textures.into(),
+        }
+    }
+
+    pub fn cursor(&self) -> glam::Vec2 {
+        match self {
+            TickContext::Client(client_tick_context) => todo!(),
+            TickContext::Server(server_tick_context) => todo!(),
+            TickContext::Editor(editor_tick_context) => *editor_tick_context.cursor,
+        }
+    }
+
+    pub fn fonts(&self) -> &FontLoader {
+        match self {
+            TickContext::Client(client_tick_context) => client_tick_context.fonts,
+            TickContext::Server(server_tick_context) => unimplemented!(),
+            TickContext::Editor(editor_tick_context) => editor_tick_context.fonts,
+        }
+    }
+
+    pub fn rapier_cursor(&self) -> glamx::Vec2 {
+        match self {
+            TickContext::Client(client_tick_context) => todo!(),
+            TickContext::Server(server_tick_context) => todo!(),
+            TickContext::Editor(editor_tick_context) => *editor_tick_context.rapier_cursor,
+        }
+    }
+
+    pub fn camera_rect(&self) -> Rect {
+        match self {
+            TickContext::Client(client_tick_context) => *client_tick_context.camera_rect,
+            TickContext::Server(server_tick_context) => unimplemented!(),
+            TickContext::Editor(editor_tick_context) => *editor_tick_context.camera_rect,
+        }
+    }
+
+    pub fn add_draw_command(&mut self, layer: u32, draw_command: DrawCommand) {
+        match self {
+            TickContext::Client(client_tick_context) => {
+                client_tick_context.draw_commands.add_draw_command(layer, draw_command);
+            },
+            TickContext::Server(server_tick_context) => unimplemented!(),
+            TickContext::Editor(editor_tick_context) => {
+                editor_tick_context.draw_commands.add_draw_command(layer, draw_command);
+            },
+        }
+    }
+
+    pub fn start(&self) -> web_time::Instant {
+        match self {
+            TickContext::Client(client_tick_context) => {
+                *client_tick_context.start
+            },
+            TickContext::Server(server_tick_context) => todo!(),
+            TickContext::Editor(editor_tick_context) => todo!(),
+        }
+    }
+
 
     /// Send all clients on server
     pub fn send_network_packet(&mut self, packet: NetworkPacket) {
@@ -1131,6 +1404,82 @@ pub enum TextureLoader<'a> {
     Client(&'a ClientTextureLoader),
     Server(&'a ServerTextureLoader)
 }
+#[derive(Debug)]
+pub struct DrawTextureParameters {
+    texture: PathBuf,
+    position: Vec2,
+    color: Color,
+    params: DrawTextureParams
+}
+#[derive(Debug)]
+pub struct SetCameraParameters {
+    rect: Rect,
+    render_target: Option<RenderTarget>
+}
+#[derive(Debug)]
+pub struct ClearBackgroundParameters {
+    color: Color
+}
+
+#[derive(Debug)]
+pub struct DrawLineParameters {
+    start: Vec2,
+    end: Vec2,
+    thickness: f32,
+    color: Color
+}
+#[derive(Debug)]
+pub struct DrawRectangleParameters {
+    position: Vec2,
+    size: Vec2,
+    offset: Option<Vec2>,
+    rotation: Option<f32>,
+    color: Option<Color>
+}
+#[derive(Debug)]
+pub struct DrawTextParameters {
+    text: String,
+    position: Vec2,
+    font_size: Option<u16>,
+    color: Option<Color>,
+    font: Option<PathBuf>,
+    rotation: Option<f32>
+}
+#[derive(Debug)]
+pub struct UseMaterialParameters {
+    material: Material
+}
+#[derive(Debug)]
+pub struct SetMaterialTextureParameters {
+    material: Material,
+    texture_name: String,
+    texture: Texture2D
+}
+
+#[derive(Debug)]
+pub struct DrawTextureDirectParameters {
+    texture: Texture2D,
+    position: Vec2,
+    color: Color,
+    params: DrawTextureParams
+}
+
+#[derive(Debug)]
+pub enum DrawCommand {
+    DrawTexture(DrawTextureParameters),
+    SetCamera(SetCameraParameters),
+    ClearBackground(ClearBackgroundParameters),
+    DrawRectangle(DrawRectangleParameters),
+    ResetToDefaultCamera,
+    DrawLine(DrawLineParameters),
+    DrawText(DrawTextParameters),
+    UseMaterial(UseMaterialParameters),
+    UseDefaultMaterial,
+    SetMaterialTexture(SetMaterialTextureParameters),
+    DrawTextureDirect(DrawTextureDirectParameters)
+}
+
+
 
 
 

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use macroquad::{color::WHITE, math::Vec2, texture::{draw_texture_ex, DrawTextureParams}};
 use serde::{Deserialize, Serialize};
 
-use crate::drawable::{DrawContext, Drawable};
+use crate::{DrawCommand, DrawTextureParameters, TickContext, drawable::{DrawContext, Drawable}};
 
 #[derive(Clone)]
 pub struct Background {
@@ -35,6 +35,64 @@ impl Background {
             sprite_path: save.sprite_path,
             size: save.size,
             parallax: save.parallax
+        }
+    }
+
+    pub fn draw(&mut self, ctx: &mut TickContext) {
+        ctx.add_draw_command(
+            0, 
+            DrawCommand::DrawTexture(
+                DrawTextureParameters {
+                    texture: self.sprite_path.clone(),
+                    position: Vec2 {
+                        x: self.pos.x + ctx.camera_rect().x * self.parallax,
+                        y: self.pos.y * self.parallax,
+                    },
+                    color: WHITE,
+                    params: DrawTextureParams {
+                        dest_size: Some(self.size),
+                        source: None,
+                        rotation: 0.,
+                        flip_x: false,
+                        flip_y: false,
+                        pivot: None,
+                    },
+                }
+            )
+        );
+
+        if self.repeat {
+            for x in -20..20 {
+
+                for y in -5..5 {
+
+                    ctx.add_draw_command(
+                        0, 
+                        DrawCommand::DrawTexture(
+                            DrawTextureParameters {
+                                texture: self.sprite_path.clone(),
+                                position: Vec2 {
+                                    x: (self.pos.x + (x as f32 * self.size.x)) + ctx.camera_rect().x * self.parallax,
+                                    y: (self.pos.y + (y as f32 * self.size.y)) + ctx.camera_rect().y * self.parallax,
+                                },
+                                color: WHITE,
+                                params: DrawTextureParams {
+                                    dest_size: Some(self.size),
+                                    source: None,
+                                    rotation: 0.,
+                                    flip_x: false,
+                                    flip_y: false,
+                                    pivot: None,
+                                }
+                            }
+                        )
+                    );
+            
+                }
+                
+
+                
+            }
         }
     }
 }
