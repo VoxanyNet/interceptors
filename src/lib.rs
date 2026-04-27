@@ -1067,6 +1067,14 @@ impl<'a> TickContext<'a> {
         }
     }
 
+    pub fn client_textures(&self) -> &ClientTextureLoader {
+        match self {
+            TickContext::Client(client_tick_context) => client_tick_context.textures,
+            TickContext::Server(server_tick_context) => unimplemented!(),
+            TickContext::Editor(editor_tick_context) => editor_tick_context.textures,
+        }
+    }
+
     pub fn cursor(&self) -> glam::Vec2 {
         match self {
             TickContext::Client(client_tick_context) => todo!(),

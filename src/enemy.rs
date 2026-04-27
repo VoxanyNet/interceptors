@@ -851,6 +851,27 @@ impl Enemy {
 
         draw_rectangle(mpos.x - 25., mpos.y - 60., 50. * (self.health.max(0) as f32/30.), 10., GREEN);
     }
+
+    pub fn draw(&mut self, ctx: &mut TickContext, space: &mut Space) {
+        if self.despawn {
+            return;
+        }
+
+        let flip_x = match self.facing {
+            Facing::Right => false,
+            Facing::Left => true,
+        };
+
+        self.body.draw(ctx, space, flip_x);
+
+        self.head.draw(ctx, space, flip_x);
+
+        if let Some(weapon) = &self.item {
+            weapon.draw_active(ctx, space);
+        }
+
+        self.draw_health_bar(space);
+    }
 }
 
 

@@ -150,6 +150,14 @@ impl Area {
             player.draw(ctx, &self.space);
         }
 
+        for enemy in &mut self.enemies {
+            enemy.draw(ctx, &mut self.space);
+        }
+
+        for clip in &self.clips {
+            clip.draw(ctx, &self.space)
+        }
+
     
         //self.computer.draw()
 
