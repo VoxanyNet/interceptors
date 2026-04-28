@@ -4,7 +4,7 @@ use derive_more::From;
 use macroquad::{camera::{set_camera, Camera2D}, color::{Color, BLACK, GRAY, WHITE}, math::{Rect, Vec2}, shapes::draw_line, text::{draw_text_ex, TextParams}, texture::{draw_texture_ex, render_target, DrawTextureParams, RenderTarget}, window::clear_background};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClearBackgroundParameters, ClientTickContext, DrawCommand, DrawLineParameters, DrawTextParameters, DrawTextureDirectParameters, DrawTextureParameters, Owner, Prefabs, SetCameraParameters, TextureLoader, TickContext, base_prop::BaseProp, base_prop_save::BasePropSave, button::Button, drawable::{DrawContext, Drawable}, font_loader::FontLoader, items::{Item, prop::prop_item::PropItem}, mouse_world_pos, player::Player, prop::Prop, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, weapons::weapon_type_save::WeaponTypeSave};
+use crate::{ClearBackgroundParameters, ClientTickContext, DrawCommand, DrawLineParameters, DrawTextParameters, DrawTextureDirectParameters, DrawTextureParameters, Owner, Prefabs, SetCameraParameters, TextureLoader, TickContext, base_prop::BaseProp, base_prop_save::BasePropSave, button::Button, drawable::{DrawContext, Drawable}, font_loader::FontLoader, items::{Item, prop::prop_item::SimplePropItem}, mouse_world_pos, player::Player, prop::Prop, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, weapons::weapon_type_save::WeaponTypeSave};
 
 // #[derive(PartialEq, Clone, Debug, From)]
 // pub enum Item {
@@ -306,7 +306,7 @@ impl Computer {
         available_items.push(
             StoreItem {
                 cost: 20,
-                item: Box::new(PropItem::WoodenBox),
+                item: Box::new(SimplePropItem::WoodenBox),
                 quantity: None
             }
         );
@@ -314,7 +314,7 @@ impl Computer {
         available_items.push(
             StoreItem {
                 cost: 20,
-                item: Box::new(PropItem::WoodenBox),
+                item: Box::new(SimplePropItem::WoodenBox),
                 quantity: None
             }
         );
@@ -347,7 +347,7 @@ impl Computer {
             structures_category.insert_item(
                 StoreItem {
                     cost: 20,
-                    item: Box::new(PropItem::WoodenBox),
+                    item: Box::new(SimplePropItem::WoodenBox),
                     quantity: None
                 }
             );
@@ -357,7 +357,7 @@ impl Computer {
             structures_category.insert_item(
                 StoreItem {
                     cost: 20,
-                    item: Box::new(PropItem::WoodenBox),
+                    item: Box::new(SimplePropItem::WoodenBox),
                     quantity: Some(1)
                 }
             );

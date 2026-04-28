@@ -1,10 +1,25 @@
 {
   "spawn_point": [
-    0.0,
-    0.0
+    300.0,
+    420.0
   ],
   "decorations": [],
-  "clips": [],
+  "clips": [
+    {
+      "size": [
+        1077.7969,
+        44.054688
+      ],
+      "pos": [
+        617.60156,
+        87.97656
+      ],
+      "layer": 0,
+      "one_way": false,
+      "health": null,
+      "material": "None"
+    }
+  ],
   "players": [],
   "backgrounds": [
     {
@@ -34,10 +49,418 @@
       "parallax": 0.25
     }
   ],
-  "generic_physics_props": [],
+  "generic_physics_props": [
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.9999999,
+          "im": 0.0005492978
+        },
+        "translation": [
+          911.5801,
+          109.85684
+        ]
+      },
+      "mass": 4096.0,
+      "sprite_path": "assets/box2.png",
+      "id": {
+        "id": 16456054287176652021
+      },
+      "owner": null,
+      "material": "Wood",
+      "name": "Crate",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.9999999,
+          "im": -0.00046820173
+        },
+        "translation": [
+          996.4898,
+          109.95961
+        ]
+      },
+      "mass": 4096.0,
+      "sprite_path": "assets/box2.png",
+      "id": {
+        "id": 8882919067442564151
+      },
+      "owner": null,
+      "material": "Wood",
+      "name": "Crate",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.99999917,
+          "im": 0.001329518
+        },
+        "translation": [
+          907.6511,
+          173.65353
+        ]
+      },
+      "mass": 4096.0,
+      "sprite_path": "assets/box2.png",
+      "id": {
+        "id": 15382101719595226796
+      },
+      "owner": null,
+      "material": "Wood",
+      "name": "Crate",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.99999785,
+          "im": 0.0021112016
+        },
+        "translation": [
+          913.6068,
+          237.53386
+        ]
+      },
+      "mass": 4096.0,
+      "sprite_path": "assets/box2.png",
+      "id": {
+        "id": 11792732578933206353
+      },
+      "owner": null,
+      "material": "Wood",
+      "name": "Crate",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.99999547,
+          "im": 0.0030093417
+        },
+        "translation": [
+          885.64514,
+          301.386
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets/stone1.png",
+      "id": {
+        "id": 9195383844497141485
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Stone 1",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.99999934,
+          "im": -0.0011490877
+        },
+        "translation": [
+          1012.71893,
+          173.9216
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets/stone1.png",
+      "id": {
+        "id": 7712778403799227748
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Stone 1",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": -1.0,
+          "im": 0.00020550398
+        },
+        "translation": [
+          860.1418,
+          157.95955
+        ]
+      },
+      "mass": 4608.0,
+      "sprite_path": "assets/stone2.png",
+      "id": {
+        "id": 13678723546098111809
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Stone 2",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    }
+  ],
   "enemies": [],
   "computer_pos": null,
-  "dropped_items": [],
+  "dropped_items": [
+    {
+      "pos": {
+        "rotation": {
+          "re": 0.71635616,
+          "im": 0.69773483
+        },
+        "translation": [
+          632.16876,
+          138.24086
+        ]
+      },
+      "item": {
+        "type": "SimplePropItem",
+        "WoodenBox": null
+      },
+      "velocity": {
+        "linvel": [
+          0.00030613504,
+          0.0000074253185
+        ],
+        "angvel": -0.0000108350305
+      },
+      "id": {
+        "id": 16099590644528670318
+      },
+      "size": [
+        20.0,
+        20.0
+      ]
+    },
+    {
+      "pos": {
+        "rotation": {
+          "re": 0.9999999,
+          "im": 0.0005913798
+        },
+        "translation": [
+          721.06104,
+          129.94913
+        ]
+      },
+      "item": {
+        "type": "SimplePropItem",
+        "WoodenBox": null
+      },
+      "velocity": {
+        "linvel": [
+          0.0,
+          0.0
+        ],
+        "angvel": 0.0
+      },
+      "id": {
+        "id": 3960188790912246280
+      },
+      "size": [
+        20.0,
+        20.0
+      ]
+    },
+    {
+      "pos": {
+        "rotation": {
+          "re": 0.8206625,
+          "im": -0.5714133
+        },
+        "translation": [
+          747.8371,
+          169.52135
+        ]
+      },
+      "item": {
+        "type": "SimplePropItem",
+        "WoodenBox": null
+      },
+      "velocity": {
+        "linvel": [
+          0.0,
+          0.0
+        ],
+        "angvel": 0.0
+      },
+      "id": {
+        "id": 16250220641593602433
+      },
+      "size": [
+        20.0,
+        20.0
+      ]
+    },
+    {
+      "pos": {
+        "rotation": {
+          "re": -0.0000870828,
+          "im": -1.0
+        },
+        "translation": [
+          805.51135,
+          185.92857
+        ]
+      },
+      "item": {
+        "type": "SimplePropItem",
+        "WoodenBox": null
+      },
+      "velocity": {
+        "linvel": [
+          0.0,
+          0.0
+        ],
+        "angvel": 0.0
+      },
+      "id": {
+        "id": 4767229413529820908
+      },
+      "size": [
+        20.0,
+        20.0
+      ]
+    },
+    {
+      "pos": {
+        "rotation": {
+          "re": -1.0,
+          "im": 5.3774354e-8
+        },
+        "translation": [
+          891.26373,
+          129.97472
+        ]
+      },
+      "item": {
+        "type": "SimplePropItem",
+        "WoodenBox": null
+      },
+      "velocity": {
+        "linvel": [
+          0.0,
+          0.0
+        ],
+        "angvel": 0.0
+      },
+      "id": {
+        "id": 7046908150343431373
+      },
+      "size": [
+        20.0,
+        20.0
+      ]
+    },
+    {
+      "pos": {
+        "rotation": {
+          "re": -0.00031115554,
+          "im": 1.0
+        },
+        "translation": [
+          547.89606,
+          129.96255
+        ]
+      },
+      "item": {
+        "type": "SimplePropItem",
+        "WoodenBox": null
+      },
+      "velocity": {
+        "linvel": [
+          0.0001774485,
+          -0.00018047095
+        ],
+        "angvel": -0.000020899719
+      },
+      "id": {
+        "id": 14464381276795332112
+      },
+      "size": [
+        20.0,
+        20.0
+      ]
+    },
+    {
+      "pos": {
+        "rotation": {
+          "re": -0.7163728,
+          "im": -0.6977177
+        },
+        "translation": [
+          591.465,
+          154.37086
+        ]
+      },
+      "item": {
+        "type": "SimplePropItem",
+        "WoodenBox": null
+      },
+      "velocity": {
+        "linvel": [
+          0.0006371631,
+          -0.0004432968
+        ],
+        "angvel": 0.000004067995
+      },
+      "id": {
+        "id": 17933726907677829657
+      },
+      "size": [
+        20.0,
+        20.0
+      ]
+    }
+  ],
   "max_camera_y": 0.0,
   "minimum_camera_width": 1920.0,
   "minimum_camera_height": 1080.0,

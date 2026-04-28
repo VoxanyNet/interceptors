@@ -97,7 +97,7 @@ impl Client {
 
         server_send.send(
             ewebsock::WsMessage::Binary(
-                bitcode::serialize(&client_id).unwrap()
+                serde_json::to_string(&client_id).unwrap().as_bytes().to_vec()
             )
         );
 

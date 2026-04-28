@@ -953,7 +953,7 @@ impl BaseProp {
         ctx: &mut TickContext,
     ) {
 
-        log::debug!("Running");
+
         if self.despawn {
             return;
         }
@@ -966,12 +966,7 @@ impl BaseProp {
             }
         }
 
-        if is_key_pressed(KeyCode::U) {
-            self.layer = 0;
-        }
-        if is_key_pressed(KeyCode::I) {
-            self.layer = 1;
-        }
+        
 
 
         let current_velocity = *area_context.space.rigid_body_set.get(self.rigid_body_handle).unwrap().vels();

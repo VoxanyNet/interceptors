@@ -110,7 +110,7 @@ impl DroppedItem {
 
         }
     }
-    pub fn new(item: Box<dyn Item>, pos: Pose2, vel: RigidBodyVelocity<f32>, space: &mut Space, textures: &ClientTextureLoader, prefabs: &Prefabs, size: f32) -> Self {
+    pub fn new(item: Box<dyn Item>, pos: Pose2, vel: RigidBodyVelocity<f32>, space: &mut Space, textures: &ClientTextureLoader,  size: f32) -> Self {
 
         let preview_size = item.get_preview_resolution(textures, size);
 

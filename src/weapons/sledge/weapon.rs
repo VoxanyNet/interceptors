@@ -56,7 +56,7 @@ impl Sledge {
 
         // let collider = space.collider_set.get(self.collider).unwrap();
 
-        draw_hitbox(space, self.rigid_body, self.collider, WHITE);
+        //draw_hitbox(space, self.rigid_body, self.collider, WHITE);
 
     }
 

@@ -429,7 +429,14 @@ pub fn contains_point(collider_handle: ColliderHandle, space: &mut Space, point:
     return false
 } 
 
-pub fn draw_hitbox(space: &Space, rigid_body_handle: RigidBodyHandle, collider_handle: ColliderHandle, color: Color) {
+pub fn draw_hitbox(
+    ctx: &mut TickContext, 
+    layer: u32,
+    space: &Space, 
+    rigid_body_handle: RigidBodyHandle, 
+    collider_handle: ColliderHandle, 
+    color: Color
+) {
     let rigid_body = space.rigid_body_set.get(rigid_body_handle).unwrap();
     let collider = space.collider_set.get(collider_handle).unwrap();
 
@@ -440,13 +447,19 @@ pub fn draw_hitbox(space: &Space, rigid_body_handle: RigidBodyHandle, collider_h
 
     let draw_pos = rapier_to_macroquad(position);
 
-    macroquad::shapes::draw_rectangle_ex(
-        draw_pos.x,
-        draw_pos.y, 
-        shape.half_extents.x * 2., 
-        shape.half_extents.y * 2., 
-        DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rotation * -1., color }
+    ctx.add_draw_command(
+        layer, 
+        DrawCommand::DrawRectangle(
+            DrawRectangleParameters {
+                position: draw_pos,
+                size: Vec2::new(shape.half_extents.x * 2., shape.half_extents.y * 2.),
+                offset: Some(macroquad::math::Vec2::new(0.5, 0.5)),
+                rotation: Some(rotation * -1.),
+                color: Some(color),
+            }
+        )
     );
+
 
 }
 
@@ -510,9 +523,12 @@ impl ClientIO {
 
     pub fn flush(&mut self) {
 
+        let packet_queue_json = serde_json::to_string(&self.packet_queue).unwrap();
+        let packet_queue_bytes = packet_queue_json.as_bytes().to_vec();
+
         self.send.send(
             ewebsock::WsMessage::Binary(
-                bitcode::serialize(&self.packet_queue).unwrap()
+                packet_queue_bytes
             )
         );
 
@@ -551,7 +567,9 @@ impl ClientIO {
                 None => break, // this means there are no more updates
             };
 
-            let mut network_packets: Vec<NetworkPacket> = bitcode::deserialize(&network_packet_bytes).unwrap();
+            let network_packet_json = String::from_utf8(network_packet_bytes).unwrap();
+
+            let mut network_packets: Vec<NetworkPacket> = serde_json::from_str(&network_packet_json).unwrap();
 
             packets.append(&mut network_packets);
 
@@ -683,7 +701,8 @@ impl ServerIO {
                 None => panic!("didn't have a packet queue for client: {:?}", client_id),
             };
 
-            let bytes = bitcode::serialize(&queued_packets).unwrap();
+            let queued_packets_json = serde_json::to_string(&queued_packets).unwrap();
+            let bytes = queued_packets_json.as_bytes();
 
             *total_sent_bytes += bytes.len();
 
@@ -779,7 +798,10 @@ impl ServerIO {
                         Ok(message) => {
                             match message {
                                 tungstenite::Message::Binary(bytes) => {
-                                    break bitcode::deserialize(&bytes).unwrap()
+
+                                    let json = String::from_utf8(bytes).unwrap();
+
+                                    break serde_json::from_str(&json).unwrap()
                                 },
                                 _ => {
                                     panic!("client tried to send non binary data when sending client id")

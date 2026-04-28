@@ -24,7 +24,7 @@ impl Server {
 
 
         //let lobby_save: AreaSave = serde_json::from_str(&read_to_string("areas/ship.json").unwrap()).unwrap();
-        let forest_save: AreaSave = serde_json::from_str(&read_to_string("areas/test.json").unwrap()).unwrap();
+        let forest_save: AreaSave = serde_json::from_str(&read_to_string("areas/new_area.json").unwrap()).unwrap();
 
 
 
@@ -675,7 +675,9 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                     },
                 };
 
-                let client_packets: Vec<NetworkPacket> = bitcode::deserialize(&update_bytes).unwrap();
+                let update_json = String::from_utf8(update_bytes).unwrap();
+
+                let client_packets: Vec<NetworkPacket> = serde_json::from_str(&update_json).unwrap();
 
                 // we should really just return HashMap<ClientId, Vec<NetworkPacket>>
                 for packet in client_packets {

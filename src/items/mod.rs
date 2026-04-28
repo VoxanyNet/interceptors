@@ -39,6 +39,7 @@ pub trait Item: Downcast {
         None
     }
 
+    /// Downcast to weapon mut
     fn as_weapon_mut(&mut self) -> Option<&mut dyn Weapon> {
         None
     }

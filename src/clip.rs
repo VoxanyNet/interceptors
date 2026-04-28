@@ -21,7 +21,8 @@ impl Clip {
 
     pub fn draw(&self, ctx: &mut TickContext, space: &Space) {
 
-        let TickContext::Editor(ctx) = ctx else {
+        // only draw clips if we are in the editor
+        let TickContext::Editor(_) = ctx else {
             return
         };
 
@@ -29,7 +30,7 @@ impl Clip {
 
         color.a = 0.2;
 
-        draw_hitbox(space, self.rigid_body_handle, self.collider_handle, color);
+        draw_hitbox(ctx, self.layer, space, self.rigid_body_handle, self.collider_handle, color);
     }
 
     pub fn despawn_callback(&mut self, space: &mut Space) {
