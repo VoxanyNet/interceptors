@@ -187,9 +187,11 @@ impl Prop for BaseProp {
 
         if let RigidBodyType::KinematicPositionBased = space.rigid_body_set.get(self.rigid_body_handle).unwrap().body_type() {
 
-            let mut color = RED;
+            let mut color = WHITE;
 
             color.a = 1. - (self.last_received_position_update.elapsed().as_secs_f32() / 1.);
+
+            color.a = color.a.max(0.4);
 
             ctx.add_draw_command(
                 self.layer, 
@@ -1435,7 +1437,7 @@ impl BaseProp {
 
         ctx.add_draw_command(
             self.layer, 
-            DrawCommand::ResetToDefaultCamera
+            DrawCommand::ResetToWorldCamera
         );
         
     }

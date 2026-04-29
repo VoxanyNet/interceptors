@@ -4,7 +4,7 @@ use macroquad::{color::Color, math::Vec2};
 use rapier2d::prelude::RigidBodyHandle;
 use delegate::delegate;
 
-use crate::{ClientId, TickContext, area::AreaContext, items::{ConsumedStatus, Item, item_save::ItemSave}, player::{Facing, PlayerContext}, space::Space, texture_loader::ClientTextureLoader, weapons::{ItemOwnerContext, lmg::weapon_save::LMGSave, weapon::weapon::{BaseWeapon, WeaponOwner}, weapon_fire_context::WeaponFireContext, weapon_type::ShooterContext}};
+use crate::{ClientId, TickContext, area::AreaContext, items::{ConsumedStatus, Item, item_save::ItemSave}, player::{Facing, PlayerContext}, space::Space, texture_loader::ClientTextureLoader, weapons::{ItemOwnerContext, Weapon, lmg::weapon_save::LMGSave, weapon::weapon::{BaseWeapon, WeaponOwner}, weapon_fire_context::WeaponFireContext, weapon_type::ShooterContext}};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct LMG {
@@ -14,6 +14,8 @@ pub struct LMG {
 impl Item for LMG {
     delegate! {
         to self.weapon_base {
+            fn as_weapon_mut(&mut self) -> Option<&mut dyn Weapon>;
+            fn as_weapon(&self) -> Option<&dyn crate::weapons::Weapon>;
             fn use_released(&mut self, ctx: &mut TickContext, area_context: &mut AreaContext, weapon_owner_context: &mut ItemOwnerContext) -> ConsumedStatus;
             fn use_hold(&mut self, ctx: &mut TickContext, area_context: &mut AreaContext, weapon_owner_context: &mut ItemOwnerContext) -> ConsumedStatus;
             fn stackable(&self) -> bool;

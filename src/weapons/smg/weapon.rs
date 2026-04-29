@@ -1,11 +1,10 @@
 use std::{path::PathBuf, str::FromStr};
 
-use async_trait::async_trait;
 use delegate::delegate;
 use macroquad::{color::Color, math::Vec2};
-use rapier2d::prelude::{ImpulseJointHandle, RigidBodyHandle};
+use rapier2d::prelude::{ColliderHandle, ImpulseJointHandle, RigidBodyHandle};
 
-use crate::{ClientId, TickContext, area::AreaContext, drawable::{DrawContext, Drawable}, items::{ConsumedStatus, Item, item_save::ItemSave}, player::{Facing, PlayerContext}, space::Space, texture_loader::ClientTextureLoader, weapons::{ItemOwnerContext, smg::weapon_save::SMGSave, weapon::weapon::{BaseWeapon, WeaponOwner}, weapon_fire_context::WeaponFireContext, weapon_type::ShooterContext}};
+use crate::{ClientId, TickContext, area::AreaContext, drawable::{DrawContext, Drawable}, items::{ConsumedStatus, Item, item_save::ItemSave}, player::{Facing, PlayerContext}, space::Space, texture_loader::ClientTextureLoader, weapons::{ItemOwnerContext, Weapon, smg::weapon_save::SMGSave, weapon::weapon::{BaseWeapon, WeaponOwner}, weapon_fire_context::WeaponFireContext, weapon_type::ShooterContext}};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct SMG {
@@ -51,17 +50,19 @@ impl SMG {
 
 }
 
-#[async_trait]
-impl Drawable for SMG {
-    async fn draw(&mut self, draw_context: &DrawContext) {
-        todo!()
-    }
 
-    fn draw_layer(&self) -> u32 {
-        self.weapon_base.draw_layer()
-    }
-}   
 
+// technically this isnt needed because we delegate as_weapon to the base weapon anyways?
+impl Weapon for SMG {
+    delegate! {
+        to self.weapon_base {
+            fn collider_handle(&self) -> Option<ColliderHandle>;
+            fn fire(&mut self, ctx: &mut TickContext, area_context: &mut AreaContext, weapon_owner_context: &mut ItemOwnerContext);
+            fn player_joint_handle(&self) -> Option<ImpulseJointHandle>;
+            fn rigid_body_handle(&self) -> Option<RigidBodyHandle>;
+        }
+    }
+}
 impl Item for SMG {
 
     fn same(&self, other: &dyn Item) -> bool {
@@ -74,9 +75,9 @@ impl Item for SMG {
     delegate! {
         to self.weapon_base {
             fn use_released(&mut self, ctx: &mut TickContext, area_context: &mut AreaContext, weapon_owner_context: &mut ItemOwnerContext) -> ConsumedStatus;
-
+            fn as_weapon_mut(&mut self) -> Option<&mut dyn Weapon>;
+            fn as_weapon(&self) -> Option<&dyn crate::weapons::Weapon>;
             fn use_hold(&mut self, ctx: &mut TickContext, area_context: &mut AreaContext, weapon_owner_context: &mut ItemOwnerContext) -> ConsumedStatus;
-
             fn stackable(&self) -> bool;
             fn save(&self, space: &Space) -> Box<dyn ItemSave>;
             fn draw_preview(
@@ -121,3 +122,4 @@ impl Item for SMG {
         }
     }
 }
+

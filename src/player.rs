@@ -1008,7 +1008,9 @@ impl Player {
         match &mut self.inventory.items[self.selected_item] {
             Some(item_slot) =>  {
 
+
                 if let Some(weapon) = item_slot.item.as_weapon_mut() {
+                    
                     angle_weapon_to_mouse(space, weapon, self.body.body_handle, self.cursor_pos_rapier, self.facing);
                 }
     

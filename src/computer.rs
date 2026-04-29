@@ -552,7 +552,7 @@ impl Computer {
         
         ctx.add_draw_command(
             self.prop.layer, 
-            DrawCommand::ResetToDefaultCamera
+            DrawCommand::ResetToWorldCamera
         );
 
         ctx.add_draw_command(

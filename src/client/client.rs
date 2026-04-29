@@ -1,8 +1,8 @@
 use std::{collections::HashMap, process::exit};
 
 use image::codecs::webp;
-use interceptors_lib::{Assets, ClientIO, ClientId, ClientTickContext, DrawCommand, DrawCommands, Owner, Prefabs, TickContext, area::Area, base_prop::BaseProp, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, material_loader::MaterialLoader, player::{ItemSlot, Player}, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::ClientTextureLoader, updates::{NetworkPacket, Ping}, world::World};
-use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, WHITE}, input::{KeyCode, is_key_released, show_mouse}, math::{Rect, vec2}, prelude::{Material, ShaderSource, gl_use_default_material, load_material}, text::draw_text, texture::{DrawTextureParams, RenderTarget, draw_texture_ex, render_target}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
+use interceptors_lib::{Assets, ClearBackgroundParameters, ClientIO, ClientId, ClientTickContext, DrawCommand, DrawCommands, DrawTextParameters, Owner, Prefabs, TickContext, area::Area, base_prop::BaseProp, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, material_loader::MaterialLoader, player::{ItemSlot, Player}, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::ClientTextureLoader, updates::{NetworkPacket, Ping}, world::World};
+use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, WHITE}, input::{KeyCode, is_key_released, is_mouse_button_down, is_mouse_button_released, show_mouse}, math::{Rect, Vec2, vec2}, prelude::{Material, ShaderSource, gl_use_default_material, load_material}, text::draw_text, texture::{DrawTextureParams, RenderTarget, draw_texture_ex, render_target}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
 use rapier2d::{math::Vector, prelude::{ColliderBuilder, SharedShape}};
 
 use crate::{shaders::{CRT_FRAGMENT_SHADER, CRT_VERTEX_SHADER}};
@@ -36,7 +36,7 @@ pub struct Client {
 }
 
 impl Client {
-    pub async fn connect(assets: Assets, _client_id: i64) -> Self {
+    pub async fn connect(assets: Assets) -> Self {
 
 
         show_mouse(true);
@@ -181,6 +181,8 @@ impl Client {
 
 
         loop {
+
+            
 
             let then = web_time::Instant::now();
             self.tick();
@@ -640,6 +642,17 @@ impl Client {
 
 
 
+        if is_mouse_button_released(macroquad::input::MouseButton::Left) {
+            println!("Left Mouse button released");
+        }
+
+        if is_mouse_button_released(macroquad::input::MouseButton::Right) {
+            println!("Right mouse button released");
+        }
+
+
+
+
         self.phone();
         self.measure_latency();
         self.ping();
@@ -719,6 +732,44 @@ impl Client {
     }
 
 
+    fn draw_memory_usage(&mut self) {
+
+        self.draw_commands.add_draw_command(
+            10, 
+            DrawCommand::SetToDefaultCamera
+        );
+
+        
+        if let Some(usage) = memory_stats::memory_stats() {
+
+            let mb_usage = usage.physical_mem / 1000000;
+
+            log::debug!("{}", mb_usage);
+
+            self.draw_commands.add_draw_command(10, DrawCommand::ClearBackground(ClearBackgroundParameters {color:BLACK}));
+
+            // self.draw_commands.add_draw_command(
+            //     10, 
+            //     DrawCommand::DrawText(
+            //         DrawTextParameters {
+            //             text: mb_usage.to_string(),
+            //             position: Vec2 {
+            //                 x: 0.,
+            //                 y: 50.,
+            //             },
+            //             font_size: Some(10),
+            //             ..Default::default()
+            //         }
+            //     )
+            // );
+            
+        }
+
+        self.draw_commands.add_draw_command(
+            10, 
+            DrawCommand::ResetToWorldCamera
+        );
+    }
     pub async fn draw(&mut self, then: web_time::Instant) {
 
         let shaken_camera_rect = self.calculate_shaken_camera_rect();
@@ -743,6 +794,8 @@ impl Client {
 
         self.draw_commands.clear();
 
+        self.draw_memory_usage();
+
         let mut ctx: TickContext = TickContext::Client(
             ClientTickContext {
                 material_loader: &mut self.material_loader,
@@ -761,9 +814,13 @@ impl Client {
             }
         ).into();
 
+        
+
         self.world.draw(
             &mut ctx
         );
+
+        
 
         self.draw_commands.render(&self.textures, &self.camera, &self.fonts, &self.material_loader).await;
 
@@ -781,6 +838,8 @@ impl Client {
         gl_use_default_material();
 
         draw_fps();
+
+        
 
 
         draw_text(&format!("Tick time: {:?}", then.elapsed()), 0., 60., 20., WHITE);

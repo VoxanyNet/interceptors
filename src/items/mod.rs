@@ -35,14 +35,10 @@ pub trait Item: Downcast {
     fn same(&self, other: &dyn Item) -> bool;
     
     /// Downcast to weapon
-    fn as_weapon(&self) -> Option<&dyn Weapon> {
-        None
-    }
+    fn as_weapon(&self) -> Option<&dyn Weapon>;
 
     /// Downcast to weapon mut
-    fn as_weapon_mut(&mut self) -> Option<&mut dyn Weapon> {
-        None
-    }
+    fn as_weapon_mut(&mut self) -> Option<&mut dyn Weapon>;
     fn get_preview_resolution(
         &self,
         textures: &ClientTextureLoader,

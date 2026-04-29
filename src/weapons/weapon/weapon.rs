@@ -606,6 +606,8 @@ impl Weapon for BaseWeapon {
         self.collider
     }
 
+
+
     fn fire(&mut self, ctx: &mut TickContext, area_context: &mut AreaContext, weapon_owner_context: &mut crate::weapons::ItemOwnerContext) {
         self.fire_internal(ctx, area_context, weapon_owner_context);
     }
@@ -619,6 +621,7 @@ impl Weapon for BaseWeapon {
     }
 }
 impl Item for BaseWeapon {
+
 
     fn use_hold(&mut self, ctx: &mut TickContext, area_context: &mut AreaContext, weapon_owner_context: &mut ItemOwnerContext) -> crate::items::ConsumedStatus {
         self.fire_internal(ctx, area_context, weapon_owner_context);
@@ -634,6 +637,10 @@ impl Item for BaseWeapon {
     }
 
     fn as_weapon(&self) -> Option<&dyn crate::weapons::Weapon> {
+        Some(self)
+    }
+
+    fn as_weapon_mut(&mut self) -> Option<&mut dyn Weapon> {
         Some(self)
     }
 

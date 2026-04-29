@@ -9,7 +9,7 @@ bitcode = { version = "0.6.6", features = ["serde"] }
 ewebsock = "0.8.0"
 fxhash = "0.2.1"
 macroquad = { version = "0.4.14", features = ["audio", "glam-serde"] }
-rapier2d = { version = "0.32.0", features = ["serde-serialize", "parallel"] }
+rapier2d = { version = "0.32.0", features = ["serde-serialize"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.142"
 strum = { version = "0.27.2", features = ["derive"] }
@@ -37,6 +37,7 @@ delegate = "0.13.5"
 typetag = "0.2.21"
 dyn-clone = "1.0.20"
 dhat = "0.3.3"
+memory-stats = "1.2.0"
 #rhai = "1.23.6"
 #gilrs = "0.11.0"
 #web-sys = { version = "0.3.72", features = ["console"] }

@@ -172,14 +172,6 @@ impl Area {
         // gl_use_default_material();
 
 
-        for impact_point in &self.impact_points {
-            let m_pos = rapier_to_macroquad(*impact_point);
-            let mut color = RED;
-            color.a = 0.2;
-            draw_circle(m_pos.x, m_pos.y, 5., color);
-        }
-
-
 
     }
 

@@ -3,7 +3,7 @@ use std::{collections::{HashMap, HashSet, VecDeque}, f32::consts::PI, fs::read_t
 use derive_more::From;
 use ewebsock::{WsReceiver, WsSender};
 use glamx::IVec2;
-use macroquad::{camera::{Camera2D, set_camera}, color::{Color, WHITE}, input::{KeyCode, is_key_down, is_key_released, mouse_position}, math::{Rect, Vec2, vec2}, prelude::{Material, gl_use_default_material, gl_use_material, glam, load_material}, shapes::{DrawRectangleParams, draw_line, draw_rectangle, draw_rectangle_ex}, text::{Font, TextParams, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex}, window::clear_background};
+use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, WHITE}, input::{KeyCode, is_key_down, is_key_released, mouse_position}, math::{Rect, Vec2, vec2}, prelude::{Material, gl_use_default_material, gl_use_material, glam, load_material}, shapes::{DrawRectangleParams, draw_line, draw_rectangle, draw_rectangle_ex}, text::{Font, TextParams, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex}, window::clear_background};
 use rapier2d::{parry::query::Ray, prelude::{AxisMask, ColliderBuilder, ColliderHandle, QueryFilter, RigidBodyHandle, VoxelData, Voxels, VoxelsChunkRef}};
 use serde::{Deserialize, Serialize};
 use strum::Display;
@@ -167,7 +167,7 @@ pub fn angle_weapon_to_mouse(
     cursor_pos_rapier: glamx::Vec2,
     facing: Facing
 ) {
- 
+
 
     let shotgun_joint_handle = match weapon.player_joint_handle() {
         Some(shotgun_joint_handle) => shotgun_joint_handle,
@@ -914,8 +914,16 @@ impl DrawCommands {
 
             for command in commands {
 
-         
+                if let DrawCommand::DrawTexture(x) = command {
+
+                } else {
+                    log::debug!("{:?}", command);
+                }
+                
                 match command {
+                    DrawCommand::SetToDefaultCamera => { 
+                        set_default_camera();
+                    }
                     DrawCommand::DrawTextureDirect(params) => {
                         draw_texture_ex(
                             &params.texture, 
@@ -963,7 +971,7 @@ impl DrawCommands {
                             }
                         );
                     },
-                    DrawCommand::ResetToDefaultCamera => {
+                    DrawCommand::ResetToWorldCamera => {
                         set_camera(default_camera);
                     },
                     DrawCommand::DrawLine(params) => {
@@ -991,7 +999,7 @@ impl DrawCommands {
                             params.position.y, 
                             TextParams {
                                 font: font.as_ref(),
-                                font_size: params.font_size.unwrap_or_default(),
+                                font_size: params.font_size.unwrap_or(20),
                                 font_scale: 1.,
                                 font_scale_aspect: 1.,
                                 rotation: params.rotation.unwrap_or_default(),
@@ -1009,6 +1017,8 @@ impl DrawCommands {
                 }
             }
         }
+
+        log::debug!("finished rendereing");
 
     }
 }
@@ -1448,7 +1458,7 @@ pub struct SetCameraParameters {
 }
 #[derive(Debug)]
 pub struct ClearBackgroundParameters {
-    color: Color
+    pub color: Color
 }
 
 #[derive(Debug)]
@@ -1466,14 +1476,14 @@ pub struct DrawRectangleParameters {
     rotation: Option<f32>,
     color: Option<Color>
 }
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct DrawTextParameters {
-    text: String,
-    position: Vec2,
-    font_size: Option<u16>,
-    color: Option<Color>,
-    font: Option<PathBuf>,
-    rotation: Option<f32>
+    pub text: String,
+    pub position: Vec2,
+    pub font_size: Option<u16>,
+    pub color: Option<Color>,
+    pub font: Option<PathBuf>,
+    pub rotation: Option<f32>
 }
 #[derive(Debug)]
 pub struct UseMaterialParameters {
@@ -1500,7 +1510,8 @@ pub enum DrawCommand {
     SetCamera(SetCameraParameters),
     ClearBackground(ClearBackgroundParameters),
     DrawRectangle(DrawRectangleParameters),
-    ResetToDefaultCamera,
+    SetToDefaultCamera,
+    ResetToWorldCamera,
     DrawLine(DrawLineParameters),
     DrawText(DrawTextParameters),
     UseMaterial(UseMaterialParameters),

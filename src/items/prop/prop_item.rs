@@ -35,6 +35,14 @@ impl Item for SimplePropItem {
     fn stackable(&self) -> bool {
         true
     }
+    
+    fn as_weapon(&self) -> Option<&dyn crate::weapons::Weapon> {
+        None
+    }
+
+    fn as_weapon_mut(&mut self) -> Option<&mut dyn crate::weapons::Weapon> {
+        None
+    }
 
     fn save(&self, space: &crate::space::Space) -> Box<dyn crate::items::item_save::ItemSave> {
         Box::new(self.clone())

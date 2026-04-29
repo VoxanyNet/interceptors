@@ -11,6 +11,11 @@ mod client;
 mod main_menu;
 mod shaders;
 
+#[cfg(target_family = "wasm")]
+unsafe extern "C" {
+    fn __wasm_call_ctors();
+}
+
 
 fn window_conf() -> Conf {
     let mut conf = Conf {
@@ -22,16 +27,21 @@ fn window_conf() -> Conf {
         platform: Platform::default(),
         ..Default::default()
     };
-    conf.platform.swap_interval = Some(1); // disable vsync
+    //conf.platform.swap_interval = Some(0); // disable vsync
     conf
 }
 #[macroquad::main(window_conf)]
 async fn main() {
 
+    #[cfg(target_family = "wasm")]
+    unsafe {
+        __wasm_call_ctors();
+    }
+
     #[cfg(not(target_arch = "wasm32"))]
     pretty_env_logger::init();
 
-    let client_id: i64 = 1461559630462451868;
+    
 
 
 
@@ -39,6 +49,7 @@ async fn main() {
     wasm_logger::init(Config::default());
 
     #[cfg(feature = "discord")] {
+        let client_id: i64 = 1461559630462451868;
         let sdk = DiscordSDK::new(&client_id.to_string()).unwrap();
         sdk.ready().await.unwrap();
     }
@@ -48,7 +59,7 @@ async fn main() {
 
     show_mouse(false);
 
-    let mut client = Client::connect(assets, client_id).await;
+    let mut client = Client::connect(assets).await;
 
     client.run().await;
 
@@ -59,7 +70,7 @@ async fn main() {
             request_quit();
         },
         MainMenuResult::Connect => {
-            let mut client = Client::connect(assets, client_id).await;
+            let mut client = Client::connect(assets).await;
 
             client.run().await;
         },
