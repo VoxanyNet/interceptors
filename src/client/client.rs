@@ -1,7 +1,7 @@
 use std::{collections::HashMap, process::exit};
 
 use image::codecs::webp;
-use interceptors_lib::{Assets, ClearBackgroundParameters, ClientIO, ClientId, ClientTickContext, DrawCommand, DrawCommands, DrawTextParameters, Owner, Prefabs, TickContext, area::Area, base_prop::BaseProp, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, material_loader::MaterialLoader, player::{ItemSlot, Player}, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::ClientTextureLoader, updates::{NetworkPacket, Ping}, world::World};
+use interceptors_lib::{Assets, ClearBackgroundParameters, ClientIO, ClientId, ClientTickContext, DrawCommand, DrawCommands, DrawTextParameters, Owner, Prefabs, SetCameraParameters, TickContext, area::Area, base_prop::BaseProp, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, material_loader::MaterialLoader, player::{ItemSlot, Player}, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::ClientTextureLoader, updates::{NetworkPacket, Ping}, world::World};
 use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, WHITE}, input::{KeyCode, is_key_released, is_mouse_button_down, is_mouse_button_released, show_mouse}, math::{Rect, Vec2, vec2}, prelude::{Material, ShaderSource, gl_use_default_material, load_material}, text::draw_text, texture::{DrawTextureParams, RenderTarget, draw_texture_ex, render_target}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
 use rapier2d::{math::Vector, prelude::{ColliderBuilder, SharedShape}};
 
@@ -736,8 +736,14 @@ impl Client {
 
         self.draw_commands.add_draw_command(
             10, 
-            DrawCommand::SetToDefaultCamera
+            DrawCommand::SetCamera(
+                SetCameraParameters {
+                    rect: Rect { x: 0., y: 0., w: screen_width(), h: screen_height() },
+                    ..Default::default()
+                }
+            )
         );
+
 
         
         if let Some(usage) = memory_stats::memory_stats() {
@@ -767,7 +773,7 @@ impl Client {
 
         self.draw_commands.add_draw_command(
             10, 
-            DrawCommand::ResetToWorldCamera
+            DrawCommand::ResetToDefaultCamera
         );
     }
     pub async fn draw(&mut self, then: web_time::Instant) {
