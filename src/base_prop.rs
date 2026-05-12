@@ -185,34 +185,34 @@ impl Prop for BaseProp {
    
 
 
-        if let RigidBodyType::KinematicPositionBased = space.rigid_body_set.get(self.rigid_body_handle).unwrap().body_type() {
+        // if let RigidBodyType::KinematicPositionBased = space.rigid_body_set.get(self.rigid_body_handle).unwrap().body_type() {
 
-            let mut color = WHITE;
+        //     let mut color = WHITE;
 
-            color.a = 1. - (self.last_received_position_update.elapsed().as_secs_f32() / 1.);
+        //     color.a = 1. - (self.last_received_position_update.elapsed().as_secs_f32() / 1.);
 
-            color.a = color.a.max(0.4);
+        //     color.a = color.a.max(0.4);
 
-            ctx.add_draw_command(
-                self.layer, 
-                DrawCommand::DrawTexture(
-                    DrawTextureParameters {
-                        texture: self.sprite_path.clone(),
-                        position: Vec2 {
-                            x: macroquad_pos.x,
-                            y: macroquad_pos.y - pivot.y,
-                        },
-                        color,
-                        params: DrawTextureParams {
-                            dest_size: Some(size),
-                            rotation: body.rotation().angle() * -1.,
-                            pivot: Some(macroquad_pos),
-                            ..Default::default()
-                        },
-                    }
-                )
-            );
-        }
+        //     ctx.add_draw_command(
+        //         self.layer, 
+        //         DrawCommand::DrawTexture(
+        //             DrawTextureParameters {
+        //                 texture: self.sprite_path.clone(),
+        //                 position: Vec2 {
+        //                     x: macroquad_pos.x,
+        //                     y: macroquad_pos.y - pivot.y,
+        //                 },
+        //                 color,
+        //                 params: DrawTextureParams {
+        //                     dest_size: Some(size),
+        //                     rotation: body.rotation().angle() * -1.,
+        //                     pivot: Some(macroquad_pos),
+        //                     ..Default::default()
+        //                 },
+        //             }
+        //         )
+        //     );
+        // }
 
         let mut color = GREEN;
 

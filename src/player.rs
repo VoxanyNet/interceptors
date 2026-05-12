@@ -277,7 +277,7 @@ impl Player {
 
 
     }
-    pub fn draw_hud(&self, _textures: &ClientTextureLoader) {
+    pub fn draw_hud(&self, ctx: &mut TickContext) {
 
     }
 

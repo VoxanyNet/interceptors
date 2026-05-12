@@ -20,9 +20,9 @@ impl World {
         }
     }
 
-    pub fn draw_hud(&self, textures: &ClientTextureLoader) {
+    pub fn draw_hud(&self, ctx: &mut TickContext) {
         for area in &self.areas {
-            area.draw_hud(textures);
+            area.draw_hud(ctx);
         }
     }
 

@@ -228,8 +228,6 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                 },
                 NetworkPacket::Ping(_ping) => {
 
-                    let _client = self.network_io.clients.get_mut(&client_id).unwrap();
-
 
                     self.network_io.send_client(client_id, network_packet.clone());
 

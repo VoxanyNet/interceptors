@@ -32,7 +32,8 @@ pub struct Client {
     fonts: FontLoader,
     test_button: Button,
     material_loader: MaterialLoader,
-    draw_commands: DrawCommands
+    draw_commands: DrawCommands,
+    debug_strings: Vec<String>
 }
 
 impl Client {
@@ -145,6 +146,7 @@ impl Client {
 
         log::debug!("Connected to server!");
         Self {
+            debug_strings: Vec::new(),
             draw_commands: DrawCommands::new(),
             packets_sent: 0,
             network_io: server,
@@ -184,14 +186,15 @@ impl Client {
 
             
 
-            let then = web_time::Instant::now();
+        
             self.tick();
 
             let packets = self.network_io.receive_packets();
 
             self.handle_packets(packets);
+          
 
-            self.draw(then).await;
+            self.draw().await;
 
 
 
@@ -658,6 +661,7 @@ impl Client {
         self.ping();
 
         let ctx = ClientTickContext {
+            
             start: &self.start,
             draw_commands: &mut self.draw_commands,
             material_loader: &mut self.material_loader,
@@ -670,7 +674,8 @@ impl Client {
             sounds: &mut self.sounds,
             textures: &self.textures,
             camera: &self.camera,
-            fonts: &self.fonts
+            fonts: &self.fonts,
+            debug_strings: &mut self.debug_strings,
 
         };
 
@@ -680,12 +685,17 @@ impl Client {
         //     self.spawned = true;
         // }
 
+        let among_us = web_time::Instant::now();
+
         self.world.tick(&mut interceptors_lib::TickContext::Client(ctx));
 
+        self.debug_strings.push(format!("world tick: {:?}", among_us.elapsed()));
         if self.last_network_flush.elapsed().as_millis() >= 33 {
             self.packets_sent += 1;
+            let then = web_time::Instant::now();
             self.network_io.flush();
             //log::debug!("{} flushes per second", self.packets_sent as f32/ self.start.elapsed().as_secs_f32());
+            
 
             self.last_network_flush = web_time::Instant::now();
         }
@@ -734,11 +744,6 @@ impl Client {
 
     fn draw_memory_usage(&mut self) {
 
-        self.draw_commands.add_draw_command(
-            10, 
-            DrawCommand::SetToDefaultCamera
-        );
-
         
         if let Some(usage) = memory_stats::memory_stats() {
 
@@ -746,7 +751,9 @@ impl Client {
 
             log::debug!("{}", mb_usage);
 
-            self.draw_commands.add_draw_command(10, DrawCommand::ClearBackground(ClearBackgroundParameters {color:BLACK}));
+            draw_text(&mb_usage.to_string(), 0., 100., 20., WHITE);
+
+            //self.draw_commands.add_draw_command(10, DrawCommand::ClearBackground(ClearBackgroundParameters {color:BLACK}));
 
             // self.draw_commands.add_draw_command(
             //     10, 
@@ -763,14 +770,12 @@ impl Client {
             //     )
             // );
             
+        } else  {
+            draw_text("No memory stats", 0., 100., 20., WHITE);
         }
 
-        self.draw_commands.add_draw_command(
-            10, 
-            DrawCommand::ResetToWorldCamera
-        );
     }
-    pub async fn draw(&mut self, then: web_time::Instant) {
+    pub async fn draw(&mut self) {
 
         let shaken_camera_rect = self.calculate_shaken_camera_rect();
 
@@ -794,10 +799,11 @@ impl Client {
 
         self.draw_commands.clear();
 
-        self.draw_memory_usage();
+        
 
         let mut ctx: TickContext = TickContext::Client(
             ClientTickContext {
+                debug_strings: &mut self.debug_strings,
                 material_loader: &mut self.material_loader,
                 draw_commands: &mut self.draw_commands,
                 start: &self.start,
@@ -816,36 +822,73 @@ impl Client {
 
         
 
+        let then = web_time::Instant::now();
+
         self.world.draw(
             &mut ctx
         );
 
+        let draw_commands_time = then.elapsed();
+
+       
+
         
-
+        let then = web_time::Instant::now();
         self.draw_commands.render(&self.textures, &self.camera, &self.fonts, &self.material_loader).await;
-
-        //self.phone.draw(&self.textures, &self.camera_rect);
-
+        let render_time = then.elapsed();
         set_default_camera();
+
+        self.debug_strings.push(format!("Command count: {:?}", self.draw_commands.command_count()));
 
         //gl_use_material(&self.material);
 
+        let then = web_time::Instant::now();
         draw_texture_ex(&self.render_target.texture, 0.0, 0., WHITE, DrawTextureParams {
             dest_size: Some(vec2(screen_width(), screen_height())),
             ..Default::default()
         });
+        self.debug_strings.push(format!("Drawing texture thing: {:?}", then.elapsed()));
 
         gl_use_default_material();
 
+        let mut ctx: TickContext = TickContext::Client(
+            ClientTickContext {
+                debug_strings: &mut self.debug_strings,
+                material_loader: &mut self.material_loader,
+                draw_commands: &mut self.draw_commands,
+                start: &self.start,
+                network_io: &mut self.network_io,
+                last_tick_duration: &mut self.last_tick_duration,
+                client_id: &mut self.client_id,
+                camera_rect: &mut self.camera_rect,
+                prefabs: &mut self.prefab_data,
+                screen_shake: &mut self.screen_shake,
+                sounds: &mut self.sounds,
+                textures: &mut self.textures,
+                camera: &mut self.camera,
+                fonts: &self.fonts
+            }
+        ).into();
+
+        self.world.draw_hud(&mut ctx);
+        // hud stuff needs to be here for now and use the native draw functions until i add a draw_hud function
         draw_fps();
 
-        
-
+        for (i, debug_string) in self.debug_strings.iter().enumerate() {
+            draw_text(debug_string, 0., 180. + (i * 20) as f32, 20., WHITE);
+        }
+        self.debug_strings.clear();
 
         draw_text(&format!("Tick time: {:?}", then.elapsed()), 0., 60., 20., WHITE);
         draw_text(&format!("Ping: {:?}", self.latency), 0., 80., 20., WHITE);
+        self.draw_memory_usage();
+        draw_text(&format!("Draw commands time: {:?}", draw_commands_time), 0., 120., 20., WHITE);
+        draw_text(&format!("Render time: {:?}", render_time), 0., 140., 20., WHITE);
+        draw_text(&format!("Tick time: {:?}", self.last_tick_duration), 0., 160., 20., WHITE);
 
+        let then = web_time::Instant::now();
         next_frame().await;
+        self.debug_strings.push(format!("next_frame: {:?}", then.elapsed()));
 
 
 

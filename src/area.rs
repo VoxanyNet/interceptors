@@ -87,8 +87,11 @@ impl Area {
     pub fn tick(&mut self, ctx: &mut TickContext) {
 
 
-
+        let then = web_time::Instant::now();
         self.space.step(ctx.last_tick_duration());
+        if let TickContext::Client(ctx) = ctx {
+            ctx.debug_strings.push(format!("Space tick: {:?}", then.elapsed()));
+        }
 
         if let TickContext::Client(ctx) = ctx {
             self.start_ambiance(ctx.sounds);
@@ -98,7 +101,10 @@ impl Area {
         };
 
         self.handle_bullet_impacts(ctx);
+        
+        let then = web_time::Instant::now();
         self.tick_entities(ctx);
+        ctx.push_debug_string(format!("Tick entities: {:?}", then.elapsed()));
         self.despawn_entities(ctx);
     }
 
@@ -106,15 +112,20 @@ impl Area {
 
     pub fn tick_entities(&mut self, ctx: &mut TickContext) {
         self.tick_enemies(ctx);
+        let then = web_time::Instant::now();
         self.tick_props(ctx);
+        ctx.push_debug_string(format!("Tick props: {:?}", then.elapsed()));
         self.tick_dissolved_pixels();
-        self.tick_bullet_trails(ctx);   
+        self.tick_bullet_trails(ctx); 
+        let then = web_time::Instant::now();
         self.tick_players(ctx); 
+        ctx.push_debug_string(format!("Tick players: {:?}", then.elapsed()));
 
         // might want to make this server + client side eventually
-        if let TickContext::Client(ctx) = ctx {
-            
-            self.tick_computer(ctx);
+        if let TickContext::Client(client_ctx) = ctx {
+            let then = web_time::Instant::now();
+            self.tick_computer(client_ctx);
+            ctx.push_debug_string(format!("Tick computer: {:?}", then.elapsed()));
         }
         
     }
@@ -175,9 +186,10 @@ impl Area {
 
     }
 
-    pub fn draw_hud(&self, textures: &ClientTextureLoader) {
+    pub fn draw_hud(&self, ctx: &mut TickContext) {
+
         for player in &self.players {
-            player.draw_hud(textures);
+            player.draw_hud(ctx);
         }
     }
 

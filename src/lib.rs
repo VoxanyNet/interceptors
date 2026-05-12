@@ -867,6 +867,18 @@ impl DrawCommands {
         
     }
 
+    pub fn command_count(&self) -> usize {
+
+        let mut command_count = 0; 
+        for layer in self.get_layers() {
+            let commands = self.commands.get(&layer).unwrap();
+
+            command_count += commands.len();
+        }
+
+        command_count
+    }
+
     pub fn clear(&mut self) {
         self.commands.clear();
     }
@@ -1036,7 +1048,8 @@ pub struct ClientTickContext<'a> {
     pub start: &'a web_time::Instant,
     pub draw_commands: &'a mut DrawCommands,
     pub material_loader: &'a MaterialLoader,
-    pub fonts: &'a FontLoader
+    pub fonts: &'a FontLoader,
+    pub debug_strings: &'a mut Vec<String>
 }
 
 
@@ -1088,6 +1101,18 @@ impl<'a> TickContext<'a> {
             TickContext::Client(client_tick_context) => Owner::ClientId(*client_tick_context.client_id),
             TickContext::Server(_server_tick_context) => Owner::Server,
             TickContext::Editor(_) => Owner::Editor
+        }
+    }
+
+    pub fn push_debug_string(&mut self, debug_string: String) {
+        match self {
+            TickContext::Client(client_tick_context) => {
+                client_tick_context.debug_strings.push(
+                    debug_string
+                );
+            },
+            TickContext::Server(server_tick_context) => {},
+            TickContext::Editor(editor_tick_context) => {},
         }
     }
 
