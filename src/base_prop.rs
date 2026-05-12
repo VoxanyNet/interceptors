@@ -1437,7 +1437,7 @@ impl BaseProp {
 
         ctx.add_draw_command(
             self.layer, 
-            DrawCommand::ResetToWorldCamera
+            DrawCommand::ResetToDefaultCamera
         );
         
     }

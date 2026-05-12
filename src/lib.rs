@@ -933,9 +933,7 @@ impl DrawCommands {
                 }
                 
                 match command {
-                    DrawCommand::SetToDefaultCamera => { 
-                        set_default_camera();
-                    }
+    
                     DrawCommand::DrawTextureDirect(params) => {
                         draw_texture_ex(
                             &params.texture, 
@@ -983,7 +981,7 @@ impl DrawCommands {
                             }
                         );
                     },
-                    DrawCommand::ResetToWorldCamera => {
+                    DrawCommand::ResetToDefaultCamera => {
                         set_camera(default_camera);
                     },
                     DrawCommand::DrawLine(params) => {
@@ -1476,10 +1474,10 @@ pub struct DrawTextureParameters {
     color: Color,
     params: DrawTextureParams
 }
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SetCameraParameters {
-    rect: Rect,
-    render_target: Option<RenderTarget>
+    pub rect: Rect,
+    pub render_target: Option<RenderTarget>
 }
 #[derive(Debug)]
 pub struct ClearBackgroundParameters {
@@ -1535,8 +1533,7 @@ pub enum DrawCommand {
     SetCamera(SetCameraParameters),
     ClearBackground(ClearBackgroundParameters),
     DrawRectangle(DrawRectangleParameters),
-    SetToDefaultCamera,
-    ResetToWorldCamera,
+    ResetToDefaultCamera,
     DrawLine(DrawLineParameters),
     DrawText(DrawTextParameters),
     UseMaterial(UseMaterialParameters),
