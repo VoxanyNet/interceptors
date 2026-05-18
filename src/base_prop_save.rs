@@ -255,6 +255,8 @@ impl BasePropSave {
 
 
         let base_prop = BaseProp {
+            last_tick_removed_voxels: vec![],
+            voxels_modified_last_tick: true, // initializing this to true to make draw_mask() run, but maybe this should be improved
             last_received_position_update: web_time::Instant::now(),
             rigid_body_type: self.rigid_body_type,
             rigid_body_handle: body,

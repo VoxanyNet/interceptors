@@ -670,7 +670,7 @@ impl AreaEditor {
         }
 
         // need to move everything over to the new drawing system eventually!
-        self.draw_commands.render(&self.textures, &camera, &self.fonts, &self.material_loader).await;
+        self.draw_commands.render(&mut vec![], &self.textures, &camera, &self.fonts, &self.material_loader).await;
 
         self.draw_commands.clear();
 

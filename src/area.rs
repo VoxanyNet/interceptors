@@ -1,7 +1,7 @@
 use std::{collections::VecDeque, path::PathBuf, str::FromStr};
 
 use glamx::{Pose2, Vec2, vec2};
-use macroquad::{camera::Camera2D, color::{RED, WHITE}, input::{KeyCode, is_key_released}, math::Rect, prelude::{gl_use_default_material, gl_use_material}, shapes::{draw_circle, draw_rectangle}, time::get_time, window::{clear_background, screen_height, screen_width}};
+use macroquad::{camera::Camera2D, color::{RED, WHITE}, input::{KeyCode, is_key_released}, math::Rect, miniquad::TextureId, prelude::{gl_use_default_material, gl_use_material}, shapes::{draw_circle, draw_rectangle}, time::get_time, window::{clear_background, screen_height, screen_width}};
 use noise::{NoiseFn, Perlin};
 use serde::{Deserialize, Serialize, de};
 
@@ -141,8 +141,20 @@ impl Area {
         }
 
 
+        let mut mask_ids = Vec::<TextureId>::new();
+
         for prop in &mut self.props {
-            prop.draw(ctx, &mut self.space)
+            prop.draw(ctx, &mut self.space);
+
+            if let Some(base_prop) = prop.downcast_ref::<BaseProp>() {
+
+                let mask_id = base_prop.mask.as_ref().unwrap().texture.raw_miniquad_id();
+                if mask_ids.contains(&mask_id) {
+                    panic!("ohs noes")
+                } else {
+                    mask_ids.push(mask_id.clone());
+                }
+            }
         }
 
         for background in &mut self.backgrounds {

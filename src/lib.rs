@@ -1,4 +1,4 @@
-use std::{collections::{HashMap, HashSet, VecDeque}, f32::consts::PI, fs::read_to_string, marker::PhantomData, net::{TcpListener, TcpStream}, path::{Path, PathBuf}, process::exit, str::FromStr, time::Duration};
+use std::{collections::{HashMap, HashSet, VecDeque}, f32::consts::PI, fs::read_to_string, marker::PhantomData, net::{TcpListener, TcpStream}, ops::Add, path::{Path, PathBuf}, process::exit, str::FromStr, time::Duration};
 
 use derive_more::From;
 use ewebsock::{WsReceiver, WsSender};
@@ -909,6 +909,7 @@ impl DrawCommands {
 
     pub async fn render(
         &mut self, 
+        debug_strings: &mut Vec<String>,
         textures: &ClientTextureLoader, 
         default_camera: &Camera2D,
         fonts: &FontLoader,
@@ -918,6 +919,17 @@ impl DrawCommands {
 
         let layers = self.get_layers();
         
+        let mut draw_texture_direct_duration  = web_time::Duration::ZERO;
+        let mut set_material_texture_duration  = web_time::Duration::ZERO;
+        let mut draw_texture_duration  = web_time::Duration::ZERO;
+        let mut set_camera_duration  = web_time::Duration::ZERO;
+        let mut clear_background_duration   = web_time::Duration::ZERO;
+        let mut draw_rectangle_duration  = web_time::Duration::ZERO;
+        let mut reset_to_default_camera_duration  = web_time::Duration::ZERO;
+        let mut draw_line_duration  = web_time::Duration::ZERO;
+        let mut draw_text_duration  = web_time::Duration::ZERO;
+        let mut use_material_duration  = web_time::Duration::ZERO;
+        let mut use_default_material_duration  = web_time::Duration::ZERO;
 
 
         for layer in layers {
@@ -925,16 +937,13 @@ impl DrawCommands {
             let commands = self.commands.get(&layer).unwrap();
 
             for command in commands {
-
-                if let DrawCommand::DrawTexture(x) = command {
-
-                } else {
-                    log::debug!("{:?}", command);
-                }
+                
                 
                 match command {
     
                     DrawCommand::DrawTextureDirect(params) => {
+
+                        let then = web_time::Instant::now();
                         draw_texture_ex(
                             &params.texture, 
                             params.position.x, 
@@ -942,11 +951,17 @@ impl DrawCommands {
                             params.color, 
                             params.params.clone()
                         );
+                        draw_texture_direct_duration += then.elapsed();
                     }
                     DrawCommand::SetMaterialTexture(params) => {
+                        let then = web_time::Instant::now();
+                        
                         params.material.set_texture(&params.texture_name, params.texture.clone());
+
+                        set_material_texture_duration += then.elapsed();
                     }
                     DrawCommand::DrawTexture(params) => {
+                        let then = web_time::Instant::now();
 
                         let texture = textures.get(&params.texture);
 
@@ -957,18 +972,27 @@ impl DrawCommands {
                             params.color, 
                             params.params.clone()
                         );
+
+                        draw_texture_duration += then.elapsed();
                     },
                     DrawCommand::SetCamera(params) => {
+                        let then = web_time::Instant::now();
                         let mut camera = Camera2D::from_display_rect(params.rect);
                         camera.render_target = params.render_target.clone();
                         camera.zoom.y = -camera.zoom.y;                        
                         set_camera(&camera);
 
+                        set_camera_duration += then.elapsed();
+
                     },
                     DrawCommand::ClearBackground(params) => {
+                        let then = web_time::Instant::now();
                         clear_background(params.color);
+
+                        clear_background_duration += then.elapsed();
                     },
                     DrawCommand::DrawRectangle(params) => {
+                        let then = web_time::Instant::now();
                         draw_rectangle_ex(
                             params.position.x, 
                             params.position.y, 
@@ -980,11 +1004,16 @@ impl DrawCommands {
                                 color: params.color.unwrap_or_default(),
                             }
                         );
+
+                        draw_rectangle_duration += then.elapsed();
                     },
                     DrawCommand::ResetToDefaultCamera => {
+                        let then = web_time::Instant::now();
                         set_camera(default_camera);
+                        reset_to_default_camera_duration += then.elapsed();
                     },
                     DrawCommand::DrawLine(params) => {
+                        let then = web_time::Instant::now();
                         draw_line(
                             params.start.x, 
                             params.start.y, 
@@ -993,8 +1022,10 @@ impl DrawCommands {
                             params.thickness, 
                             params.color
                         );
+                        draw_line_duration += then.elapsed();
                     },
                     DrawCommand::DrawText(params) => {
+                        let then = web_time::Instant::now();
 
                         let font: Option<Font> = if let Some(font_path) =  &params.font {
 
@@ -1016,19 +1047,70 @@ impl DrawCommands {
                                 color: params.color.unwrap_or_default(),
                             }
                         );
+
+                        draw_text_duration += then.elapsed();
                     },
                     DrawCommand::UseMaterial(params) => {
+                        let then = web_time::Instant::now();
                         
                         gl_use_material(&params.material);
+
+                        use_material_duration += then.elapsed();
                     },
                     DrawCommand::UseDefaultMaterial => {
+                        let then = web_time::Instant::now();
                         gl_use_default_material();
+
+                        use_default_material_duration += then.elapsed();
                     },
                 }
+
+            
             }
         }
 
-        log::debug!("finished rendereing");
+
+        debug_strings.push(
+            format!("Draw texture direct: {:?}", draw_texture_direct_duration)
+        );
+        debug_strings.push(
+            format!("Set material texture: {:?}", set_material_texture_duration)
+        );
+        debug_strings.push(
+            format!("Draw texture: {:?}", draw_texture_duration)
+        );
+        debug_strings.push(
+            format!("Set camera: {:?}", set_camera_duration)
+        );
+
+        debug_strings.push(
+            format!("Clear background: {:?}", clear_background_duration)
+        );
+
+        debug_strings.push(
+            format!("Draw rectangle: {:?}", draw_rectangle_duration)
+        );
+
+        debug_strings.push(
+            format!("Reset to default camera: {:?}", reset_to_default_camera_duration)
+        );
+
+        debug_strings.push(
+            format!("Draw line: {:?}", draw_line_duration)
+        );
+
+        debug_strings.push(
+            format!("Draw text: {:?}", draw_text_duration)
+        );
+        debug_strings.push(
+            format!("Use material: {:?}", use_material_duration)
+        );
+
+        debug_strings.push(
+            format!("Use default material: {:?}", use_default_material_duration)
+        );
+
+       
 
     }
 }

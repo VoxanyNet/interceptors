@@ -749,7 +749,7 @@ impl Client {
 
             let mb_usage = usage.physical_mem / 1000000;
 
-            log::debug!("{}", mb_usage);
+
 
             draw_text(&mb_usage.to_string(), 0., 100., 20., WHITE);
 
@@ -834,7 +834,7 @@ impl Client {
 
         
         let then = web_time::Instant::now();
-        self.draw_commands.render(&self.textures, &self.camera, &self.fonts, &self.material_loader).await;
+        self.draw_commands.render(&mut self.debug_strings, &self.textures, &self.camera, &self.fonts, &self.material_loader).await;
         let render_time = then.elapsed();
         set_default_camera();
 
