@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone)]
 pub struct MaterialLoader {
-    materials: FxHashMap<PathBuf, Material>
+    pub materials: FxHashMap<PathBuf, Material>
 }
 
 impl MaterialLoader {
@@ -55,6 +55,7 @@ impl MaterialLoader {
     pub fn get<P: AsRef<Path> + Debug>(&self, path: P) -> &Material {
  
         self.materials.get(path.as_ref()).expect("Material not found")
+
     }   
 
 }

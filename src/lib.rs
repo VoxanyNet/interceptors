@@ -10,7 +10,7 @@ use strum::Display;
 use tungstenite::WebSocket;
 use include_dir::{Dir, include_dir};
 
-use crate::{all_keys::ALL_KEYS, font_loader::FontLoader, material_loader::MaterialLoader, player::Facing, screen_shake::ScreenShakeParameters, server_texture_loader::ServerTextureLoader, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, weapons::Weapon};
+use crate::{all_keys::ALL_KEYS, font_loader::FontLoader, material_loader::{MaterialLoader, MaterialMeta}, player::Facing, screen_shake::ScreenShakeParameters, server_texture_loader::ServerTextureLoader, sound_loader::SoundLoader, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, weapons::Weapon};
 
 pub mod space;
 pub mod updates;
@@ -1367,7 +1367,7 @@ pub fn load_materials() -> MaterialLoader {
         // we only want to walk through directories
         if let Some(entry_directory) = entry.as_dir() {
             
-            let material_meta = serde_json::from_str(
+            let material_meta: MaterialMeta = serde_json::from_str(
                 entry_directory.get_file(entry_directory.path().join("meta.json")).unwrap().contents_utf8().unwrap()
             ).unwrap();
 
@@ -1375,13 +1375,17 @@ pub fn load_materials() -> MaterialLoader {
             let fragment_shader = entry_directory.get_file(entry_directory.path().join("fragment.glsl")).unwrap().contents_utf8().unwrap().to_string();
             let vertex_shader = entry_directory.get_file(entry_directory.path().join("vertex.glsl")).unwrap().contents_utf8().unwrap().to_string();
 
+            
             material_loader.load(
                 PathBuf::from("materials/").join(entry_directory.path()), 
-                material_meta, 
-                vertex_shader, 
-                fragment_shader
+                material_meta.clone(), 
+                vertex_shader.clone(), 
+                fragment_shader.clone()
             );
+            
         }
+
+        
 
     }
 

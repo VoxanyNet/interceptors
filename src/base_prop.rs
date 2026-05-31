@@ -1,5 +1,5 @@
 
-use std::{collections::HashSet, fs::read_to_string, path::PathBuf};
+use std::{any::Any, collections::HashSet, fs::read_to_string, path::PathBuf};
 
 use async_trait::async_trait;
 use glamx::{IVec2, Pose2, vec2};
@@ -130,6 +130,8 @@ impl Prop for BaseProp {
         self.draw_mask(ctx, texture);
 
         let mask = self.mask.as_ref().unwrap();
+
+
         
         ctx.add_draw_command(
             self.layer, 
@@ -1192,10 +1194,10 @@ impl BaseProp {
         }
 
 
-        if self.voxels_modified_last_tick == false {
+        // if self.voxels_modified_last_tick == false {
             
-            return;
-        }
+        //     return;
+        // }
 
         let mask = self.mask.as_mut().unwrap();
 
@@ -1215,50 +1217,54 @@ impl BaseProp {
         );
     
 
-
-        ctx.add_draw_command(
-            self.layer, 
-            DrawCommand::ClearBackground(
-                ClearBackgroundParameters {
-                    color: WHITE,
-                }
-            )
-        );
-
-
-
-        for removed_voxel in &self.removed_voxels {
-
-            // THIS MASK TEXTURE IS SCALED ALONGSIDE THE REAL TEXTURE SO THE VOXEL SIZE NEEDS TO BE DIVIDED TO KEEP IT CONSTANT
-            //log::debug!("drawing masked voxel at x: {}, y: {}", removed_voxel.x * 8, removed_voxel.y * 8);
-            // draw_rectangle(
-            //     (removed_voxel.x as f32 * (8. / self.scale)),
-            //     ((((removed_voxel.y as f32 * (8. / self.scale)) * -1.) + texture.height()) - (8. / self.scale)),
-            //     8. / self.scale,
-            //     8. / self.scale,
-            //     BLACK
-            // );
-
+        if self.voxels_modified_last_tick == true {
             ctx.add_draw_command(
                 self.layer, 
-                DrawCommand::DrawRectangle(
-                    DrawRectangleParameters {
-                        position: Vec2 { 
-                            x: (removed_voxel.x as f32 * (8. / self.scale)), 
-                            y: ((((removed_voxel.y as f32 * (8. / self.scale)) * -1.) + texture.height()) - (8. / self.scale)) 
-                        },
-                        size: Vec2 { 
-                            x: 8. / self.scale, 
-                            y: 8. / self.scale
-                        },
-                        offset: None,
-                        rotation: None,
-                        color: Some(BLACK),
+                DrawCommand::ClearBackground(
+                    ClearBackgroundParameters {
+                        color: WHITE,
                     }
                 )
             );
 
+
+
+            for removed_voxel in &self.removed_voxels {
+
+                // THIS MASK TEXTURE IS SCALED ALONGSIDE THE REAL TEXTURE SO THE VOXEL SIZE NEEDS TO BE DIVIDED TO KEEP IT CONSTANT
+                //log::debug!("drawing masked voxel at x: {}, y: {}", removed_voxel.x * 8, removed_voxel.y * 8);
+                // draw_rectangle(
+                //     (removed_voxel.x as f32 * (8. / self.scale)),
+                //     ((((removed_voxel.y as f32 * (8. / self.scale)) * -1.) + texture.height()) - (8. / self.scale)),
+                //     8. / self.scale,
+                //     8. / self.scale,
+                //     BLACK
+                // );
+
+                ctx.add_draw_command(
+                    self.layer, 
+                    DrawCommand::DrawRectangle(
+                        DrawRectangleParameters {
+                            position: Vec2 { 
+                                x: (removed_voxel.x as f32 * (8. / self.scale)), 
+                                y: ((((removed_voxel.y as f32 * (8. / self.scale)) * -1.) + texture.height()) - (8. / self.scale)) 
+                            },
+                            size: Vec2 { 
+                                x: 8. / self.scale, 
+                                y: 8. / self.scale
+                            },
+                            offset: None,
+                            rotation: None,
+                            color: Some(BLACK),
+                        }
+                    )
+                );
+
+            }
+            
         }
+
+        
 
         ctx.add_draw_command(
             self.layer, 

@@ -68,7 +68,7 @@ async fn main() {
     #[cfg(feature = "dhat-heap")]
     let _profiler = dhat::Profiler::new_heap();
 
-    pretty_env_logger::init();
+    pretty_env_logger::init_timed();
 
 
     let args = EditorArgs::parse();
