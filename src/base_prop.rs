@@ -130,8 +130,6 @@ impl Prop for BaseProp {
         self.draw_mask(ctx, texture);
 
         let mask = self.mask.as_ref().unwrap();
-
-
         
         ctx.add_draw_command(
             self.layer, 
@@ -1204,7 +1202,9 @@ impl BaseProp {
         //log::debug!("Drawing new mask!");
 
 
-        
+        // POTENTIAL FIX 
+        // in the set_camera function there is like a flush thing maybe that will fix it!
+    
 
         ctx.add_draw_command(
             self.layer, 
@@ -1218,6 +1218,8 @@ impl BaseProp {
     
 
         if self.voxels_modified_last_tick == true {
+
+            
             ctx.add_draw_command(
                 self.layer, 
                 DrawCommand::ClearBackground(

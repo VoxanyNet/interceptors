@@ -975,32 +975,20 @@ impl AreaEditor {
 
         self.update_input_context();
         self.ui.update(&mut EditorUITickContext { selected_mode: &mut self.selected_mode, input_context: self.input_context, simulate_space: &mut self.simulate_space });
-        
         self.layer_toggle_ui.update(self.draw_commands.get_layers());
         self.editor_mode_tick();
-
         self.update_cursor();
         self.change_mode();
         self.update_camera();
         self.update_context_menus();
         self.update_active_layer_to_selected_object();
+        self.create_clip();
+        self.save_control_s();
+        self.update_last_mouse_pos();
+        self.undo();
+        self.add_undo_checkpoint();
 
         
-
-        let current_mode = self.current_mode();
-        let rapier_cursor = self.rapier_cursor();
-        let editor_context = EditorTickContext {
-            e: &false,
-            camera_rect: &mut self.camera_rect,
-            current_mode: &current_mode,
-            cursor: &mut self.cursor,
-            rapier_cursor: &rapier_cursor,
-            textures: &self.textures,
-            draw_commands: &mut self.draw_commands,
-            material_loader: &self.material_loader,
-            fonts: &self.fonts
-            
-        };
 
         if is_key_released(KeyCode::U) {
 
@@ -1018,10 +1006,11 @@ impl AreaEditor {
                 )
             );
         }
-        
-     
-        self.create_clip();
 
+
+    }
+
+    fn save_control_s(&self) {
         if is_key_down(KeyCode::LeftControl) {
             if is_key_released(KeyCode::S) {
 
@@ -1032,13 +1021,6 @@ impl AreaEditor {
                 log::info!("Saved");
             }
         }
-
-        self.update_last_mouse_pos();
-
-        self.undo();
-        self.add_undo_checkpoint();
-
-
     }
 
     pub fn set_spawn_point(&mut self) {
