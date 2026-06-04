@@ -498,12 +498,12 @@ impl AreaEditor {
 
     pub fn save_area(&self) {
 
-        std::fs::write(
-            &self.current_area_path.with_extension(".bin"),
-                bitcode::serialize(
-                &self.area.save()
-            ).unwrap()
-        ).unwrap();
+        // std::fs::write(
+        //     &self.current_area_path.with_extension(".bin"),
+        //         bitcode::serialize(
+        //         &self.area.save()
+        //     ).unwrap()
+        // ).unwrap();
         std::fs::write(
             &self.current_area_path,
             serde_json::to_string_pretty(

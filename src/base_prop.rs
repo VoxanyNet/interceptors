@@ -4,7 +4,7 @@ use std::{any::Any, collections::HashSet, fs::read_to_string, path::PathBuf};
 use async_trait::async_trait;
 use glamx::{IVec2, Pose2, vec2};
 use image::{GenericImageView, Pixel};
-use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, BLUE, Color, GREEN, RED, VIOLET, WHITE}, input::{KeyCode, is_key_pressed}, math::{Rect, Vec2}, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{draw_circle, draw_rectangle}, text::{TextParams, draw_text, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex, render_target}, window::clear_background};
+use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, BLUE, Color, GREEN, RED, VIOLET, WHITE}, input::{KeyCode, is_key_pressed}, math::{Rect, Vec2}, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{draw_circle, draw_rectangle}, text::{TextParams, draw_text, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex, render_target}, window::{clear_background, get_internal_gl}};
 use rapier2d::prelude::{AxisMask, ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyType, RigidBodyVelocity, SharedShape, VoxelData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
@@ -105,7 +105,8 @@ impl Prop for BaseProp {
 
     fn draw(&mut self, ctx: &mut TickContext, space: &mut Space) {
 
-    
+        
+        
         
         if self.despawn {
             return;
@@ -164,7 +165,6 @@ impl Prop for BaseProp {
             )
         );
 
-        //gl_use_material(material);
 
         ctx.add_draw_command(
             self.layer, 
@@ -186,81 +186,10 @@ impl Prop for BaseProp {
             )
         );
 
-   
-
-
-        // if let RigidBodyType::KinematicPositionBased = space.rigid_body_set.get(self.rigid_body_handle).unwrap().body_type() {
-
-        //     let mut color = WHITE;
-
-        //     color.a = 1. - (self.last_received_position_update.elapsed().as_secs_f32() / 1.);
-
-        //     color.a = color.a.max(0.4);
-
-        //     ctx.add_draw_command(
-        //         self.layer, 
-        //         DrawCommand::DrawTexture(
-        //             DrawTextureParameters {
-        //                 texture: self.sprite_path.clone(),
-        //                 position: Vec2 {
-        //                     x: macroquad_pos.x,
-        //                     y: macroquad_pos.y - pivot.y,
-        //                 },
-        //                 color,
-        //                 params: DrawTextureParams {
-        //                     dest_size: Some(size),
-        //                     rotation: body.rotation().angle() * -1.,
-        //                     pivot: Some(macroquad_pos),
-        //                     ..Default::default()
-        //                 },
-        //             }
-        //         )
-        //     );
-        // }
-
         let mut color = GREEN;
 
         color.a = 1. - (self.last_sent_position_update.elapsed().as_secs_f32() / 1.);
 
-
-        // draw_texture_ex(
-        //     texture,
-        //     macroquad_pos.x,
-        //     macroquad_pos.y - pivot.y,
-        //     color,
-        //     DrawTextureParams {
-        //         dest_size: Some(size),
-        //         rotation: body.rotation().angle() * -1.,
-        //         pivot: Some(macroquad_pos),
-        //         ..Default::default()
-        //     }
-
-        // );
-        // if let Some(owner) = self.owner {
-        //     if let Owner::ClientId(owner) = owner {
-        //         if owner == draw_context.id {
-        //             draw_texture_ex(
-        //                 texture,
-        //                 macroquad_pos.x,
-        //                 macroquad_pos.y - pivot.y,
-        //                 RED,
-        //                 DrawTextureParams {
-        //                     dest_size: Some(size),
-        //                     rotation: body.rotation().angle() * -1.,
-        //                     pivot: Some(macroquad_pos),
-        //                     ..Default::default()
-        //                 }
-
-        //             );
-        //         }
-        //     }
-        // }
-
-        //draw_text(&format!("{:?}", self.owner), macroquad_pos.x, macroquad_pos.y, 20., WHITE);
-
-
-
-        //gl_use_default_material();
 
         ctx.add_draw_command(
             self.layer, 
@@ -270,29 +199,7 @@ impl Prop for BaseProp {
         let mut color = WHITE;
         color.a = 0.5;
 
-
-
-        // for voxel in collider.shape().as_voxels().unwrap().voxels() {
-
-        //     let pos = collider.shape().as_voxels().unwrap().voxel_center(voxel.grid_coords);
-        //     let macroquad_pos = rapier_to_macroquad(pos);
-        //     draw_rectangle(macroquad_pos.x - (2. * self.scale), macroquad_pos.y - (2. * self.scale), 4. * self.scale, 4. * self.scale, color);
-
-        // }
-        // for voxel in self.get_voxel_world_positions(draw_context.space) {
-
-        //     let mut color = match collider.shape().as_voxels().unwrap().voxel_state(voxel.0.grid_coords).unwrap().voxel_type() {
-        //         rapier2d::prelude::VoxelType::Empty => RED,
-        //         rapier2d::prelude::VoxelType::Vertex => GREEN,
-        //         rapier2d::prelude::VoxelType::Face => BLUE,
-        //         rapier2d::prelude::VoxelType::Interior => VIOLET,
-        //     };
-
-        //     color.a = 0.5;
-        //     let macroquad_pos = rapier_to_macroquad(voxel.1);
-        //     draw_rectangle(macroquad_pos.x - (4.), macroquad_pos.y - (4.), 8., 8., color);
-
-        // }
+        
 
     }
 
@@ -1192,10 +1099,11 @@ impl BaseProp {
         }
 
 
-        // if self.voxels_modified_last_tick == false {
-            
-        //     return;
-        // }
+
+        if self.voxels_modified_last_tick == false {
+
+            return;
+        }
 
         let mask = self.mask.as_mut().unwrap();
 
@@ -1217,61 +1125,60 @@ impl BaseProp {
         );
     
 
-        if self.voxels_modified_last_tick == true {
+        ctx.add_draw_command(
+            self.layer, 
+            DrawCommand::ClearBackground(
+                ClearBackgroundParameters {
+                    color: WHITE,
+                }
+            )
+        );
+
+
+
+        for removed_voxel in &self.removed_voxels {
+
+            // THIS MASK TEXTURE IS SCALED ALONGSIDE THE REAL TEXTURE SO THE VOXEL SIZE NEEDS TO BE DIVIDED TO KEEP IT CONSTANT
+            //log::debug!("drawing masked voxel at x: {}, y: {}", removed_voxel.x * 8, removed_voxel.y * 8);
+            // draw_rectangle(
+            //     (removed_voxel.x as f32 * (8. / self.scale)),
+            //     ((((removed_voxel.y as f32 * (8. / self.scale)) * -1.) + texture.height()) - (8. / self.scale)),
+            //     8. / self.scale,
+            //     8. / self.scale,
+            //     BLACK
+            // );
 
             
             ctx.add_draw_command(
                 self.layer, 
-                DrawCommand::ClearBackground(
-                    ClearBackgroundParameters {
-                        color: WHITE,
+                DrawCommand::DrawRectangle(
+                    DrawRectangleParameters {
+                        position: Vec2 { 
+                            x: (removed_voxel.x as f32 * (8. / self.scale)), 
+                            y: ((((removed_voxel.y as f32 * (8. / self.scale)) * -1.) + texture.height()) - (8. / self.scale)) 
+                        },
+                        size: Vec2 { 
+                            x: 8. / self.scale, 
+                            y: 8. / self.scale
+                        },
+                        offset: None,
+                        rotation: None,
+                        color: Some(BLACK),
                     }
                 )
             );
 
-
-
-            for removed_voxel in &self.removed_voxels {
-
-                // THIS MASK TEXTURE IS SCALED ALONGSIDE THE REAL TEXTURE SO THE VOXEL SIZE NEEDS TO BE DIVIDED TO KEEP IT CONSTANT
-                //log::debug!("drawing masked voxel at x: {}, y: {}", removed_voxel.x * 8, removed_voxel.y * 8);
-                // draw_rectangle(
-                //     (removed_voxel.x as f32 * (8. / self.scale)),
-                //     ((((removed_voxel.y as f32 * (8. / self.scale)) * -1.) + texture.height()) - (8. / self.scale)),
-                //     8. / self.scale,
-                //     8. / self.scale,
-                //     BLACK
-                // );
-
-                ctx.add_draw_command(
-                    self.layer, 
-                    DrawCommand::DrawRectangle(
-                        DrawRectangleParameters {
-                            position: Vec2 { 
-                                x: (removed_voxel.x as f32 * (8. / self.scale)), 
-                                y: ((((removed_voxel.y as f32 * (8. / self.scale)) * -1.) + texture.height()) - (8. / self.scale)) 
-                            },
-                            size: Vec2 { 
-                                x: 8. / self.scale, 
-                                y: 8. / self.scale
-                            },
-                            offset: None,
-                            rotation: None,
-                            color: Some(BLACK),
-                        }
-                    )
-                );
-
-            }
-            
         }
 
         
-
         ctx.add_draw_command(
             self.layer, 
             DrawCommand::ResetToDefaultCamera
         );
+
+        
+
+        
         
     }
 

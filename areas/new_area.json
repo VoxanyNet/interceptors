@@ -50,11 +50,458 @@
     }
   ],
   "generic_physics_props": [
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.99999815,
+          "im": -0.0019539534
+        },
+        "translation": [
+          883.11194,
+          109.97324
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets\\anvil.png",
+      "id": {
+        "id": 15540820845067453704
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Anvil",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.7494228,
+          "im": 0.66209173
+        },
+        "translation": [
+          817.0103,
+          99.43072
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets\\anvil.png",
+      "id": {
+        "id": 3617141539052452971
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Anvil",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.5980757,
+          "im": 0.80143964
+        },
+        "translation": [
+          795.779,
+          97.03178
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets\\anvil.png",
+      "id": {
+        "id": 436609144045130812
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Anvil",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.9999978,
+          "im": -0.002108086
+        },
+        "translation": [
+          892.3746,
+          149.8052
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets\\anvil.png",
+      "id": {
+        "id": 18139529225262214932
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Anvil",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.7239048,
+          "im": 0.6898999
+        },
+        "translation": [
+          855.37317,
+          154.29393
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets\\anvil.png",
+      "id": {
+        "id": 1444476223001658528
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Anvil",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.5718436,
+          "im": 0.8203626
+        },
+        "translation": [
+          747.2062,
+          96.86855
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets\\anvil.png",
+      "id": {
+        "id": 7669656380292960477
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Anvil",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": -1.0,
+          "im": 0.000030417787
+        },
+        "translation": [
+          1075.36,
+          149.94258
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets\\anvil.png",
+      "id": {
+        "id": 9435657622143658643
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Anvil",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 1.0,
+          "im": -0.00017064133
+        },
+        "translation": [
+          610.58563,
+          109.96185
+        ]
+      },
+      "mass": 4096.0,
+      "sprite_path": "assets/box2.png",
+      "id": {
+        "id": 14029782881576877207
+      },
+      "owner": null,
+      "material": "Wood",
+      "name": "Crate",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 1.0,
+          "im": 0.00021663343
+        },
+        "translation": [
+          585.78784,
+          109.94934
+        ]
+      },
+      "mass": 4096.0,
+      "sprite_path": "assets/box2.png",
+      "id": {
+        "id": 4357007210764881404
+      },
+      "owner": null,
+      "material": "Wood",
+      "name": "Crate",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.9999999,
+          "im": 0.0005553982
+        },
+        "translation": [
+          650.43915,
+          109.90736
+        ]
+      },
+      "mass": 4096.0,
+      "sprite_path": "assets/box2.png",
+      "id": {
+        "id": 7636712387269560035
+      },
+      "owner": null,
+      "material": "Wood",
+      "name": "Crate",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.9482802,
+          "im": 0.3174346
+        },
+        "translation": [
+          804.4644,
+          154.69998
+        ]
+      },
+      "mass": 4096.0,
+      "sprite_path": "assets/box2.png",
+      "id": {
+        "id": 13588362657843089295
+      },
+      "owner": null,
+      "material": "Wood",
+      "name": "Crate",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.74421424,
+          "im": -0.66794103
+        },
+        "translation": [
+          685.67847,
+          199.60538
+        ]
+      },
+      "mass": 4096.0,
+      "sprite_path": "assets/box2.png",
+      "id": {
+        "id": 14127778160309865250
+      },
+      "owner": null,
+      "material": "Wood",
+      "name": "Crate",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 0.7435087,
+          "im": -0.6687264
+        },
+        "translation": [
+          727.50476,
+          248.02438
+        ]
+      },
+      "mass": 4096.0,
+      "sprite_path": "assets/box2.png",
+      "id": {
+        "id": 10874093395970500420
+      },
+      "owner": null,
+      "material": "Wood",
+      "name": "Crate",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": -6.7151696e-8,
+          "im": -1.0
+        },
+        "translation": [
+          519.1224,
+          173.96768
+        ]
+      },
+      "mass": 4096.0,
+      "sprite_path": "assets/box2.png",
+      "id": {
+        "id": 18407046543216612319
+      },
+      "owner": null,
+      "material": "Wood",
+      "name": "Crate",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": -0.67267895,
+          "im": 0.73993444
+        },
+        "translation": [
+          2921.9192,
+          -17902.62
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets\\anvil.png",
+      "id": {
+        "id": 1480941297584922049
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Anvil",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    },
+    {
+      "type": "BasePropSave",
+      "scale": 2.0,
+      "pos": {
+        "rotation": {
+          "re": 1.0,
+          "im": 0.000054474385
+        },
+        "translation": [
+          582.1328,
+          173.92982
+        ]
+      },
+      "mass": 2688.0,
+      "sprite_path": "assets\\anvil.png",
+      "id": {
+        "id": 2185333053637108606
+      },
+      "owner": null,
+      "material": "None",
+      "name": "Anvil",
+      "layer": 1,
+      "voxels": null,
+      "rigid_body_type": "Dynamic",
+      "removed_voxels": [],
+      "lifespan": null,
+      "sync_physics": true
+    }
   ],
   "enemies": [],
   "computer_pos": null,
-  "dropped_items": [
-  ],
+  "dropped_items": [],
   "max_camera_y": 0.0,
   "minimum_camera_width": 1920.0,
   "minimum_camera_height": 1080.0,

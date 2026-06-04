@@ -3,7 +3,7 @@ use std::{collections::{HashMap, HashSet, VecDeque}, f32::consts::PI, fs::read_t
 use derive_more::From;
 use ewebsock::{WsReceiver, WsSender};
 use glamx::IVec2;
-use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, WHITE}, input::{KeyCode, is_key_down, is_key_released, mouse_position}, math::{Rect, Vec2, vec2}, prelude::{Material, gl_use_default_material, gl_use_material, glam, load_material}, shapes::{DrawRectangleParams, draw_line, draw_rectangle, draw_rectangle_ex}, text::{Font, TextParams, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex}, window::clear_background};
+use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, WHITE}, input::{KeyCode, is_key_down, is_key_released, mouse_position}, math::{Rect, Vec2, vec2}, prelude::{Material, gl_use_default_material, gl_use_material, glam, load_material}, shapes::{DrawRectangleParams, draw_line, draw_rectangle, draw_rectangle_ex}, text::{Font, TextParams, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex}, window::{clear_background, get_internal_gl}};
 use rapier2d::{parry::query::Ray, prelude::{AxisMask, ColliderBuilder, ColliderHandle, QueryFilter, RigidBodyHandle, VoxelData, Voxels, VoxelsChunkRef}};
 use serde::{Deserialize, Serialize};
 use strum::Display;
@@ -930,6 +930,7 @@ impl DrawCommands {
         let mut draw_text_duration  = web_time::Duration::ZERO;
         let mut use_material_duration  = web_time::Duration::ZERO;
         let mut use_default_material_duration  = web_time::Duration::ZERO;
+        let mut flush_duration = web_time::Duration::ZERO;
 
 
         for layer in layers {
@@ -940,6 +941,11 @@ impl DrawCommands {
                 
                 
                 match command {
+                    DrawCommand::Flush => {
+                        let then = web_time::Instant::now();
+                        unsafe {get_internal_gl().flush();}
+                        flush_duration += then.elapsed();
+                    },
     
                     DrawCommand::DrawTextureDirect(params) => {
 
@@ -961,6 +967,8 @@ impl DrawCommands {
                         set_material_texture_duration += then.elapsed();
                     }
                     DrawCommand::DrawTexture(params) => {
+                        
+                        
                         let then = web_time::Instant::now();
 
                         let texture = textures.get(&params.texture);
@@ -1108,6 +1116,10 @@ impl DrawCommands {
 
         debug_strings.push(
             format!("Use default material: {:?}", use_default_material_duration)
+        );
+        
+        debug_strings.push(
+            format!("Flush: {:?}", flush_duration)
         );
 
        
@@ -1625,7 +1637,8 @@ pub enum DrawCommand {
     UseMaterial(UseMaterialParameters),
     UseDefaultMaterial,
     SetMaterialTexture(SetMaterialTextureParameters),
-    DrawTextureDirect(DrawTextureDirectParameters)
+    DrawTextureDirect(DrawTextureDirectParameters),
+    Flush
 }
 
 
