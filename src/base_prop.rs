@@ -4,11 +4,11 @@ use std::{any::Any, collections::HashSet, fs::read_to_string, path::PathBuf};
 use async_trait::async_trait;
 use glamx::{IVec2, Pose2, vec2};
 use image::{GenericImageView, Pixel};
-use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, BLUE, Color, GREEN, RED, VIOLET, WHITE}, input::{KeyCode, is_key_pressed}, math::{Rect, Vec2}, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{draw_circle, draw_rectangle}, text::{TextParams, draw_text, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex, render_target}, window::{clear_background, get_internal_gl}};
+use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, BLUE, Color, GREEN, RED, VIOLET, WHITE}, input::{KeyCode, is_key_pressed}, math::{Rect, Vec2}, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{draw_circle, draw_rectangle}, text::{TextParams, draw_text, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex, render_target}, ui::Drag::No, window::{clear_background, get_internal_gl}};
 use rapier2d::prelude::{AxisMask, ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyType, RigidBodyVelocity, SharedShape, VoxelData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
-use crate::{ClearBackgroundParameters, ClientId, ClientTickContext, DrawCommand, DrawRectangleParameters, DrawTextureParameters, Owner, Prefabs, SetCameraParameters, SetMaterialTextureParameters, TextureLoader, TickContext, UseMaterialParameters, area::{Area, AreaContext, AreaId}, base_prop_save::BasePropSave, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, prop::Prop, prop_save::PropSave, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
+use crate::{ClearBackgroundParameters, ClientId, ClientTickContext, DrawCommand, DrawRectangleParameters, DrawTextureParameters, Owner, Prefabs, SetCameraParameters, SetMaterialTextureParameters, TextureLoader, TickContext, UseMaterialParameters, area::{Area, AreaContext, AreaId}, base_prop_save::BasePropSave, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, material_loader::ExclusiveMaterialHandle, prop::Prop, prop_save::PropSave, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
 
 
@@ -93,7 +93,8 @@ pub struct BaseProp {
     // should we send network updates to the server
     pub sync_physics: bool,
     pub last_received_position_update: web_time::Instant,
-    pub last_sent_position_update: web_time::Instant
+    pub last_sent_position_update: web_time::Instant,
+    pub destruction_material_handle: Option<ExclusiveMaterialHandle>
 
 }
 
@@ -111,16 +112,22 @@ impl Prop for BaseProp {
         if self.despawn {
             return;
         }
+
+        if self.destruction_material_handle.is_none() {
+            self.destruction_material_handle = Some(
+                ExclusiveMaterialHandle::new("materials/destruction")
+            )
+        }
         
         // this is majorly stupid
         let (texture, material) = if let TickContext::Client(client_ctx) = ctx {
             let texture = client_ctx.textures.get(&self.sprite_path);
-            let material = client_ctx.material_loader.get("materials/destruction");
+            let material = client_ctx.material_loader.get_exclusive(self.destruction_material_handle.as_ref().unwrap());
             (texture, material)
         } else if let TickContext::Editor(editor_ctx) = ctx {
 
             let texture = editor_ctx.textures.get(&self.sprite_path);
-            let material = editor_ctx.material_loader.get("materials/destruction");
+            let material = editor_ctx.material_loader.get_exclusive(self.destruction_material_handle.as_ref().unwrap());
             (texture, material)
 
         } else {
@@ -966,6 +973,7 @@ impl BaseProp {
 
 
         Self {
+            
             last_tick_removed_voxels: other.last_tick_removed_voxels.clone(), // this feels like a problem but i dont know
             voxels_modified_last_tick: false, // initialized as true because we need draw_mask to run
             last_received_position_update: web_time::Instant::now(),
@@ -994,6 +1002,7 @@ impl BaseProp {
             lifespan: lifespan,
             sync_physics,
             last_sent_position_update: web_time::Instant::now(),
+            destruction_material_handle: None,
 
 
         }

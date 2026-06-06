@@ -1,18 +1,43 @@
-use std::{fmt::Debug, path::{Path, PathBuf}};
+use std::{collections::HashMap, fmt::Debug, path::{Path, PathBuf}};
 
 use fxhash::FxHashMap;
 use macroquad::prelude::{Material, MaterialParams, ShaderSource, UniformDesc, load_material};
 use serde::{Deserialize, Serialize};
 
+use crate::uuid_u64;
+
+
+#[derive(Debug, Hash, PartialEq, PartialOrd, Clone, Eq )]
+pub struct ExclusiveMaterialHandle {
+    id: u32,
+    path: PathBuf
+}
+
+impl ExclusiveMaterialHandle {
+    pub fn new<P: Into<PathBuf> + Debug>(path: P) -> Self {
+        Self {
+            id: uuid_u64() as u32,
+            path: path.into(),
+        }
+    }
+}
 #[derive(Clone)]
 pub struct MaterialLoader {
-    pub materials: FxHashMap<PathBuf, Material>
+    // we load these materials when the game starts, and are shared between multiple entities
+    pub shared_materials: FxHashMap<PathBuf, Material>,
+    // this materials are loaded during gameplay and are only used by one entity
+    pub exlusive_materials: FxHashMap<ExclusiveMaterialHandle, Material>,
+    // store the material definitions so we can load new copies later
+    // we need this because the base prop entity requires unique materials for each entity to prevent batching
+    pub material_definitions: FxHashMap<PathBuf, MaterialDefinition>
 }
 
 impl MaterialLoader {
     pub fn new() -> Self {
         Self {
-            materials: FxHashMap::default(),
+            shared_materials: FxHashMap::default(),
+            exlusive_materials: FxHashMap::default(),
+            material_definitions: FxHashMap::default()
         }
     }
 
@@ -26,7 +51,7 @@ impl MaterialLoader {
 
         let mut uniforms = Vec::new();
 
-        for uniform in material_meta.uniforms {
+        for uniform in material_meta.uniforms.clone() {
             uniforms.push(
                 UniformDesc {
                     name: uniform.name,
@@ -37,7 +62,7 @@ impl MaterialLoader {
         }
         let material_params = MaterialParams {            
             uniforms: uniforms,
-            textures: material_meta.textures,
+            textures: material_meta.textures.clone(),
             ..Default::default()
         };
         
@@ -48,15 +73,74 @@ impl MaterialLoader {
             }, 
             material_params
         ).unwrap();
-        
-        self.materials.insert(material_definition_path, material);
+
+        // store all the material information for later additional loads
+        self.material_definitions.insert(
+            material_definition_path.clone(), 
+            MaterialDefinition {
+                vertex,
+                fragment,
+                meta: material_meta,
+            }
+        );
+
+        self.shared_materials.insert(material_definition_path, material);
     }
 
-    pub fn get<P: AsRef<Path> + Debug>(&self, path: P) -> &Material {
+    pub fn get<P: AsRef<Path> + Debug>(&self, path: P) -> Material {
  
-        self.materials.get(path.as_ref()).expect("Material not found")
+        self.shared_materials.get(path.as_ref()).expect("Material not found").clone()
 
-    }   
+    }
+
+    pub fn get_exclusive(
+        &mut self, handle: &ExclusiveMaterialHandle
+    ) -> Material { 
+
+        if !self.exlusive_materials.contains_key(handle) {
+            let material_definition = self.material_definitions.get(&handle.path).unwrap();
+
+            let mut uniforms = Vec::new();
+
+            for uniform in material_definition.meta.uniforms.clone() {
+                uniforms.push(
+                    UniformDesc {
+                        name: uniform.name,
+                        uniform_type: uniform.uniform_type.into(),
+                        array_count: 1,
+                    }
+                );
+            }
+            let material_params = MaterialParams {            
+                uniforms: uniforms,
+                textures: material_definition.meta.textures.clone(),
+                ..Default::default()
+            };
+            
+            let material = load_material(
+                ShaderSource::Glsl { 
+                    vertex: &material_definition.vertex, 
+                    fragment: &material_definition.fragment 
+                }, 
+                material_params
+            ).unwrap();
+
+            self.exlusive_materials.insert(handle.clone(), material);
+        }
+
+        
+
+        self.exlusive_materials.get(handle).unwrap().clone()
+    }
+
+}
+
+#[derive(Clone)]
+// all the data we need to load a material
+struct MaterialDefinition {
+    vertex: String,
+    fragment: String,
+    meta: MaterialMeta
 
 }
 

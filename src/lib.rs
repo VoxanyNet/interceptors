@@ -1139,7 +1139,7 @@ pub struct ClientTickContext<'a> {
     pub camera: &'a Camera2D,
     pub start: &'a web_time::Instant,
     pub draw_commands: &'a mut DrawCommands,
-    pub material_loader: &'a MaterialLoader,
+    pub material_loader: &'a mut MaterialLoader,
     pub fonts: &'a FontLoader,
     pub debug_strings: &'a mut Vec<String>
 }
@@ -1159,7 +1159,7 @@ pub struct EditorTickContext<'a> {
     pub rapier_cursor: &'a glamx::Vec2,
     pub textures: &'a ClientTextureLoader,
     pub draw_commands: &'a mut DrawCommands,
-    pub material_loader: &'a MaterialLoader,
+    pub material_loader: &'a mut MaterialLoader,
     pub fonts: &'a FontLoader,
 }
 

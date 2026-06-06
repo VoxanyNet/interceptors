@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use glamx::{IVec2, Pose2};
 use image::GenericImageView;
-use macroquad::{color::BLACK};
+use macroquad::{color::BLACK, ui::Drag::No};
 use rapier2d::{na::base, prelude::{ColliderBuilder, RigidBodyBuilder, RigidBodyType, RigidBodyVelocity}};
 use serde::{Deserialize, Serialize};
 
@@ -10,7 +10,6 @@ use crate::{Owner, TextureLoader, base_prop::{BaseProp, Material, PropId}, prop:
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct BasePropSave {
-
     #[serde(default)]
     pub scale: f32,
     pub pos: Pose2,
@@ -255,6 +254,7 @@ impl BasePropSave {
 
 
         let base_prop = BaseProp {
+            
             last_tick_removed_voxels: vec![],
             voxels_modified_last_tick: true, // initializing this to true to make draw_mask() run, but maybe this should be improved
             last_received_position_update: web_time::Instant::now(),
@@ -282,7 +282,8 @@ impl BasePropSave {
             lifespan: self.lifespan,
             sync_physics: self.sync_physics,
             last_ownership_change: web_time::Instant::now(), // this could also be an issue
-            last_sent_position_update: web_time::Instant::now()
+            last_sent_position_update: web_time::Instant::now(),
+            destruction_material_handle: None,
 
 
         };

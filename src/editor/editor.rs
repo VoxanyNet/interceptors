@@ -651,7 +651,7 @@ impl AreaEditor {
             rapier_cursor: &rapier_cursor,
             textures: &self.textures,
             draw_commands: &mut self.draw_commands,
-            material_loader: &self.material_loader,
+            material_loader: &mut self.material_loader,
             fonts: &self.fonts
             
             
