@@ -887,7 +887,7 @@ impl AreaEditor {
     }
 
     pub fn step_space(&mut self) {
-
+        
         self.area.space.step(web_time::Duration::from_secs_f64(0.016));
 
     }

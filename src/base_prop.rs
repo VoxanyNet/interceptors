@@ -4,7 +4,7 @@ use std::{any::Any, collections::HashSet, fs::read_to_string, path::PathBuf};
 use async_trait::async_trait;
 use glamx::{IVec2, Pose2, vec2};
 use image::{GenericImageView, Pixel};
-use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, BLUE, Color, GREEN, RED, VIOLET, WHITE}, input::{KeyCode, is_key_pressed}, math::{Rect, Vec2}, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{draw_circle, draw_rectangle}, text::{TextParams, draw_text, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex, render_target}, ui::Drag::No, window::{clear_background, get_internal_gl}};
+use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{BLACK, BLUE, Color, GREEN, RED, VIOLET, WHITE}, input::{KeyCode, is_key_pressed}, math::{Rect, Vec2}, miniquad::gl::glBlendColor, prelude::{MaterialParams, gl_use_default_material, gl_use_material, load_material}, shapes::{draw_circle, draw_rectangle}, text::{TextParams, draw_text, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex, render_target}, ui::Drag::No, window::{clear_background, get_internal_gl}};
 use rapier2d::prelude::{AxisMask, ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyType, RigidBodyVelocity, SharedShape, VoxelData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
@@ -123,11 +123,13 @@ impl Prop for BaseProp {
         let (texture, material) = if let TickContext::Client(client_ctx) = ctx {
             let texture = client_ctx.textures.get(&self.sprite_path);
             let material = client_ctx.material_loader.get_exclusive(self.destruction_material_handle.as_ref().unwrap());
+            //let material = client_ctx.material_loader.get(&"materials/destruction");
             (texture, material)
         } else if let TickContext::Editor(editor_ctx) = ctx {
 
             let texture = editor_ctx.textures.get(&self.sprite_path);
             let material = editor_ctx.material_loader.get_exclusive(self.destruction_material_handle.as_ref().unwrap());
+            //let material = editor_ctx.material_loader.get(&"materials/destruction");
             (texture, material)
 
         } else {
@@ -135,20 +137,25 @@ impl Prop for BaseProp {
         };
 
 
+
         self.draw_mask(ctx, texture);
 
         let mask = self.mask.as_ref().unwrap();
         
-        ctx.add_draw_command(
-            self.layer, 
-            DrawCommand::SetMaterialTexture(
-                SetMaterialTextureParameters {
-                    material: material.clone(),
-                    texture_name: "Mask".to_string(),
-                    texture: mask.texture.clone(),
-                }
-            )
-        );
+        if self.voxels_modified_last_tick {
+            log::debug!("Modified");
+            ctx.add_draw_command(
+                self.layer, 
+                DrawCommand::SetMaterialTexture(
+                    SetMaterialTextureParameters {
+                        material: material.clone(),
+                        texture_name: "Mask".to_string(),
+                        texture: mask.texture.clone(),
+                    }
+                )
+            );
+        }
+        
         
         let body = space.rigid_body_set.get(self.rigid_body_handle).unwrap();
         let collider = space.collider_set.get(self.collider_handle).unwrap();

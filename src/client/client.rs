@@ -189,12 +189,18 @@ impl Client {
         
             self.tick();
 
+            let then = web_time::Instant::now();
             let packets = self.network_io.receive_packets();
+            self.debug_strings.push(format!("Receive packets: {:?}", then.elapsed()));
 
+            let then = web_time::Instant::now();
             self.handle_packets(packets);
+            self.debug_strings.push(format!("Handle packets: {:?}", then.elapsed()));
           
 
+            let then = web_time::Instant::now();
             self.draw().await;
+            self.debug_strings.push(format!("Client draw: {:?}", then.elapsed()));
 
 
 
@@ -695,9 +701,9 @@ impl Client {
             let then = web_time::Instant::now();
             self.network_io.flush();
             //log::debug!("{} flushes per second", self.packets_sent as f32/ self.start.elapsed().as_secs_f32());
-            
-
+            //log::debug!("Flush network packets: {:?}", then.elapsed());
             self.last_network_flush = web_time::Instant::now();
+
         }
 
 
@@ -836,7 +842,10 @@ impl Client {
         let then = web_time::Instant::now();
         self.draw_commands.render(&mut self.debug_strings, &self.textures, &self.camera, &self.fonts, &self.material_loader).await;
         let render_time = then.elapsed();
+
+        let then = web_time::Instant::now();
         set_default_camera();
+        self.debug_strings.push(format!("Set default camera: {:?}", then.elapsed()));
 
         self.debug_strings.push(format!("Command count: {:?}", self.draw_commands.command_count()));
 
@@ -849,7 +858,9 @@ impl Client {
         });
         self.debug_strings.push(format!("Drawing texture thing: {:?}", then.elapsed()));
 
+        let then = web_time::Instant::now();
         gl_use_default_material();
+        self.debug_strings.push(format!("Use default material: {:?}", then.elapsed()));
 
         let mut ctx: TickContext = TickContext::Client(
             ClientTickContext {
@@ -869,8 +880,9 @@ impl Client {
                 fonts: &self.fonts
             }
         ).into();
-
+        let then = web_time::Instant::now();
         self.world.draw_hud(&mut ctx);
+        self.debug_strings.push(format!("Draw hud: {:?}", then.elapsed()));
         // hud stuff needs to be here for now and use the native draw functions until i add a draw_hud function
         draw_fps();
 
@@ -879,12 +891,11 @@ impl Client {
         }
         self.debug_strings.clear();
 
-        draw_text(&format!("Tick time: {:?}", then.elapsed()), 0., 60., 20., WHITE);
         draw_text(&format!("Ping: {:?}", self.latency), 0., 80., 20., WHITE);
-        self.draw_memory_usage();
-        draw_text(&format!("Draw commands time: {:?}", draw_commands_time), 0., 120., 20., WHITE);
+        //self.draw_memory_usage();
+        draw_text(&format!("Draw world: {:?}", draw_commands_time), 0., 120., 20., WHITE);
         draw_text(&format!("Render time: {:?}", render_time), 0., 140., 20., WHITE);
-        draw_text(&format!("Tick time: {:?}", self.last_tick_duration), 0., 160., 20., WHITE);
+        draw_text(&format!("Last tick time: {:?}", self.last_tick_duration), 0., 160., 20., WHITE);
 
         let then = web_time::Instant::now();
         next_frame().await;

@@ -141,20 +141,13 @@ impl Area {
         }
 
 
-        let mut mask_ids = Vec::<TextureId>::new();
+  
 
         for prop in &mut self.props {
+
             prop.draw(ctx, &mut self.space);
 
-            if let Some(base_prop) = prop.downcast_ref::<BaseProp>() {
-
-                let mask_id = base_prop.mask.as_ref().unwrap().texture.raw_miniquad_id();
-                if mask_ids.contains(&mask_id) {
-                    panic!("ohs noes")
-                } else {
-                    mask_ids.push(mask_id.clone());
-                }
-            }
+    
         }
 
         for background in &mut self.backgrounds {

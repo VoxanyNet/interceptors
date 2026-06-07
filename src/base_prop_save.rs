@@ -56,8 +56,8 @@ impl BasePropSave {
         let body = space.rigid_body_set.insert(
             body_builder
                 .pose(self.pos)
-                .ccd_enabled(true)
-                .soft_ccd_prediction(20.)
+                // .ccd_enabled(true)
+                // .soft_ccd_prediction(20.)
         );
 
 
