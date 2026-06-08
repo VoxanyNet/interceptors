@@ -1625,7 +1625,7 @@ pub struct DrawTextureDirectParameters {
     params: DrawTextureParams
 }
 
-#[derive(Debug)]
+#[derive(Debug, From)]
 pub enum DrawCommand {
     DrawTexture(DrawTextureParameters),
     SetCamera(SetCameraParameters),

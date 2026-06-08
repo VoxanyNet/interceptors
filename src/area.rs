@@ -1,7 +1,7 @@
 use std::{collections::VecDeque, path::PathBuf, str::FromStr};
 
 use glamx::{Pose2, Vec2, vec2};
-use macroquad::{camera::Camera2D, color::{RED, WHITE}, input::{KeyCode, is_key_released}, math::Rect, miniquad::TextureId, prelude::{gl_use_default_material, gl_use_material}, shapes::{draw_circle, draw_rectangle}, time::get_time, window::{clear_background, screen_height, screen_width}};
+use macroquad::{camera::Camera2D, color::{RED, WHITE}, input::{KeyCode, is_key_released}, math::Rect, miniquad::TextureId, prelude::{gl_use_default_material, gl_use_material}, shapes::{draw_circle, draw_rectangle}, time::get_time, ui::Drag::No, window::{clear_background, screen_height, screen_width}};
 use noise::{NoiseFn, Perlin};
 use serde::{Deserialize, Serialize, de};
 
@@ -86,6 +86,9 @@ impl Area {
     
     pub fn tick(&mut self, ctx: &mut TickContext) {
 
+        
+        
+
         ctx.push_debug_string(format!("Body count: {:?}", self.space.rigid_body_set.len()));
         let then = web_time::Instant::now();
         self.space.step(ctx.last_tick_duration());
@@ -98,6 +101,23 @@ impl Area {
             self.spawn_player_if_not_in_game(ctx);
             self.debug_spawn_prop(ctx);
             self.debug_spawn_enemy(ctx);
+
+            if is_key_released(KeyCode::C) {
+
+                let mos_pos = rapier_mouse_world_pos(ctx.camera_rect);
+                let pixel_pos = Pose2::new(mos_pos, 0.);
+
+                self.dissolved_pixels.push(
+                    DissolvedPixel::new(
+                        pixel_pos, 
+                        &mut self.space, 
+                        WHITE, 
+                        10., 
+                        Some(10.), 
+                        None
+                    )
+                );
+            }
         };
 
         self.handle_bullet_impacts(ctx);
@@ -174,6 +194,12 @@ impl Area {
         for clip in &self.clips {
             clip.draw(ctx, &self.space)
         }
+
+        for dissolved_pixel in &self.dissolved_pixels {
+            dissolved_pixel.draw(ctx, &self.space);
+        }
+
+    
 
     
         //self.computer.draw()

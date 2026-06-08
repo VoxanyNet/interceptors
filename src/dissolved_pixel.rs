@@ -1,10 +1,10 @@
 use async_trait::async_trait;
-use glamx::Pose2;
-use macroquad::{color::Color, shapes::{DrawRectangleParams, draw_rectangle_ex}};
+use glamx::{Pose2,};
+use macroquad::{color::Color, math::vec2, shapes::{DrawRectangleParams, draw_rectangle_ex}};
 use rapier2d::prelude::{ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyVelocity};
 use serde::{Deserialize, Serialize};
 
-use crate::{drawable::{DrawContext, Drawable}, rapier_to_macroquad, space::Space, uuid_u64};
+use crate::{DrawRectangleParameters, TickContext, drawable::{DrawContext, Drawable}, rapier_to_macroquad, space::Space, uuid_u64};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default, Copy, PartialEq)]
 pub struct DissolvedPixelId {
@@ -23,7 +23,7 @@ pub struct DissolvedPixel {
     pub body: RigidBodyHandle,
     pub collider: ColliderHandle,
     color: Color,
-    scale: f32,
+    size: f32,
     spawned: web_time::Instant,
     pub despawn: bool
 }
@@ -63,7 +63,7 @@ impl DissolvedPixel {
         pos: Pose2, 
         space: &mut Space,
         color: Color,
-        scale: f32,
+        size: f32,
         mass: Option<f32>,
         velocity: Option<RigidBodyVelocity<f32>>,
     ) -> Self {
@@ -86,7 +86,7 @@ impl DissolvedPixel {
         );
 
         let collider = space.collider_set.insert_with_parent(
-            ColliderBuilder::cuboid(2., 2.).mass(mass),
+            ColliderBuilder::cuboid(size / 2., size / 2.).mass(mass),
             rigid_body,
             &mut space.rigid_body_set
         );
@@ -95,43 +95,34 @@ impl DissolvedPixel {
             body: rigid_body,
             collider,
             color,
-            scale,
+            size,
             spawned: web_time::Instant::now(),
             despawn: false
         }
     }
-}
 
-
-
-#[async_trait]
-impl Drawable for DissolvedPixel {
-    async fn draw(&mut self, draw_context: &DrawContext) {
+    pub fn draw(&self, ctx: &mut TickContext, space: &Space) {
         if self.despawn {
             return;
         }
 
-        let body = draw_context.space.rigid_body_set.get(self.body).unwrap();
+        let body = space.rigid_body_set.get(self.body).unwrap();
 
         let macroquad_pos = rapier_to_macroquad(body.translation());
 
-        let shape = draw_context.space.collider_set.get(self.collider).unwrap().shape().as_cuboid().unwrap();
+        let shape = space.collider_set.get(self.collider).unwrap().shape().as_cuboid().unwrap();
 
-
-        draw_rectangle_ex(
-            macroquad_pos.x, 
-            macroquad_pos.y, 
-            (shape.half_extents.x * 2.) * self.scale, 
-            (shape.half_extents.y * 2.) * self.scale, 
-            DrawRectangleParams { 
-                offset: macroquad::math::Vec2::new(0.5, 0.5), 
-                rotation: body.rotation().angle() * -1., 
-                color: self.color 
-            }
+        ctx.add_draw_command(
+            5, 
+            DrawRectangleParameters {
+                position: macroquad::math::vec2(macroquad_pos.x, macroquad_pos.y),
+                size: macroquad::math::vec2(shape.half_extents.x * 2., shape.half_extents.y * 2.),
+                offset: Some(macroquad::math::Vec2::new(0.5, 0.5)),
+                rotation: Some(body.rotation().angle() * -1.),
+                color: Some(self.color),
+            }.into()
         );
-    }
 
-    fn draw_layer(&self) -> u32 {
-        1
     }
 }
+
