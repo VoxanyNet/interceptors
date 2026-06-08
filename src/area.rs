@@ -86,7 +86,7 @@ impl Area {
     
     pub fn tick(&mut self, ctx: &mut TickContext) {
 
-
+        ctx.push_debug_string(format!("Body count: {:?}", self.space.rigid_body_set.len()));
         let then = web_time::Instant::now();
         self.space.step(ctx.last_tick_duration());
         if let TickContext::Client(ctx) = ctx {
@@ -106,6 +106,7 @@ impl Area {
         self.tick_entities(ctx);
         ctx.push_debug_string(format!("Tick entities: {:?}", then.elapsed()));
         self.despawn_entities(ctx);
+        
     }
 
 

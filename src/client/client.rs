@@ -650,7 +650,6 @@ impl Client {
     pub fn tick(&mut self) {
 
 
-
         if is_mouse_button_released(macroquad::input::MouseButton::Left) {
             println!("Left Mouse button released");
         }

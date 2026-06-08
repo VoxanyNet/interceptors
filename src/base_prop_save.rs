@@ -61,7 +61,6 @@ impl BasePropSave {
         );
 
 
-        // this is so amazingly horrible for such a stupid reason i must make it better
         let voxels = match textures {
             TextureLoader::Client(client_texture_loader) => {
 
@@ -71,11 +70,7 @@ impl BasePropSave {
 
                 match &self.voxels {
                     Some(voxels) => {
-
-
                         voxels.clone()
-
-
                     },
                     None => {
 

@@ -106,9 +106,6 @@ impl Prop for BaseProp {
 
     fn draw(&mut self, ctx: &mut TickContext, space: &mut Space) {
 
-        
-        
-        
         if self.despawn {
             return;
         }
@@ -143,7 +140,7 @@ impl Prop for BaseProp {
         let mask = self.mask.as_ref().unwrap();
         
         if self.voxels_modified_last_tick {
-            log::debug!("Modified");
+            
             ctx.add_draw_command(
                 self.layer, 
                 DrawCommand::SetMaterialTexture(
@@ -180,6 +177,7 @@ impl Prop for BaseProp {
         );
 
 
+        draw_rectangle(0., 0., 100., 100., BLACK);
         ctx.add_draw_command(
             self.layer, 
             DrawCommand::DrawTexture(
@@ -619,11 +617,6 @@ impl BaseProp {
             self.force_owner_update_with_networking(ctx.id(), area_context, ctx);
         }
 
-        // only break apart props on client side FOR NOW
-        // let TickContext::Client(_) = ctx else {
-        //     return;
-        // };
-
         let mut impacted_voxels = self.get_impacted_voxels(area_context.space, impact);
 
         // this will probably never be zero
@@ -644,6 +637,8 @@ impl BaseProp {
             .map(|voxel| voxel.grid_coords)
             .collect();
 
+        
+
         area_context.space.collider_set
             .get_mut(self.collider_handle)
             .unwrap()
@@ -655,6 +650,13 @@ impl BaseProp {
         // COPY THIS ABOVE??
         if self.check_if_no_voxels(area_context.space) == true {
             self.mark_despawn();
+
+            ctx.send_network_packet(
+                RemovePropUpdate {
+                    prop_id: self.id,
+                    area_id: *area_context.id,
+                }.into()
+            );
             return;
         }
 
