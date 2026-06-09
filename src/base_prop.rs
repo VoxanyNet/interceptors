@@ -8,7 +8,7 @@ use macroquad::{audio::play_sound_once, camera::{Camera2D, set_camera}, color::{
 use rapier2d::prelude::{AxisMask, ColliderBuilder, ColliderHandle, RigidBodyBuilder, RigidBodyHandle, RigidBodyType, RigidBodyVelocity, SharedShape, VoxelData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
-use crate::{ClearBackgroundParameters, ClientId, ClientTickContext, DrawCommand, DrawRectangleParameters, DrawTextureParameters, Owner, Prefabs, SetCameraParameters, SetMaterialTextureParameters, TextureLoader, TickContext, UseMaterialParameters, area::{Area, AreaContext, AreaId}, base_prop_save::BasePropSave, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, material_loader::ExclusiveMaterialHandle, prop::Prop, prop_save::PropSave, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
+use crate::{ClearBackgroundParameters, ClientId, ClientTickContext, DrawCommand, DrawRectangleParameters, DrawTextureParameters, Owner, Prefabs, SetCameraParameters, SetMaterialTextureParameters, TextureLoader, TickContext, UseMaterialParameters, area::{self, Area, AreaContext, AreaId}, base_prop_save::BasePropSave, dissolved_pixel::DissolvedPixel, draw_preview, drawable::Drawable, editor_context_menu::{EditorContextMenu, EditorContextMenuData}, flood_fill, get_preview_resolution, material_loader::ExclusiveMaterialHandle, prop::Prop, prop_save::PropSave, rapier_to_macroquad, space::Space, texture_loader::ClientTextureLoader, updates::NetworkPacket, uuid_u64, weapons::bullet_impact_data::BulletImpactData};
 
 
 
@@ -96,6 +96,11 @@ pub struct BaseProp {
     pub last_sent_position_update: web_time::Instant,
     pub destruction_material_handle: Option<ExclusiveMaterialHandle>
 
+}
+
+struct ImpactedVoxel {
+    grid_coords: glamx::IVec2,
+    world_pos: glamx::Vec2
 }
 
 impl Prop for BaseProp {
@@ -565,13 +570,22 @@ impl BaseProp {
         &self,
         space: &Space,
         impact: &BulletImpactData
-    ) -> Vec<glamx::IVec2> {
+    ) -> Vec<ImpactedVoxel> {
 
         self.get_voxel_world_positions(space)
             .filter(|(_, voxel_world_pos)| {
                 (voxel_world_pos - impact.intersection_point).length() < 10.
             })
-            .map(|(voxel, _)| voxel.grid_coords)
+            .map(
+                |(voxel, world_pos)| {
+
+                    ImpactedVoxel {
+                        grid_coords: voxel.grid_coords,
+                        world_pos,
+                    }
+                    
+                }
+            )
             .collect()
 
 
@@ -612,17 +626,22 @@ impl BaseProp {
             true
         );
 
+        let rotation = rigid_body.rotation().clone();
+        let vels = rigid_body.vels().clone();
+
         // BECOME the owner if arent the owner!!!!!!!!!!!!! RARGHHHHHH
         if let Some(owner) = self.owner && ctx.id() != owner {
             self.force_owner_update_with_networking(ctx.id(), area_context, ctx);
         }
 
-        let mut impacted_voxels = self.get_impacted_voxels(area_context.space, impact);
-
+        let impacted_voxels = self.get_impacted_voxels(area_context.space, impact);
+        
         // this will probably never be zero
         if impacted_voxels.len() != 0 {
             self.voxels_modified = true;
         }
+
+        
 
         let collider_voxels = area_context.space.collider_set
             .get_mut(self.collider_handle)
@@ -631,13 +650,16 @@ impl BaseProp {
             .as_voxels_mut()
             .unwrap();
 
-
-        let mut new_voxels: Vec<glamx::IVec2> = collider_voxels.voxels()
-            .filter(|voxel| !impacted_voxels.contains(&voxel.grid_coords))
-            .map(|voxel| voxel.grid_coords)
+        let mut impacted_voxels_grid_coords: Vec<glamx::IVec2> = impacted_voxels
+            .iter()
+            .map(|impacted_voxel| {impacted_voxel.grid_coords})
             .collect();
 
-        
+
+        let mut new_voxels: Vec<glamx::IVec2> = collider_voxels.voxels()
+            .filter(|voxel| !impacted_voxels_grid_coords.contains(&voxel.grid_coords))
+            .map(|voxel| voxel.grid_coords)
+            .collect();        
 
         area_context.space.collider_set
             .get_mut(self.collider_handle)
@@ -645,7 +667,21 @@ impl BaseProp {
             .set_shape(
                 SharedShape::voxels(glamx::vec2(8., 8.), &new_voxels)
             );
+        
+        // spawn pixel physics objects 
+        for voxel in &impacted_voxels {
 
+            area_context.dissolved_pixels.push(
+                DissolvedPixel::new(
+                    Pose2::new(voxel.world_pos, rotation.angle()), 
+                    area_context.space, 
+                    WHITE, 
+                    8., 
+                    Some(10.), 
+                    Some(vels)
+                )
+            );
+        }
 
         // COPY THIS ABOVE??
         if self.check_if_no_voxels(area_context.space) == true {
@@ -660,12 +696,12 @@ impl BaseProp {
             return;
         }
 
-        if let Some(break_apart_new_voxels) = self.break_apart(*area_context.id, ctx, area_context.space, &impacted_voxels, area_context.props) {
+        if let Some(break_apart_new_voxels) = self.break_apart(*area_context.id, ctx, area_context.space, &impacted_voxels_grid_coords, area_context.props) {
 
             new_voxels = break_apart_new_voxels;
         }
 
-        self.removed_voxels.append(&mut impacted_voxels);
+        self.removed_voxels.append(&mut impacted_voxels_grid_coords);
         self.removed_voxels.dedup();
 
         ctx.send_network_packet(
