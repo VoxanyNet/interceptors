@@ -124,14 +124,14 @@ impl Prop for BaseProp {
         // this is majorly stupid
         let (texture, material) = if let TickContext::Client(client_ctx) = ctx {
             let texture = client_ctx.textures.get(&self.sprite_path);
-            let material = client_ctx.material_loader.get_exclusive(self.destruction_material_handle.as_ref().unwrap());
-            //let material = client_ctx.material_loader.get(&"materials/destruction");
+            //let material = client_ctx.material_loader.get_exclusive(self.destruction_material_handle.as_ref().unwrap());
+            let material = client_ctx.material_loader.get(&"materials/destruction");
             (texture, material)
         } else if let TickContext::Editor(editor_ctx) = ctx {
 
             let texture = editor_ctx.textures.get(&self.sprite_path);
-            let material = editor_ctx.material_loader.get_exclusive(self.destruction_material_handle.as_ref().unwrap());
-            //let material = editor_ctx.material_loader.get(&"materials/destruction");
+            //let material = editor_ctx.material_loader.get_exclusive(self.destruction_material_handle.as_ref().unwrap());
+            let material = editor_ctx.material_loader.get(&"materials/destruction");
             (texture, material)
 
         } else {
@@ -142,9 +142,8 @@ impl Prop for BaseProp {
 
         self.draw_mask(ctx, texture);
 
-        let mask = self.mask.as_ref().unwrap();
         
-        if self.voxels_modified_last_tick {
+        if let Some(mask) = self.mask.as_ref() {
             
             ctx.add_draw_command(
                 self.layer, 
@@ -172,17 +171,21 @@ impl Prop for BaseProp {
             // }
         }
 
-        ctx.add_draw_command(
-            self.layer, 
-            DrawCommand::UseMaterial(
-                UseMaterialParameters {
-                    material: material.clone(),
-                }
-            )
-        );
+        // only need to use material if there is a material
+        if let Some(_) = self.mask.as_ref() {
+            ctx.add_draw_command(
+                self.layer, 
+                DrawCommand::UseMaterial(
+                    UseMaterialParameters {
+                        material: material.clone(),
+                    }
+                )
+            );
+        }
 
 
-        draw_rectangle(0., 0., 100., 100., BLACK);
+        //draw_rectangle(0., 0., 100., 100., BLACK);
+
         ctx.add_draw_command(
             self.layer, 
             DrawCommand::DrawTexture(
@@ -207,11 +210,12 @@ impl Prop for BaseProp {
 
         color.a = 1. - (self.last_sent_position_update.elapsed().as_secs_f32() / 1.);
 
-
-        ctx.add_draw_command(
-            self.layer, 
-            DrawCommand::UseDefaultMaterial
-        );
+        if let Some(_) = self.mask.as_ref() {
+            ctx.add_draw_command(
+                self.layer, 
+                DrawCommand::UseDefaultMaterial
+            );
+        }
 
         let mut color = WHITE;
         color.a = 0.5;
@@ -1114,6 +1118,13 @@ impl BaseProp {
         texture: &Texture2D
     ) {
 
+
+
+
+        if self.voxels_modified == false {
+            return
+        }
+
         if self.mask.is_none() {
             
 
@@ -1152,14 +1163,9 @@ impl BaseProp {
             )
         }
 
-
-
-        if self.voxels_modified_last_tick == false {
-
-            return;
-        }
-
         let mask = self.mask.as_mut().unwrap();
+
+        log::debug!("Drawing mask!");
 
         //log::debug!("Drawing new mask!");
 
