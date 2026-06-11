@@ -721,7 +721,10 @@ impl BaseProp {
 
         }
 
+
     }
+
+
 
 
     pub fn inner_despawn_callback(&mut self, space: &mut Space) {
@@ -1165,7 +1168,7 @@ impl BaseProp {
 
         let mask = self.mask.as_mut().unwrap();
 
-        log::debug!("Drawing mask!");
+
 
         //log::debug!("Drawing new mask!");
 
@@ -1207,6 +1210,7 @@ impl BaseProp {
             //     8. / self.scale,
             //     BLACK
             // );
+            
 
             
             ctx.add_draw_command(
@@ -1259,7 +1263,7 @@ impl BaseProp {
             .voxels()
             .map(
                 move |voxel|
-                {
+                {   
                     let rotated_x = voxel.center.x * cos - voxel.center.y * sin;
                     let rotated_y = voxel.center.x * sin + voxel.center.y * cos;
 

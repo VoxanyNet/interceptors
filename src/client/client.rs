@@ -1,9 +1,10 @@
 use std::{collections::HashMap, process::exit};
 
+use glamx::Pose2;
 use image::codecs::webp;
-use interceptors_lib::{Assets, ClearBackgroundParameters, ClientIO, ClientId, ClientTickContext, DrawCommand, DrawCommands, DrawTextParameters, Owner, Prefabs, SetCameraParameters, TickContext, area::Area, base_prop::BaseProp, bullet_trail::BulletTrail, button::Button, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, material_loader::MaterialLoader, player::{ItemSlot, Player}, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::ClientTextureLoader, updates::{NetworkPacket, Ping}, world::World};
+use interceptors_lib::{Assets, ClearBackgroundParameters, ClientIO, ClientId, ClientTickContext, DrawCommand, DrawCommands, DrawTextParameters, Owner, Prefabs, SetCameraParameters, TickContext, area::Area, base_prop::BaseProp, bullet_trail::BulletTrail, button::Button, dissolved_pixel::DissolvedPixel, dropped_item::DroppedItem, enemy::Enemy, font_loader::FontLoader, get_intersections, material_loader::MaterialLoader, player::{ItemSlot, Player}, screen_shake::ScreenShakeParameters, sound_loader::SoundLoader, texture_loader::ClientTextureLoader, updates::{NetworkPacket, Ping}, world::World};
 use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{BLACK, WHITE}, input::{KeyCode, is_key_released, is_mouse_button_down, is_mouse_button_released, show_mouse}, math::{Rect, Vec2, vec2}, prelude::{Material, ShaderSource, gl_use_default_material, load_material}, text::draw_text, texture::{DrawTextureParams, RenderTarget, draw_texture_ex, render_target}, time::draw_fps, window::{clear_background, next_frame, screen_height, screen_width}};
-use rapier2d::{math::Vector, prelude::{ColliderBuilder, SharedShape}};
+use rapier2d::{geometry::VoxelData, math::Vector, prelude::{ColliderBuilder, SharedShape}};
 
 use crate::{shaders::{CRT_FRAGMENT_SHADER, CRT_VERTEX_SHADER}};
 
@@ -265,12 +266,62 @@ impl Client {
                         continue;
                     };
 
-                    area.space.collider_set
+                    let collider = area.space.collider_set
                         .get_mut(prop.collider_handle())
-                        .unwrap()
-                        .set_shape(
-                            SharedShape::voxels(glamx::vec2(8., 8.), &update.new_voxels)
+                        .unwrap();
+
+                    let cos = collider.rotation().cos();
+                    let sin = collider.rotation().sin();
+                    
+                    let body = area.space.rigid_body_set.get(prop.rigid_body_handle()).unwrap();
+
+                    let body_rotation = body.rotation().clone();
+                    let body_vels = body.vels().clone();
+
+                    let voxel_collider = collider.shape().as_voxels().unwrap();
+
+                    let current_voxels: Vec<VoxelData> = voxel_collider.voxels()
+                        .filter(|x| !x.state.is_empty())
+                        .collect();
+
+
+                    let removed_voxels_positions: Vec<glamx::Vec2> = current_voxels
+                        .iter()
+                        .filter(|voxel| !update.new_voxels.contains(&voxel.grid_coords))
+                        .map(
+                            |voxel|
+                            {
+                                let rotated_x = voxel.center.x * cos - voxel.center.y * sin;
+                                let rotated_y = voxel.center.x * sin + voxel.center.y * cos;
+
+                                let world_x = rotated_x + collider.translation().x;
+                                let world_y = rotated_y + collider.translation().y;
+
+                                glamx::Vec2::new(world_x, world_y)
+                            }
+                        )
+                        .collect();
+
+                    collider.set_shape(
+                        SharedShape::voxels(glamx::vec2(8., 8.), &update.new_voxels)
+                    );
+                    
+
+
+                    for removed_voxel in removed_voxels_positions {
+
+
+                        area.dissolved_pixels.push(
+                            DissolvedPixel::new(
+                                Pose2::new(removed_voxel, body_rotation.angle()), 
+                                &mut area.space, 
+                                WHITE, 
+                                8., 
+                                Some(10.), 
+                                Some(body_vels)
+                            )
                         );
+                    }
 
 
                     *prop.removed_voxels_mut() = update.removed_voxels;

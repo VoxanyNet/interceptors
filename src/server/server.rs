@@ -1,7 +1,9 @@
 use std::{fs::read_to_string, process::exit};
 
-use interceptors_lib::{ClientId, Owner, Prefabs, ServerAssets, ServerIO, ServerTickContext, TickContext, area::{Area, AreaId, AreaSave}, bullet_trail::BulletTrail, dropped_item::DroppedItem, enemy::Enemy, load_assets_server, load_prefabs, player::{ItemSlot, Player}, base_prop::{BaseProp, PropUpdateOwner}, updates::{LoadArea, NetworkPacket, PlayerDespawnUpdate}, world::World};
-use rapier2d::prelude::SharedShape;
+use glamx::Pose2;
+use interceptors_lib::{ClientId, Owner, Prefabs, ServerAssets, ServerIO, ServerTickContext, TickContext, area::{Area, AreaId, AreaSave}, base_prop::{BaseProp, PropUpdateOwner}, bullet_trail::BulletTrail, dissolved_pixel::DissolvedPixel, dropped_item::DroppedItem, enemy::Enemy, load_assets_server, load_prefabs, player::{ItemSlot, Player}, updates::{LoadArea, NetworkPacket, PlayerDespawnUpdate}, world::World};
+use macroquad::color::WHITE;
+use rapier2d::{geometry::VoxelData, parry::utils::hashset::HashSet, prelude::SharedShape};
 use tungstenite::Message;
 
 pub struct Server {
@@ -200,12 +202,62 @@ pub fn handle_new_client(&mut self, new_client: ClientId) {
                         continue;
                     };
 
-                    area.space.collider_set
+                    let collider = area.space.collider_set
                         .get_mut(prop.collider_handle())
-                        .unwrap()
-                        .set_shape(
-                            SharedShape::voxels(glamx::vec2(8., 8.), &update.new_voxels)
+                        .unwrap();
+
+                    let cos = collider.rotation().cos();
+                    let sin = collider.rotation().sin();
+                    
+                    let body = area.space.rigid_body_set.get(prop.rigid_body_handle()).unwrap();
+
+                    let body_rotation = body.rotation().clone();
+                    let body_vels = body.vels().clone();
+
+                    let voxel_collider = collider.shape().as_voxels().unwrap();
+
+                    let current_voxels: Vec<VoxelData> = voxel_collider.voxels()
+                        .filter(|x| !x.state.is_empty())
+                        .collect();
+
+
+                    let removed_voxels_positions: Vec<glamx::Vec2> = current_voxels
+                        .iter()
+                        .filter(|voxel| !update.new_voxels.contains(&voxel.grid_coords))
+                        .map(
+                            |voxel|
+                            {
+                                let rotated_x = voxel.center.x * cos - voxel.center.y * sin;
+                                let rotated_y = voxel.center.x * sin + voxel.center.y * cos;
+
+                                let world_x = rotated_x + collider.translation().x;
+                                let world_y = rotated_y + collider.translation().y;
+
+                                glamx::Vec2::new(world_x, world_y)
+                            }
+                        )
+                        .collect();
+
+                    collider.set_shape(
+                        SharedShape::voxels(glamx::vec2(8., 8.), &update.new_voxels)
+                    );
+                    
+
+
+                    for removed_voxel in removed_voxels_positions {
+
+
+                        area.dissolved_pixels.push(
+                            DissolvedPixel::new(
+                                Pose2::new(removed_voxel, body_rotation.angle()), 
+                                &mut area.space, 
+                                WHITE, 
+                                8., 
+                                Some(10.), 
+                                Some(body_vels)
+                            )
                         );
+                    }
 
                     *prop.removed_voxels_mut() = update.removed_voxels.clone();
                     *prop.voxels_modified_mut() = true;

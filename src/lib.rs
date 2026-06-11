@@ -3,7 +3,7 @@ use std::{collections::{HashMap, HashSet, VecDeque}, f32::consts::PI, fs::read_t
 use derive_more::From;
 use ewebsock::{WsReceiver, WsSender};
 use glamx::IVec2;
-use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, WHITE}, input::{KeyCode, is_key_down, is_key_released, mouse_position}, math::{Rect, Vec2, vec2}, prelude::{Material, gl_use_default_material, gl_use_material, glam, load_material}, shapes::{DrawRectangleParams, draw_line, draw_rectangle, draw_rectangle_ex}, text::{Font, TextParams, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex}, window::{clear_background, get_internal_gl}};
+use macroquad::{camera::{Camera2D, set_camera, set_default_camera}, color::{Color, WHITE}, input::{KeyCode, is_key_down, is_key_released, mouse_position}, math::{Rect, Vec2, vec2}, prelude::{Material, gl_use_default_material, gl_use_material, glam, load_material}, shapes::{DrawRectangleParams, draw_circle, draw_line, draw_rectangle, draw_rectangle_ex}, text::{Font, TextParams, draw_text_ex}, texture::{DrawTextureParams, RenderTarget, Texture2D, draw_texture_ex}, window::{clear_background, get_internal_gl}};
 use rapier2d::{parry::query::Ray, prelude::{AxisMask, ColliderBuilder, ColliderHandle, QueryFilter, RigidBodyHandle, VoxelData, Voxels, VoxelsChunkRef}};
 use serde::{Deserialize, Serialize};
 use strum::Display;
@@ -57,6 +57,19 @@ pub mod prop;
 pub mod prop_save;
 pub mod base_prop_save;
 pub mod items;
+
+fn draw_rounded_rect(x: f32, y: f32, w: f32, h: f32, r: f32, color: Color) {
+    let r = r.min(w * 0.5).min(h * 0.5);
+
+    draw_rectangle(x + r, y, w - 2.0 * r, h, color);
+    draw_rectangle(x, y + r, r, h - 2.0 * r, color);
+    draw_rectangle(x + w - r, y + r, r, h - 2.0 * r, color);
+
+    draw_circle(x + r,     y + r,     r, color);
+    draw_circle(x + w - r, y + r,     r, color);
+    draw_circle(x + r,     y + h - r, r, color);
+    draw_circle(x + w - r, y + h - r, r, color);
+}
 
 pub fn flood_fill(start_point: glamx::IVec2, voxels: &Voxels) -> HashSet<glamx::IVec2> {
     let mut island_voxels = HashSet::new();
